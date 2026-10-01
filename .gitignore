@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Environment & rahasia
+.env
+.env.*
+*.pem
+*.key
+
+# Log & cache
+*.log
+npm-debug.log*
+.cache/
+
+# Build output
+dist/
+build/
+
+# OS & editor
+.DS_Store
+Thumbs.db
+.vscode/
