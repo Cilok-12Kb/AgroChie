@@ -1,0 +1,337 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  PETANI
+  PETUGAS_BANK
+}
+
+enum Crop {
+  CABAI
+  BAWANG
+  TOMAT
+}
+
+enum Level {
+  RENDAH
+  SEDANG
+  TINGGI
+}
+
+enum SeasonStatus {
+  DRAFT
+  PEMBIAYAAN
+  TANAM
+  PANEN
+  SELESAI
+}
+
+enum ExpenseCategory {
+  BENIH
+  PUPUK
+  OBAT
+  TENAGA_KERJA
+  LAIN
+}
+
+enum HarvestGrade {
+  A
+  B
+  C
+  SORTIRAN
+}
+
+enum PhotoKind {
+  PROGRES
+  SAMPEL
+}
+
+enum LoanStatus {
+  DIAJUKAN
+  DIPERIKSA_BANK
+  DISETUJUI
+  DITOLAK
+}
+
+enum DataQuality {
+  SIAP_DILATIH
+  TOTAL_SAJA
+  BELUM_LENGKAP
+  CONTOH
+}
+
+model User {
+  id           String    @id @default(cuid())
+  name         String
+  phone        String?   @unique
+  email        String?   @unique
+  passwordHash String
+  role         Role      @default(PETANI)
+  createdAt    DateTime  @default(now())
+  farms        Farm[]
+  reminder     Reminder?
+
+  @@map("users")
+}
+
+model Farm {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String    @default("Lahan utama")
+  village      String?
+  subdistrict  String?
+  farmerGroup  String?
+  province     String?
+  latitude     Decimal?  @db.Decimal(9, 6)
+  longitude    Decimal?  @db.Decimal(9, 6)
+  boundary     Json?
+  areaHa       Decimal   @db.Decimal(4, 2)
+  soilType     String?
+  waterSource  String?
+  ph           Decimal?  @db.Decimal(3, 1)
+  phMeasuredOn DateTime? @db.Date
+  nitrogen     Level?
+  phosphorus   Level?
+  potassium    Level?
+  note         String?
+  seasons      Season[]
+
+  @@index([userId])
+  @@map("farms")
+}
+
+model Season {
+  id                 String            @id @default(cuid())
+  farmId             String
+  farm               Farm              @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  crop               Crop
+  areaHa             Decimal           @db.Decimal(4, 2)
+  status             SeasonStatus      @default(DRAFT)
+  capitalJt          Decimal?          @db.Decimal(10, 2)
+  sellPricePerKg     Decimal?          @db.Decimal(12, 2)
+  profitTargetJt     Decimal?          @db.Decimal(10, 2)
+  financingStartedAt DateTime?
+  plantedOn          DateTime?         @db.Date
+  closedAt           DateTime?
+  totalCostJt        Decimal?          @db.Decimal(10, 2)
+  closingNote        String?
+  costPlans          CostPlan[]
+  expenses           Expense[]
+  harvests           Harvest[]
+  sample             HarvestSample?
+  photos             Photo[]
+  record             SeasonRecord?
+  loans              LoanApplication[]
+  predictions        PredictionLog[]
+  checks             ReminderCheck[]
+
+  @@index([farmId, status])
+  @@map("seasons")
+}
+
+model CostPlan {
+  id             String   @id @default(cuid())
+  seasonId       String
+  season         Season   @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  kind           String   @default("AWAL")
+  totalJt        Decimal  @db.Decimal(10, 2)
+  p10Jt          Decimal  @db.Decimal(10, 2)
+  p50Jt          Decimal  @db.Decimal(10, 2)
+  p90Jt          Decimal  @db.Decimal(10, 2)
+  capitalJt      Decimal? @db.Decimal(10, 2)
+  shortfallJt    Decimal  @default(0) @db.Decimal(10, 2)
+  breakEvenPerKg Decimal? @db.Decimal(12, 2)
+  weeklyJt       Json
+  modelVersion   String
+  createdAt      DateTime @default(now())
+
+  @@index([seasonId, createdAt])
+  @@map("cost_plans")
+}
+
+model Expense {
+  id        String          @id @default(cuid())
+  seasonId  String
+  season    Season          @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  spentOn   DateTime        @db.Date
+  category  ExpenseCategory
+  amountJt  Decimal         @db.Decimal(10, 3)
+  note      String?
+  simulated Boolean         @default(false)
+  createdAt DateTime        @default(now())
+
+  @@index([seasonId, spentOn])
+  @@map("expenses")
+}
+
+model Harvest {
+  id          String       @id @default(cuid())
+  seasonId    String
+  season      Season       @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  harvestedOn DateTime     @db.Date
+  grade       HarvestGrade
+  weightKg    Decimal      @db.Decimal(10, 2)
+  pricePerKg  Decimal      @db.Decimal(12, 2)
+  buyer       String?
+
+  @@index([seasonId])
+  @@map("harvests")
+}
+
+model HarvestSample {
+  id             String  @id @default(cuid())
+  seasonId       String  @unique
+  season         Season  @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  sampleKg       Decimal @db.Decimal(10, 2)
+  sampleM2       Decimal @db.Decimal(10, 2)
+  mismatchOver30 Boolean @default(false)
+
+  @@map("harvest_samples")
+}
+
+model Photo {
+  id             String    @id @default(cuid())
+  seasonId       String
+  season         Season    @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  kind           PhotoKind
+  objectKey      String
+  sha256         String    @unique
+  latitude       Decimal?  @db.Decimal(9, 6)
+  longitude      Decimal?  @db.Decimal(9, 6)
+  takenAt        DateTime
+  seasonWeek     Int?
+  insideBoundary Boolean?
+
+  @@index([seasonId, kind])
+  @@map("photos")
+}
+
+model SeasonRecord {
+  id              String       @id @default(cuid())
+  seasonId        String       @unique
+  season          Season       @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  anonId          String       @unique
+  label           String?
+  crop            Crop
+  areaHa          Decimal      @db.Decimal(5, 2)
+  soilType        String?
+  waterSource     String?
+  province        String?
+  startMonth      Int?
+  rainAvgMm       Decimal?     @db.Decimal(6, 1)
+  heavyRainWks    Int?
+  tempMaxAvg      Decimal?     @db.Decimal(4, 1)
+  ph              Decimal?     @db.Decimal(3, 1)
+  nitrogen        Level?
+  phosphorus      Level?
+  potassium       Level?
+  fertIndex       Decimal?     @db.Decimal(5, 1)
+  wageIndex       Decimal?     @db.Decimal(5, 1)
+  pestIndex       Decimal?     @db.Decimal(5, 1)
+  durationWks     Int
+  totalCostJt     Decimal?     @db.Decimal(10, 2)
+  yieldKg         Decimal?     @db.Decimal(10, 2)
+  pricePerKg      Decimal?     @db.Decimal(12, 2)
+  note            String?
+  quality         DataQuality  @default(BELUM_LENGKAP)
+  consentTraining Boolean      @default(false)
+  weeks           WeeklyCost[]
+
+  @@map("season_records")
+}
+
+model WeeklyCost {
+  recordId String
+  record   SeasonRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  week     Int
+  costJt   Decimal?     @db.Decimal(10, 3)
+
+  @@id([recordId, week])
+  @@map("weekly_costs")
+}
+
+model Reminder {
+  id             String    @id @default(cuid())
+  userId         String    @unique
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  active         Boolean   @default(true)
+  weekday        Int       @default(1)
+  timeOfDay      String    @default("06:00")
+  streak         Int       @default(0)
+  lastNotifiedOn DateTime? @db.Date
+
+  @@map("reminders")
+}
+
+model ReminderCheck {
+  id       String   @id @default(cuid())
+  seasonId String
+  season   Season   @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  weekNo   Int
+  itemKey  String
+  doneAt   DateTime @default(now())
+
+  @@unique([seasonId, weekNo, itemKey])
+  @@map("reminder_checks")
+}
+
+model LoanApplication {
+  id             String     @id @default(cuid())
+  seasonId       String
+  season         Season     @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  amountJt       Decimal    @db.Decimal(10, 2)
+  tenorWeeks     Int
+  purpose        String?
+  neededFromWeek Int?
+  scoreSnapshot  Int?
+  status         LoanStatus @default(DIAJUKAN)
+  referralCode   String     @unique
+  expiresAt      DateTime
+  consentShare   Boolean    @default(false)
+  createdAt      DateTime   @default(now())
+  decidedAt      DateTime?
+
+  @@index([seasonId])
+  @@map("loan_applications")
+}
+
+model PredictionLog {
+  id           String   @id @default(cuid())
+  seasonId     String?
+  season       Season?  @relation(fields: [seasonId], references: [id], onDelete: SetNull)
+  input        Json
+  output       Json
+  modelVersion String
+  createdAt    DateTime @default(now())
+
+  @@index([seasonId, createdAt])
+  @@map("prediction_logs")
+}
+
+model CropPhase {
+  crop      Crop
+  phase     Int
+  name      String
+  lengthWks Int
+  startWeek Int
+  endWeek   Int
+  costShare Decimal @db.Decimal(3, 2)
+
+  @@id([crop, phase])
+  @@map("crop_phases")
+}
+
+model ClimateRain {
+  province  String
+  month     Int
+  avgRainMm Decimal @db.Decimal(5, 1)
+
+  @@id([province, month])
+  @@map("climate_rain")
+}

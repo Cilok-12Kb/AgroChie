@@ -1,15 +1,13 @@
-const express = require("express");
-const cors = require("cors");
+import { app } from "./src/app.js";
+import { env } from "./src/config/env.js";
+import { prisma } from "./src/config/prisma.js";
 
-const app = express();
-app.use(cors());
-app.use(express.json());
+const server = app.listen(env.port, () => console.log(`API siap di http://localhost:${env.port}/api`));
 
-app.get("/", (req, res) => {
-  res.json({ message: "Backend jalan" });
-});
-
-const PORT = 3000;
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Server jalan di port ${PORT}`);
-});
+async function shutdown() {
+  server.close();
+  await prisma.$disconnect();
+  process.exit(0);
+}
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
