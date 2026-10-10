@@ -1,0 +1,39 @@
+{
+  "name": "kualitas-tanaman",
+  "version": "2026-10-10",
+  "task": "leaf_quality",
+  "format": "keras",
+  "file": "best_model.keras",
+  "input_size": [
+    224,
+    224
+  ],
+  "rescale": "none",
+  "classes": [
+    "cabai__cercospora",
+    "cabai__healthy",
+    "cabai__murda complex(mites,trips)",
+    "cabai__nutritional",
+    "cabai__powdery mildew",
+    "tomat__Bacterial spot",
+    "tomat__Black mold",
+    "tomat__Gray spot",
+    "tomat__Late blight",
+    "tomat__health",
+    "tomat__powdery mildew"
+  ],
+  "labels_id": {
+    "cabai__cercospora": "Cabai: bercak daun Cercospora",
+    "cabai__healthy": "Cabai: sehat",
+    "cabai__murda complex(mites,trips)": "Cabai: keriting daun (kompleks murda: tungau dan thrips)",
+    "cabai__nutritional": "Cabai: gangguan hara (nutrisi)",
+    "cabai__powdery mildew": "Cabai: embun tepung",
+    "tomat__Bacterial spot": "Tomat: bercak bakteri",
+    "tomat__Black mold": "Tomat: jamur hitam",
+    "tomat__Gray spot": "Tomat: bercak abu-abu",
+    "tomat__Late blight": "Tomat: hawar daun (late blight)",
+    "tomat__health": "Tomat: sehat",
+    "tomat__powdery mildew": "Tomat: embun tepung"
+  },
+  "threshold": 0.6
+}

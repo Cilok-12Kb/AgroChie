@@ -1,0 +1,92 @@
+{
+  "name": "biaya-mingguan",
+  "version": "2026-10-10",
+  "task": "weekly_cost",
+  "variant": "B_porsi_x_total",
+  "model_file": "model_minggu_porsi.json",
+  "features": [
+    "komoditas",
+    "jenis_tanah",
+    "sumber_air",
+    "provinsi",
+    "fosfor",
+    "nitrogen",
+    "kalium",
+    "luas_ha",
+    "bulan_tanam",
+    "hujan_mm_rata_per_minggu",
+    "minggu_hujan_lebat",
+    "suhu_maks_rata",
+    "ph",
+    "indeks_harga_pupuk",
+    "indeks_upah",
+    "indeks_harga_pestisida",
+    "durasi_musim",
+    "bulan_tanam_sin",
+    "bulan_tanam_cos",
+    "defisit_ph",
+    "hujan_di_atas_60",
+    "suhu_panas",
+    "skor_hara_rendah",
+    "indeks_biaya_input",
+    "minggu_ke",
+    "posisi_relatif",
+    "fase",
+    "minggu_dalam_fase",
+    "jumlah_minggu_fase",
+    "bulan_kalender_minggu",
+    "hujan_mm_minggu_klimatologi",
+    "ada_tanam",
+    "ada_pupuk_dasar",
+    "ada_panen",
+    "minggu_tersisa",
+    "bulan_minggu_sin",
+    "bulan_minggu_cos",
+    "selisih_hujan_minggu"
+  ],
+  "categorical": {
+    "komoditas": [
+      "bawang",
+      "cabai",
+      "tomat"
+    ],
+    "jenis_tanah": [
+      "Lempung",
+      "Lempung berpasir",
+      "Liat",
+      "Pasir",
+      "Tanah vulkanik (andosol)"
+    ],
+    "sumber_air": [
+      "Embung atau sungai",
+      "Irigasi teknis",
+      "Sumur atau pompa",
+      "Tadah hujan"
+    ],
+    "provinsi": [
+      "Jawa Barat",
+      "Jawa Tengah",
+      "Jawa Timur",
+      "Sulawesi Selatan",
+      "Sumatera Utara"
+    ]
+  },
+  "metrics": {
+    "test": {
+      "MAE": 0.3536897994389196,
+      "RMSE": 0.5458423605074948,
+      "MAPE_persen": 9.926384852819638,
+      "WAPE_persen": 9.788019478630893,
+      "R2": 0.9543750816194722,
+      "MAPE_total_musim_persen": 8.260779021735019
+    },
+    "val": {
+      "MAE": 0.3364034783391524,
+      "RMSE": 0.5076808513806192,
+      "MAPE_persen": 9.729033588448276,
+      "WAPE_persen": 9.447827560250156,
+      "R2": 0.9605472961916848,
+      "MAPE_total_musim_persen": 8.207659104649977
+    }
+  }
+}

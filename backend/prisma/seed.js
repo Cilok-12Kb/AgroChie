@@ -5,14 +5,11 @@ const LENGTHS = { CABAI: [2, 2, 8, 4], TOMAT: [2, 2, 7, 3], BAWANG: [2, 1, 5, 2]
 const NAMES = ["Persiapan lahan", "Penanaman", "Perawatan", "Panen dan pascapanen"];
 const SHARES = [0.19, 0.16, 0.5, 0.15];
 
-// hujan klimatologi per minggu (mm), bulan 1-12, dari dataset
-const CLIM = {
-  "Jawa Barat": [130, 123, 102, 75, 48, 28, 20, 27, 48, 75, 103, 123],
-  "Jawa Tengah": [130, 123, 102, 75, 47, 28, 20, 27, 48, 75, 102, 123],
-  "Jawa Timur": [130, 123, 102, 75, 47, 27, 20, 27, 47, 75, 103, 123],
-  "Sulawesi Selatan": [130, 123, 102, 75, 48, 27, 20, 27, 47, 75, 102, 123],
-  "Sumatera Utara": [130, 123, 102, 75, 48, 28, 20, 27, 48, 75, 103, 123],
-};
+// REVISI 10 Okt 2026. Hujan klimatologi per minggu (mm), bulan 1 sampai 12, SAMA untuk semua provinsi.
+// = round(75 + 55 * cos(2 * pi * (bulan - 1) / 12)), rumus yang dipakai notebook 05 dan engine.
+// Ditulis sebagai tabel (bukan dihitung) karena pembulatan Python (bulan 3: 102) dan JavaScript (103) berbeda.
+const CLIM = [130, 123, 102, 75, 48, 27, 20, 27, 47, 75, 102, 123];
+const PROVINCES = ["Jawa Barat", "Jawa Tengah", "Jawa Timur", "Sulawesi Selatan", "Sumatera Utara"];
 
 async function main() {
   const phases = Object.entries(LENGTHS).flatMap(([crop, lens]) => {
@@ -26,8 +23,8 @@ async function main() {
   });
   await prisma.cropPhase.createMany({ data: phases, skipDuplicates: true });
 
-  const rain = Object.entries(CLIM).flatMap(([province, arr]) =>
-    arr.map((avgRainMm, i) => ({ province, month: i + 1, avgRainMm })));
+  const rain = PROVINCES.flatMap((province) =>
+    CLIM.map((avgRainMm, i) => ({ province, month: i + 1, avgRainMm })));
   await prisma.climateRain.createMany({ data: rain, skipDuplicates: true });
 
   console.log(`Seed selesai: ${phases.length} fase, ${rain.length} baris hujan`);

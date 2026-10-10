@@ -75,6 +75,7 @@ model User {
   createdAt    DateTime  @default(now())
   farms        Farm[]
   reminder     Reminder?
+  chatSessions ChatSession[]
 
   @@map("users")
 }
@@ -130,6 +131,7 @@ model Season {
   loans              LoanApplication[]
   predictions        PredictionLog[]
   checks             ReminderCheck[]
+  chatSessions       ChatSession[]
 
   @@index([farmId, status])
   @@map("seasons")
@@ -334,4 +336,52 @@ model ClimateRain {
 
   @@id([province, month])
   @@map("climate_rain")
+}
+
+enum ChatRole {
+  USER
+  ASSISTANT
+}
+
+model KnowledgeChunk {
+  id         String   @id @default(cuid())
+  source     String
+  title      String
+  position   Int
+  content    String
+  embedding  Float[]
+  embedModel String
+  sourceHash String
+  createdAt  DateTime @default(now())
+
+  @@unique([source, position])
+  @@index([embedModel])
+  @@map("knowledge_chunks")
+}
+
+model ChatSession {
+  id        String        @id @default(cuid())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  seasonId  String?
+  season    Season?       @relation(fields: [seasonId], references: [id], onDelete: SetNull)
+  title     String?
+  createdAt DateTime      @default(now())
+  messages  ChatMessage[]
+
+  @@index([userId, createdAt])
+  @@map("chat_sessions")
+}
+
+model ChatMessage {
+  id        String      @id @default(cuid())
+  sessionId String
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role      ChatRole
+  content   String
+  sources   Json?
+  createdAt DateTime    @default(now())
+
+  @@index([sessionId, createdAt])
+  @@map("chat_messages")
 }

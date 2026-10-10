@@ -4,6 +4,8 @@ import { asyncHandler } from "../utils/async-handler.js";
 import { authRoutes } from "./auth.routes.js";
 import { farmRoutes } from "./farm.routes.js";
 import { seasonRoutes } from "./season.routes.js";
+import { cropRoutes } from "./crop.routes.js";
+import { assistantRoutes } from "./assistant.routes.js";
 
 export const routes = Router();
 
@@ -15,3 +17,5 @@ routes.get("/health", asyncHandler(async (_req, res) => {
 routes.use("/auth", authRoutes);
 routes.use("/farms", farmRoutes);
 routes.use("/seasons", seasonRoutes);
+routes.use("/crops", cropRoutes);
+routes.use("/assistant", assistantRoutes);

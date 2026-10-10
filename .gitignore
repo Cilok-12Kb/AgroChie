@@ -2,6 +2,7 @@
 node_modules/
 
 # Environment & rahasia
+.venv
 .env
 .env.*
 *.pem

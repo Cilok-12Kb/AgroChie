@@ -1,0 +1,119 @@
+{
+  "name": "biaya-musim",
+  "version": "2026-10-10",
+  "task": "season_cost",
+  "model_file": "model_musim.json",
+  "features": [
+    "komoditas",
+    "jenis_tanah",
+    "sumber_air",
+    "provinsi",
+    "fosfor",
+    "nitrogen",
+    "kalium",
+    "luas_ha",
+    "bulan_tanam",
+    "hujan_mm_rata_per_minggu",
+    "minggu_hujan_lebat",
+    "suhu_maks_rata",
+    "ph",
+    "indeks_harga_pupuk",
+    "indeks_upah",
+    "indeks_harga_pestisida",
+    "durasi_musim",
+    "bulan_tanam_sin",
+    "bulan_tanam_cos",
+    "defisit_ph",
+    "hujan_di_atas_60",
+    "suhu_panas",
+    "skor_hara_rendah",
+    "indeks_biaya_input"
+  ],
+  "categorical": {
+    "komoditas": [
+      "bawang",
+      "cabai",
+      "tomat"
+    ],
+    "jenis_tanah": [
+      "Lempung",
+      "Lempung berpasir",
+      "Liat",
+      "Pasir",
+      "Tanah vulkanik (andosol)"
+    ],
+    "sumber_air": [
+      "Embung atau sungai",
+      "Irigasi teknis",
+      "Sumur atau pompa",
+      "Tadah hujan"
+    ],
+    "provinsi": [
+      "Jawa Barat",
+      "Jawa Tengah",
+      "Jawa Timur",
+      "Sulawesi Selatan",
+      "Sumatera Utara"
+    ]
+  },
+  "target_transform": "log1p",
+  "interval": {
+    "level": 0.8,
+    "log_q10": -0.12742659393674732,
+    "log_q90": 0.12889788517894252
+  },
+  "ranges": {
+    "luas_ha": [
+      0.1,
+      3.0
+    ],
+    "bulan_tanam": [
+      1.0,
+      12.0
+    ],
+    "hujan_mm_rata_per_minggu": [
+      15.0,
+      179.0
+    ],
+    "minggu_hujan_lebat": [
+      0.0,
+      9.0
+    ],
+    "suhu_maks_rata": [
+      25.6,
+      35.7
+    ],
+    "ph": [
+      4.5,
+      7.5
+    ],
+    "indeks_harga_pupuk": [
+      90.0,
+      130.0
+    ],
+    "indeks_upah": [
+      90.0,
+      120.0
+    ],
+    "indeks_harga_pestisida": [
+      90.0,
+      125.0
+    ]
+  },
+  "metrics": {
+    "test": {
+      "MAE": 3.9909854067993167,
+      "RMSE": 5.96666583134734,
+      "MAPE_persen": 8.260260869935347,
+      "WAPE_persen": 8.300099230255668,
+      "R2": 0.9573461513833572
+    },
+    "val": {
+      "MAE": 3.7729339699808757,
+      "RMSE": 5.414350593723785,
+      "MAPE_persen": 8.207467474764263,
+      "WAPE_persen": 7.964669370678518,
+      "R2": 0.9644915263524743
+    }
+  }
+}
