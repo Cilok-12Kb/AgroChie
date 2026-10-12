@@ -1,4 +1,5 @@
 import { prisma } from "../src/config/prisma.js";
+import { readBankSeedInput, seedBankOfficer } from "./seed-bank.js";
 
 // lama fase (minggu): persiapan, tanam, rawat, panen
 const LENGTHS = { CABAI: [2, 2, 8, 4], TOMAT: [2, 2, 7, 3], BAWANG: [2, 1, 5, 2] };
@@ -26,6 +27,14 @@ async function main() {
   const rain = PROVINCES.flatMap((province) =>
     CLIM.map((avgRainMm, i) => ({ province, month: i + 1, avgRainMm })));
   await prisma.climateRain.createMany({ data: rain, skipDuplicates: true });
+
+  // [REVISI] bagian 17.7: akun petugas bank dari env (tanpa mencetak nilai apa pun)
+  const bank = readBankSeedInput(process.env);
+  if (!bank.ok) {
+    console.log(`Seed petugas bank dilewati: ${bank.reason}.`);
+  } else {
+    console.log(`Seed petugas bank: ${await seedBankOfficer(prisma, bank.input)}`);
+  }
 
   console.log(`Seed selesai: ${phases.length} fase, ${rain.length} baris hujan`);
 }
