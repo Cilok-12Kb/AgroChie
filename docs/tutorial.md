@@ -918,20 +918,92 @@ npm run dev
 # di jendela PowerShell kedua:
 curl.exe localhost:3000/api/health
 
+# [REVISI bagian 17] register langsung membuat sesi (cookie httpOnly). -SessionVariable menyimpannya di $s.
 $u = Invoke-RestMethod -Method Post http://localhost:3000/api/auth/register `
   -ContentType "application/json" `
-  -Body '{"name":"Budi","phone":"081234567890","password":"rahasia123"}'
+  -Body '{"name":"Budi","phone":"081200000001","password":"sandi-contoh-123"}' `
+  -SessionVariable s
 $u
 
 Invoke-RestMethod -Method Post http://localhost:3000/api/farms `
   -ContentType "application/json" `
-  -Headers @{ "x-user-id" = $u.id } `
+  -WebSession $s `
   -Body '{"areaHa":0.5,"province":"Jawa Tengah","latitude":-7.005432,"longitude":110.438765}'
 ```
 
-Hasil yang benar: `/api/health` menjawab `{"ok":true,...}`; rute `/api/farms` tanpa header `x-user-id` dijawab 401; latitude di luar batas (misalnya 95) dijawab 400; rute yang tidak ada dijawab 404.
+> **[REVISI bagian 17]** Kode `auth.js` dengan `x-user-id` di atas adalah versi sementara dan sudah diganti sesi cookie. Contoh lengkap ada di bagian "Auth sungguhan dan profil lahan (bagian 17)" di bawah.
 
-Yang perlu ditambah sebelum produksi: sesi atau JWT (ganti `x-user-id`), validator untuk rute lain (misalnya pustaka zod), pencatatan log, dan penanganan sinyal berhenti (sudah ada di `Index.js`). Folder `src/jobs/` disiapkan untuk pengingat mingguan dan pengambilan cuaca otomatis.
+Hasil yang benar: `/api/health` menjawab `{"ok":true,...}`; rute `/api/farms` tanpa sesi (cookie) dijawab 401; latitude di luar batas (misalnya 95) dijawab 400; rute yang tidak ada dijawab 404.
+
+Yang perlu ditambah sebelum produksi: validator untuk rute lain, pencatatan log, dan penanganan sinyal berhenti (sudah ada di `Index.js`). Sesi JWT sudah ada sejak bagian 17 (lihat di bawah). Folder `src/jobs/` disiapkan untuk pengingat mingguan dan pengambilan cuaca otomatis.
+
+### Auth sungguhan dan profil lahan (bagian 17)
+
+Semua rute berawalan `/api` (dipasang di `src/app.js`). Sesi disimpan di cookie httpOnly bernama sesuai `COOKIE_NAME` di `.env`. Di PowerShell, `-SessionVariable` menyimpan cookie itu dan `-WebSession` mengirimnya kembali. Nomor HP dan sandi di bawah hanyalah contoh palsu.
+
+```powershell
+$b = "http://localhost:3000/api"
+$j = "application/json"
+
+# 1. Register: langsung membuat sesi, peran selalu PETANI
+Invoke-RestMethod -Method Post $b/auth/register -ContentType $j -SessionVariable s `
+  -Body '{"name":"Budi","phone":"081200000001","password":"sandi-contoh-123"}'
+
+# 2. Login (akun yang sama, sesi baru). Maksimal 10 percobaan per 10 menit per IP.
+Invoke-RestMethod -Method Post $b/auth/login -ContentType $j -SessionVariable s `
+  -Body '{"phone":"081200000001","password":"sandi-contoh-123"}'
+
+# 3. Siapa saya
+Invoke-RestMethod $b/auth/me -WebSession $s
+
+# 4. Buat lahan, lalu baca (GET) dan ubah (PATCH) profilnya
+$farm = Invoke-RestMethod -Method Post $b/farms -ContentType $j -WebSession $s `
+  -Body '{"areaHa":0.5,"province":"Jawa Tengah"}'
+Invoke-RestMethod $b/farms/$($farm.id) -WebSession $s
+Invoke-RestMethod -Method Patch $b/farms/$($farm.id) -ContentType $j -WebSession $s `
+  -Body '{"areaHa":3.5,"ph":8,"phMeasuredOn":"2026-10-01"}'
+
+# 5. Logout (204, tanpa isi). Setelah ini /auth/me dijawab 401.
+Invoke-RestMethod -Method Post $b/auth/logout -WebSession $s
+
+# 6. Mode tamu: akun sementara, sesi 24 jam. Datanya dihapus saat logout.
+Invoke-RestMethod -Method Post $b/auth/guest -SessionVariable g
+Invoke-RestMethod -Method Post $b/auth/logout -WebSession $g
+```
+
+Respons register, login, dan me berisi `id`, `name`, `phone`, `role`, `isGuest`. Respons guest membungkusnya: `{ "user": { ... } }`. GET dan PATCH `/api/farms/:id` mengembalikan kolom Farm ditambah dua kunci yang dihitung saat dibaca (tidak disimpan). Contoh hasil GET untuk lahan di atas, dipotong pada kunci tambahannya:
+
+```json
+"kelengkapan": { "percent": 8, "missing": ["village", "subdistrict", "soilType", "waterSource", "ph", "nitrogen", "phosphorus", "potassium", "lokasi", "capitalJt", "sellPricePerKg"] },
+"rentang_latih": { "di_luar_rentang_latih": false, "alasan": [] }
+```
+
+Setelah PATCH di atas (luas 3,5 ha dan pH 8), `kelengkapan.percent` menjadi 17 dan `rentang_latih` menjadi `{ "di_luar_rentang_latih": true, "alasan": ["luas", "ph"] }`. `lokasi` dianggap terisi hanya bila latitude dan longitude keduanya ada. Lahan milik orang lain dijawab 404.
+
+Alur di atas (register, login, me, POST/GET/PATCH farm, logout, me sesudah logout, guest) sudah saya jalankan terhadap server lokal dengan database `agrochie_test` pada 12 Oktober 2026 dan hasilnya sesuai. Pemanggilan `predict-cost`, `start-financing`, `leaf-quality`, dan asisten (bagian 13 dan 14) tidak saya jalankan ulang; untuk itu hanya autentikasinya yang diganti ke `-WebSession $s`.
+
+### Perbedaan dengan tutorial sebelumnya (bagian 17)
+
+| Hal | Tutorial sebelumnya | Sekarang |
+| --- | --- | --- |
+| Identitas | header `x-user-id` (sementara) | cookie sesi JWT HS256 httpOnly; PowerShell memakai `-SessionVariable` dan `-WebSession` |
+| Rute auth | hanya `POST /auth/register` | `register` (membuat sesi), `login`, `me`, `logout`, `guest` |
+| Rate limit login | tidak ada | 10 percobaan per 10 menit per IP; pembuatan tamu 20 per jam per IP |
+| Mode tamu | tidak ada | `POST /auth/guest`: User sementara (`isGuest`), sesi 24 jam tanpa pembaruan, dihapus saat logout; pembersihan berkala ditunda |
+| Validasi register | nama, HP, sandi minimal 8 | HP dinormalisasi (non-angka dibuang, 8 sampai 15 digit), sandi minimal 8, peran selalu PETANI |
+| Kolom baru | - | `User.isGuest`, `Farm.capitalJt`, `Farm.sellPricePerKg`, `Farm.profitTargetJt`, `CostPlan.needsRecalc` (migrasi `auth_profile`) |
+| Keamanan HTTP | `express.json()` saja | helmet, CORS dengan credentials untuk `FRONTEND_ORIGIN`, cookie-parser, opsi `TRUST_PROXY` |
+| Peran | tidak dipakai | `requireRole`; akun `PETUGAS_BANK` dibuat lewat seed dari env |
+| Profil lahan | hanya `POST` dan `GET` daftar | ditambah `GET` dan `PATCH /farms/:id` dengan validator zod, plus `kelengkapan` dan `rentang_latih` |
+| Luas lahan | 0 < luas <= 5 | PATCH: 0,1 sampai 5 ha; di atas 3,0 ha ditandai di luar rentang latih |
+| Rencana biaya | - | luas Farm berubah: `CostPlan` terbaru tiap musim yang belum `SELESAI` ditandai `needsRecalc = true` |
+
+Hal yang **belum** seragam dan perlu diketahui:
+
+- `POST /farms` masih memakai `validateFarm` lama. Ia belum menerima `phMeasuredOn`, `capitalJt`, `sellPricePerKg`, dan `profitTargetJt`; isian itu hanya bisa diisi lewat `PATCH`. Bila `ph` dikirim lewat POST, kolom `ph` tersimpan tetapi `phMeasuredOn` kosong.
+- Batas `areaHa` berbeda. `POST` menerima luas lebih dari 0 sampai 5 (menurut kode, 0,05 lolos). `PATCH` menolak luas di bawah 0,1. Saya hanya menjalankan POST dengan luas 4 (diterima); kasus 0,05 saya simpulkan dari kode, tidak dijalankan.
+- `PATCH` mewajibkan `ph` disertai `phMeasuredOn`, dan `latitude` harus dikirim bersama `longitude`. `POST` tidak punya aturan ini.
+- Respons `POST /farms` belum memuat `kelengkapan` dan `rentang_latih`; hanya `GET` dan `PATCH` yang memuatnya.
 
 ## 9. Logika tutup musim: dari catatan jadi record dataset
 
@@ -2443,8 +2515,8 @@ test("galat engine dipetakan ke status backend yang benar", async () => {
 Jalankan `npm test`. Uji manual dengan engine menyala (bagian 12) dan server `npm run dev`. Profil lahan harus **lengkap**, karena ke-16 isian dibutuhkan model:
 
 ```powershell
-$h = @{ "x-user-id" = $u.id }   # $u dari langkah registrasi di bagian 8
-$farm = Invoke-RestMethod -Method Post http://localhost:3000/api/farms -ContentType "application/json" -Headers $h `
+# [REVISI bagian 17] $s = sesi dari register/login (-SessionVariable s) di bagian 8
+$farm = Invoke-RestMethod -Method Post http://localhost:3000/api/farms -ContentType "application/json" -WebSession $s `
   -Body '{"areaHa":0.5,"province":"Jawa Tengah","soilType":"Lempung","waterSource":"Irigasi teknis","ph":6.0,"nitrogen":"SEDANG","phosphorus":"SEDANG","potassium":"TINGGI"}'
 
 # Endpoint pembuat musim belum ada di tutorial ini. Buat satu lewat `npx prisma studio`:
@@ -2452,13 +2524,13 @@ $farm = Invoke-RestMethod -Method Post http://localhost:3000/api/farms -ContentT
 $sid = "ID_MUSIM"
 $body = '{"startMonth":9,"capitalJt":30,"weather":{"rainAvgMm":60,"heavyRainWks":1,"tempMaxAvg":30},"indices":{"fertIndex":105,"wageIndex":103,"pestIndex":104}}'
 
-Invoke-RestMethod -Method Post http://localhost:3000/api/seasons/$sid/predict-cost -ContentType "application/json" -Headers $h -Body $body
-Invoke-RestMethod -Method Post http://localhost:3000/api/seasons/$sid/start-financing -ContentType "application/json" -Headers $h -Body $body
+Invoke-RestMethod -Method Post http://localhost:3000/api/seasons/$sid/predict-cost -ContentType "application/json" -WebSession $s -Body $body
+Invoke-RestMethod -Method Post http://localhost:3000/api/seasons/$sid/start-financing -ContentType "application/json" -WebSession $s -Body $body
 
 # kualitas daun
 $b64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes("E:\foto\daun.jpg"))
 $json = @{ imageBase64 = $b64; crop = "CABAI" } | ConvertTo-Json
-Invoke-RestMethod -Method Post http://localhost:3000/api/crops/leaf-quality -ContentType "application/json" -Headers $h -Body $json
+Invoke-RestMethod -Method Post http://localhost:3000/api/crops/leaf-quality -ContentType "application/json" -WebSession $s -Body $json
 ```
 
 Hasil yang benar: `predict-cost` mengembalikan `total_jt` (low, mid, high), 16 baris `weekly` untuk cabai, dan `warnings`; `start-financing` kedua kalinya dijawab 409; musim milik pengguna lain dijawab 404; engine dimatikan dijawab 503. Untuk foto daun: `label_id`, `confidence`, `top3`, `needs_retake`, dan `crop_mismatch` (bernilai `true` bila foto tomat dikirim untuk musim cabai).
@@ -3233,16 +3305,16 @@ test("rate limit menolak setelah batas dan tidak mencampur pengguna", () => {
 Uji manual (server `npm run dev` menyala; `$h` dan `$sid` dari bagian 13):
 
 ```powershell
-$r = Invoke-RestMethod -Method Post http://localhost:3000/api/assistant/chat -ContentType "application/json" -Headers $h `
+$r = Invoke-RestMethod -Method Post http://localhost:3000/api/assistant/chat -ContentType "application/json" -WebSession $s `
   -Body (@{ message = "Berapa minggu musim cabai?"; seasonId = $sid } | ConvertTo-Json)
 $r.answer; $r.sources
 
 # pertanyaan lanjutan di sesi yang sama
-Invoke-RestMethod -Method Post http://localhost:3000/api/assistant/chat -ContentType "application/json" -Headers $h `
+Invoke-RestMethod -Method Post http://localhost:3000/api/assistant/chat -ContentType "application/json" -WebSession $s `
   -Body (@{ message = "Kalau tomat?"; sessionId = $r.sessionId; seasonId = $sid } | ConvertTo-Json)
 
 # di luar pengetahuan: seharusnya mengaku tidak punya sumbernya dan menyarankan PPL
-Invoke-RestMethod -Method Post http://localhost:3000/api/assistant/chat -ContentType "application/json" -Headers $h `
+Invoke-RestMethod -Method Post http://localhost:3000/api/assistant/chat -ContentType "application/json" -WebSession $s `
   -Body (@{ message = "Bagaimana cara mengurus sertifikat tanah?" } | ConvertTo-Json)
 ```
 

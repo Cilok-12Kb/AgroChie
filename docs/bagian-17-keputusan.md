@@ -40,5 +40,5 @@ Satu sub-langkah = bisa diuji dan di-commit sendiri.
 - [x] **9. GET dan PATCH `/api/farms/:id`.** Validator zod untuk isian profil (provinsi, NPK, pH 3,0 sampai 9,0 dengan tanggal ukur, koordinat tidak valid atau tertukar ditolak, luas 0,1 sampai 5, jenis tanah, sumber air, modal, harga, target). Hanya pemilik; milik orang lain dijawab 404.
 - [x] **10. Kelengkapan profil dan rentang latih.** Hitung kelengkapan 12 butir di service dan kembalikan persen serta daftar yang kurang. Kembalikan `di_luar_rentang_latih` dengan daftar alasan (luas > 3,0 ha, pH di luar 4,5 sampai 7,5). (isi lama dipertahankan) Kunci respons: `kelengkapan: { percent, missing }`
 dan `rentang_latih: { di_luar_rentang_latih, alasan }`. Dihitung saat dibaca, tidak disimpan.
-- [ ] **11. Hook perubahan luas.** Bila luas Farm berubah dan ada `CostPlan` aktif, set `needsRecalc = true`. Hook perubahan tanaman ditunda ke bagian 18.
-- [ ] **12. Dokumen.** Baca `docs/tutorial.md`, ganti semua contoh PowerShell yang memakai `x-user-id` dengan sesi (login lalu `-WebSession`), dan catat perbedaan dengan tutorial.
+- [x] **11. Hook perubahan luas.** Bila luas Farm berubah dan ada `CostPlan` aktif, set `needsRecalc = true`. Hook perubahan tanaman ditunda ke bagian 18.
+- [x] **12. Dokumen.** Baca `docs/tutorial.md`, ganti semua contoh PowerShell yang memakai `x-user-id` dengan sesi (login lalu `-WebSession`), dan catat perbedaan dengan tutorial.
