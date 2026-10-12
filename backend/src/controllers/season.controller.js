@@ -1,6 +1,10 @@
 import { predictCost, startFinancing, recalcCost } from "../services/prediction.service.js";
-import { createSeason, listSeasons, getSeason, updateSeason, stopFinancing } from "../services/season.service.js";
-import { parseSeasonCreate, parseSeasonPatch } from "../validators/season.validator.js";
+import { createSeason, listSeasons, getSeason, updateSeason, stopFinancing, startPlanting } from "../services/season.service.js";
+import { parseSeasonCreate, parseSeasonPatch, parseStartPlanting } from "../validators/season.validator.js";
+
+export async function plant(req, res) { // [REVISI] 18.7
+  res.json(await startPlanting(req.userId, req.params.id, parseStartPlanting(req.body)));
+}
 
 // [REVISI] 18.3: buat dan baca musim.
 export async function create(req, res) {

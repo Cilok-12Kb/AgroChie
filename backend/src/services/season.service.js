@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../config/prisma.js";
 import { HttpError } from "../utils/http-error.js";
+import { currentWeek, harvestEstimate } from "../utils/season-flow.js"; // [REVISI] 18.7
 
 // Respons Season tidak memuat CostPlan/angka hasil prediksi (gerbang uang: sub-langkah 11).
 // Kolom Decimal tetap Decimal (diserialisasi Prisma menjadi string).
@@ -78,6 +79,23 @@ export async function stopFinancing(userId, id) {
     return tx.season.findUnique({ where: { id }, select: SEASON_SELECT });
   });
 }
+// [REVISI] 18.7: mulai penanaman. Hanya dari PEMBIAYAAN (updateMany bersyarat agar permintaan bersamaan tidak sama-sama lolos).
+export async function startPlanting(userId, id, { plantedOn, today }) {
+  return prisma.$transaction(async (tx) => {
+    const cur = await tx.season.findFirst({ where: { id, farm: { userId } }, select: { crop: true } });
+    if (!cur) throw new HttpError(404, "Musim tidak ditemukan");
+    const r = await tx.season.updateMany({ where: { id, status: "PEMBIAYAAN" }, data: { status: "TANAM", plantedOn } });
+    if (r.count !== 1) throw new HttpError(409, "Penanaman hanya bisa dimulai saat status PEMBIAYAAN");
+    const season = await tx.season.findUnique({ where: { id }, select: SEASON_SELECT });
+    return {
+      season,
+      currentWeek: currentWeek(plantedOn, today, cur.crop),
+      harvestEstimate: harvestEstimate(plantedOn, cur.crop),
+    };
+  });
+}
+
+
 
 export async function getSeason(userId, id) {
   const season = await prisma.season.findFirst({ where: { id, farm: { userId } }, select: SEASON_SELECT });
