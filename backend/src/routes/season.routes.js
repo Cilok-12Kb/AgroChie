@@ -10,4 +10,5 @@ seasonRoutes.patch("/:id", asyncHandler(season.patch)); // [REVISI] 18.4
 seasonRoutes.post("/:id/close", asyncHandler(season.close));
 seasonRoutes.post("/:id/predict-cost", asyncHandler(season.predict));
 seasonRoutes.post("/:id/stop-financing", asyncHandler(season.stop)); // [REVISI] 18.5
+seasonRoutes.post("/:id/recalc-cost", asyncHandler(season.recalc)); // [REVISI] 18.6
 seasonRoutes.post("/:id/start-financing", asyncHandler(season.start));

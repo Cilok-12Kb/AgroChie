@@ -1,4 +1,4 @@
-import { predictCost, startFinancing } from "../services/prediction.service.js";
+import { predictCost, startFinancing, recalcCost } from "../services/prediction.service.js";
 import { createSeason, listSeasons, getSeason, updateSeason, stopFinancing } from "../services/season.service.js";
 import { parseSeasonCreate, parseSeasonPatch } from "../validators/season.validator.js";
 
@@ -17,6 +17,9 @@ export async function stop(req, res) {
 }
 export async function patch(req, res) {
   res.json(await updateSeason(req.userId, req.params.id, parseSeasonPatch(req.body)));
+}
+export async function recalc(req, res) { // [REVISI] 18.6
+  res.json(await recalcCost(req.userId, req.params.id, req.body ?? {}));
 }
 export async function predict(req, res) {
   res.json(await predictCost(req.userId, req.params.id, req.body ?? {}));
