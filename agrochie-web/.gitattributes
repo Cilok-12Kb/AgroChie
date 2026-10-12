@@ -1,0 +1,12 @@
+# Normalize line endings for all text files
+* text=auto eol=lf
+
+# Explicitly set binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.webp binary
+*.keras binary
+*.woff binary
+*.woff2 binary
