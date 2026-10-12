@@ -123,6 +123,7 @@ model Season {
   sellPricePerKg     Decimal?          @db.Decimal(12, 2)
   profitTargetJt     Decimal?          @db.Decimal(10, 2)
   financingStartedAt DateTime?
+  financingStoppedAt DateTime?         // [REVISI] bagian 18: kapan perhitungan dihentikan
   plantedOn          DateTime?         @db.Date
   closedAt           DateTime?
   totalCostJt        Decimal?          @db.Decimal(10, 2)
@@ -155,6 +156,7 @@ model CostPlan {
   shortfallJt    Decimal  @default(0) @db.Decimal(10, 2)
   breakEvenPerKg Decimal? @db.Decimal(12, 2)
   weeklyJt       Json
+  input          Json?    // [REVISI] bagian 18: masukan engine disimpan agar "hitung ulang" tidak menebak ulang
   modelVersion   String
   needsRecalc    Boolean  @default(false) // [REVISI] bagian 17: true bila luas lahan berubah; rencana perlu dihitung ulang
   createdAt      DateTime @default(now())
