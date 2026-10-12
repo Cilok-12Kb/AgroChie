@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import {Activity,ArrowRight,BarChart3,CalendarDays,ShieldCheck,Wallet} from 'lucide-react';
-import {amount,CROP_NAME,rupiah,type Season} from '../api';
+import {amount,CROP_NAME,rupiah,weeklyCosts,type Season} from '../api';
 import type {Workspace} from '../hooks';
 import {Card,Empty,FinanceGate,Heading,Message,Metric,Tag} from '../ui';
 export function Prediction({ w }: { w: Workspace }) {
@@ -20,10 +20,11 @@ export function Prediction({ w }: { w: Workspace }) {
 function WeeklyBars({ season }: { season: Season }) {
   const p = season.costPlan;
   if (!p) return null;
-  const weekly = Array.isArray(p.weeklyJt) ? p.weeklyJt.map(amount) : [];
+  const items = weeklyCosts(p.weeklyJt); // [REVISI] pakai minggu & biaya_jt
+  const weekly = items.map(x => x.biaya);
   const max = Math.max(1, ...weekly);
   return <Card title="Distribusi biaya mingguan" subtitle="Angka berasal dari rencana biaya yang tersimpan di server, bukan data demo.">
-    {weekly.length ? <><div className="console-bars">{weekly.map((v,i)=><div className="console-bar-cell" key={i} title={`Minggu ${i+1}: ${rupiah(v)}`}><div className={`console-bar ${v===max?'console-bar-peak':''}`} style={{ height: `${Math.max(4,v/max*100)}%` }}/><small>{i+1}</small></div>)}</div><div className="flex justify-between gap-3 text-[11px] text-slate-500 mt-4"><span>Minggu 1</span><span>Batang lebih tinggi = kebutuhan lebih besar</span><span>Minggu {weekly.length}</span></div></> : <Empty title="Belum ada pola mingguan" detail="Mesin biaya belum mengembalikan rencana biaya per minggu."/>}
+    {weekly.length ? <><div className="console-bars">{items.map(({minggu,biaya:v})=><div className="console-bar-cell" key={minggu} title={`Minggu ${minggu}: ${rupiah(v)}`}><div className={`console-bar ${v===max?'console-bar-peak':''}`} style={{ height: `${Math.max(4,v/max*100)}%` }}/><small>{minggu}</small></div>)}</div><div className="flex justify-between gap-3 text-[11px] text-slate-500 mt-4"><span>Minggu {items[0].minggu}</span><span>Batang lebih tinggi = kebutuhan lebih besar</span><span>Minggu {items[items.length-1].minggu}</span></div></> : <Empty title="Belum ada pola mingguan" detail="Mesin biaya belum mengembalikan rencana biaya per minggu."/>}
   </Card>;
 }
 
@@ -40,7 +41,7 @@ export function Budget({ w }: { w: Workspace }) {
 export function Cashflow({ w }: { w: Workspace }) {
   const s=w.season; const p=s?.costPlan;
   if (!s || s.status==='DRAFT' || !p) return <div className="space-y-5"><Heading title="Kalender uang" description="Jadwal kebutuhan modal sepanjang musim tanam."/><FinanceGate season={s}/></div>;
-  const weeks=Array.isArray(p.weeklyJt)?p.weeklyJt.map(amount):[];
+  const weeks=weeklyCosts(p.weeklyJt).map(x=>x.biaya); // [REVISI] pakai biaya_jt; array urut minggu
   const start=s.plantedOn ? Date.parse(s.plantedOn) : null;
   const spentByWeek = new Map<number,number>();
   if(start!==null) for(const e of w.expenses.data??[]) if(!e.simulated){let wk=Math.floor((Date.parse(e.spentOn)-start)/604800000)+1;wk=Math.max(1,Math.min(weeks.length,wk));spentByWeek.set(wk,(spentByWeek.get(wk)??0)+amount(e.amountJt));}
