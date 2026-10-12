@@ -26,6 +26,16 @@ export function rateLimit({ windowMs = 10 * 60_000, max = 20, keyFn = byUser, me
 /** Kunci berbasis IP. Hanya req.ip; X-Forwarded-For ditangani lewat pengaturan trust proxy (sub-langkah 8). */
 export const byIp = (req) => req.ip;
 
+/** Mode tamu: 20 akun tamu per jam per IP (agar tabel users tidak dibanjiri). */
+export function guestRateLimit() {
+  return rateLimit({
+    windowMs: 60 * 60_000,
+    max: 20,
+    keyFn: byIp,
+    message: "Terlalu banyak sesi tamu dari alamat ini. Coba lagi nanti.",
+  });
+}
+
 /** Login: 10 percobaan per 10 menit per IP. */
 export function loginRateLimit() {
   return rateLimit({

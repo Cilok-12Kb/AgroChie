@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import argon2 from "argon2";
 import { prisma } from "../config/prisma.js";
 import { HttpError } from "../utils/http-error.js";
@@ -35,6 +36,22 @@ export async function loginUser({ phone, password }) {
   if (!row || !ok) throw new HttpError(401, LOGIN_FAILED);
   const { passwordHash: _omit, ...user } = row;
   return user;
+}
+
+// bagian 17.6: mode tamu. Kata sandi acak kuat hanya di-hash, tidak disimpan/dikembalikan/dicatat,
+// sehingga akun tamu tidak bisa dipakai login (phone juga null).
+export async function createGuest() {
+  const secret = randomBytes(32).toString("hex");
+  return prisma.user.create({
+    data: { name: "Tamu", phone: null, email: null, passwordHash: await argon2.hash(secret), role: "PETANI", isGuest: true },
+    select: { id: true, name: true, role: true, isGuest: true },
+  });
+}
+
+/** Hapus HANYA baris dengan id ini DAN isGuest = true (relasi Cascade ikut menghapus datanya). */
+export async function deleteGuest(userId) {
+  const r = await prisma.user.deleteMany({ where: { id: userId, isGuest: true } });
+  return r.count;
 }
 
 export async function getMe(userId) {

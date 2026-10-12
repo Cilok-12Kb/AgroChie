@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { rateLimit, byIp, loginRateLimit } from "../src/middleware/rate-limit.js";
+import { rateLimit, byIp, loginRateLimit, guestRateLimit } from "../src/middleware/rate-limit.js";
 import { errorHandler } from "../src/middleware/error-handler.js";
 
 const call = (mw, req) => {
@@ -45,6 +45,16 @@ test("pembatas login tidak mencampur kunci dengan pembatas lain", () => {
   assert.equal(call(lain, { userId: "7.7.7.7" }), undefined);
   // dan sebaliknya: dua instans login tidak berbagi hitungan
   assert.equal(call(loginRateLimit(), { ip: "7.7.7.7" }), undefined);
+});
+
+test("pembatas tamu: 20 per IP lalu ditolak, IP lain tidak terpengaruh, terpisah dari login", () => {
+  const mw = guestRateLimit();
+  for (let i = 1; i <= 20; i++) assert.equal(call(mw, { ip: "3.3.3.3" }), undefined, `percobaan ${i}`);
+  const err = call(mw, { ip: "3.3.3.3" });
+  assert.equal(err.status, 429);
+  assert.match(err.message, /sesi tamu/);
+  assert.equal(call(mw, { ip: "3.3.3.4" }), undefined);
+  assert.equal(call(loginRateLimit(), { ip: "3.3.3.3" }), undefined);
 });
 
 test("jendela waktu: percobaan lama kedaluwarsa", async () => {

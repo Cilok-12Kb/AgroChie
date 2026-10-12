@@ -95,5 +95,76 @@ describe("auth (butuh database uji)", { skip }, () => {
     const set = res.headers.getSetCookie()[0];
     assert.match(set, /^agro_session=;/);
     assert.match(set, /Expires=Thu, 01 Jan 1970/i);
+    // bagian 17.6: akun biasa tetap ada setelah logout
+    assert.ok(await prisma.user.findUnique({ where: { phone } }));
+  });
+
+  // ---- bagian 17.6: mode tamu ----
+  const guestIds = [];
+  const newGuest = async () => {
+    const res = await post("/auth/guest", {});
+    const body = await res.json();
+    if (body.user?.id) guestIds.push(body.user.id);
+    return { res, body, cookie: cookieOf(res) };
+  };
+  const jwtPayload = (cookie) => JSON.parse(Buffer.from(cookie.split("=")[1].split(".")[1], "base64url").toString());
+
+  after(async () => {
+    // hanya baris tamu yang dibuat tes ini
+    if (guestIds.length) await prisma.user.deleteMany({ where: { id: { in: guestIds }, isGuest: true } });
+  });
+
+  test("guest: 201, cookie sesi, isGuest true, tanpa passwordHash, sesi 24 jam", async () => {
+    const { res, body, cookie } = await newGuest();
+    assert.equal(res.status, 201);
+    assert.deepEqual(Object.keys(body), ["user"]);
+    assert.deepEqual(Object.keys(body.user).sort(), ["id", "isGuest", "name", "role"]);
+    assert.equal(body.user.isGuest, true);
+    assert.equal(body.user.role, "PETANI");
+    assert.equal(body.user.name, "Tamu");
+    assert.ok(!JSON.stringify(body).includes("passwordHash"));
+    const set = res.headers.getSetCookie()[0];
+    assert.match(set, /^agro_session=/);
+    assert.match(set, /HttpOnly/i);
+    const p = jwtPayload(cookie);
+    assert.equal(p.exp - p.iat, 24 * 3600);
+    assert.equal(p.isGuest, true);
+    const row = await prisma.user.findUnique({ where: { id: body.user.id } });
+    assert.equal(row.phone, null);
+    assert.equal(row.email, null);
+    assert.match(row.passwordHash, /^\$argon2/);
+  });
+
+  test("me dengan sesi tamu: 200 dan isGuest true", async () => {
+    const { cookie } = await newGuest();
+    const res = await fetch(base + "/auth/me", { headers: { cookie } });
+    assert.equal(res.status, 200);
+    const me = await res.json();
+    assert.equal(me.isGuest, true);
+    assert.ok(!("passwordHash" in me));
+  });
+
+  test("akun tamu tidak bisa login: pesan galat sama dengan akun tak ada", async () => {
+    await newGuest();
+    const none = await post("/auth/login", { phone: rand(), password });
+    const nolPhone = await post("/auth/login", { phone: "00000000", password });
+    assert.equal(nolPhone.status, 401);
+    assert.deepEqual(await nolPhone.json(), await none.json());
+    assert.equal(nolPhone.headers.getSetCookie().length, 0);
+  });
+
+  test("logout tamu: 204, cookie dihapus, baris tamu hilang, user lain tidak tersentuh", async () => {
+    const g = await newGuest();
+    const other = await newGuest();
+    const res = await post("/auth/logout", {}, g.cookie);
+    assert.equal(res.status, 204);
+    assert.match(res.headers.getSetCookie()[0], /^agro_session=;/);
+    assert.equal(await prisma.user.findUnique({ where: { id: g.body.user.id } }), null);
+    assert.ok(await prisma.user.findUnique({ where: { id: other.body.user.id } }));
+    assert.ok(await prisma.user.findUnique({ where: { phone } }));
+  });
+
+  test("logout tanpa sesi tetap 204", async () => {
+    assert.equal((await post("/auth/logout", {})).status, 204);
   });
 });

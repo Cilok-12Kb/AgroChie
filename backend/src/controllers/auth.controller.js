@@ -1,4 +1,4 @@
-import { registerUser, loginUser, getMe } from "../services/auth.service.js";
+import { registerUser, loginUser, getMe, createGuest, deleteGuest } from "../services/auth.service.js";
 import { parseRegister, parseLogin } from "../validators/auth.validator.js";
 import { getSessionTools } from "../utils/session.js";
 
@@ -19,7 +19,16 @@ export async function me(req, res) {
   res.json(await getMe(req.user.id));
 }
 
-export async function logout(_req, res) {
+// [REVISI] bagian 17.6: tamu dihapus saat logout; akun biasa hanya dihapus cookie-nya.
+export async function logout(req, res) {
+  if (req.user?.isGuest) await deleteGuest(req.user.id);
   (await getSessionTools()).clearSessionCookie(res);
   res.status(204).end();
+}
+
+// bagian 17.6: sesi tamu 24 jam, tanpa pembaruan token (diatur di session.js)
+export async function guest(_req, res) {
+  const user = await createGuest();
+  await (await getSessionTools()).setSessionCookie(res, user);
+  res.status(201).json({ user });
 }

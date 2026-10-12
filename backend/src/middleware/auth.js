@@ -21,6 +21,25 @@ export function makeRequireUser(getTools) {
 
 export const requireUser = makeRequireUser(getSessionTools);
 
+// bagian 17.6: untuk logout. Mengisi req.user bila sesi sah; bila tidak, lanjut tanpa galat dan tanpa
+// memperbarui token, supaya sesi kedaluwarsa tetap bisa keluar (cookie dihapus).
+export function makeOptionalUser(getTools) {
+  return async function optionalUser(req, _res, next) {
+    try {
+      const tools = await getTools();
+      const session = await tools.verifyToken(tools.readToken(req));
+      if (session) {
+        req.user = { id: session.id, role: session.role, isGuest: session.isGuest };
+        req.userId = session.id;
+      }
+      next();
+    } catch (err) {
+      next(err);
+    }
+  };
+}
+export const optionalUser = makeOptionalUser(getSessionTools);
+
 /** Pakai setelah requireUser. Peran tidak cocok dijawab 403. */
 export function requireRole(...roles) {
   return function (req, _res, next) {
