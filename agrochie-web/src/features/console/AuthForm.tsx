@@ -1,0 +1,25 @@
+'use client';
+import { FormEvent, useState } from 'react';
+import Link from 'next/link';
+import { ArrowRight, Eye, EyeOff, Leaf, User } from 'lucide-react';
+import { api } from './api';
+import { Button, ErrorLine, Field, inputClass } from './ui';
+
+export function AuthForm({ type }: { type: 'login' | 'register' }) {
+  const [name,setName]=useState(''); const [phone,setPhone]=useState(''); const [password,setPassword]=useState('');
+  const [show,setShow]=useState(false);const [loading,setLoading]=useState(false);const [error,setError]=useState<unknown>(null);
+  const submit=async(e:FormEvent)=>{e.preventDefault();setLoading(true);setError(null);try { if(type==='login')await api.auth.login(phone,password);else await api.auth.register(name,phone,password);window.location.href=type==='register'?'/profil':'/beranda'; } catch(e){setError(e);setLoading(false);} };
+  const guest=async()=>{setLoading(true);setError(null);try{await api.auth.guest();window.location.href='/profil';}catch(e){setError(e);setLoading(false);}};
+  return <div className="console-card max-w-[440px] w-full shadow-xl shadow-emerald-950/5 p-7 md:p-9">
+    <div className="flex gap-3 items-center"><span className="console-brand-icon"><Leaf size={22}/></span><div><p className="text-2xl font-black tracking-tight text-slate-900">Agro<span className="text-emerald-700">Chie</span></p><p className="text-xs text-slate-500 font-bold">Smart farming workspace</p></div></div>
+    <div className="mt-9 mb-7"><p className="text-[11px] font-black tracking-[.15em] uppercase text-emerald-700">{type==='login'?'Selamat datang kembali':'Mulai perjalanan tanam'}</p><h1 className="font-black text-slate-900 tracking-tight text-[27px] mt-2">{type==='login'?'Masuk ke akun Anda':'Buat akun petani'}</h1><p className="text-sm text-slate-500 mt-2">{type==='login'?'Kelola lahan dan biaya musim dengan lebih mudah.':'Satu tempat untuk merencanakan dan mencatat biaya tanam.'}</p></div>
+    <form className="space-y-4" onSubmit={submit}>
+      {type==='register'&&<Field label="Nama lengkap"><input name="name" className={inputClass} required maxLength={100} value={name} onChange={e=>setName(e.target.value)} placeholder="Nama lengkap" autoComplete="name"/></Field>}
+      <Field label="Nomor HP" hint="Gunakan 8–15 angka sesuai akun yang terdaftar."><input name="phone" className={inputClass} required inputMode="tel" pattern="[0-9+\- ]{8,18}" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="Contoh: 081234567890" autoComplete="tel"/></Field>
+      <Field label="Kata sandi"><div className="relative"><input className={`${inputClass} pr-12`} type={show?'text':'password'} required minLength={type==='register'?8:1} maxLength={128} value={password} onChange={e=>setPassword(e.target.value)} autoComplete={type==='register'?'new-password':'current-password'} placeholder="Masukkan kata sandi"/><button type="button" title="Tampilkan/sembunyikan kata sandi" className="absolute top-3.5 right-3 text-slate-500" onClick={()=>setShow(s=>!s)}>{show?<EyeOff size={18}/>:<Eye size={18}/>}</button></div></Field>
+      <ErrorLine error={error}/><div className="pt-2"><Button type="submit" icon={ArrowRight} busy={loading}>{type==='login'?'Masuk':'Daftar & lanjutkan'}</Button></div>
+    </form>
+    {type==='login'&&<div className="mt-6 border-t border-slate-100 pt-5"><button disabled={loading} className="w-full rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 py-3 text-sm font-extrabold flex justify-center items-center gap-2 hover:bg-emerald-100" onClick={guest}><User size={16}/> Masuk sebagai tamu sementara</button><p className="text-xs text-slate-500 text-center mt-2">Data tamu tersimpan di server dan dihapus saat logout.</p></div>}
+    <p className="text-sm text-center text-slate-500 mt-7">{type==='login'?<>Belum punya akun? <Link href="/daftar" className="text-emerald-700 font-black">Daftar sekarang</Link></>:<>Sudah memiliki akun? <Link href="/masuk" className="text-emerald-700 font-black">Masuk</Link></>}</p>
+  </div>;
+}
