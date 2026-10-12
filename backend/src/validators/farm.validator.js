@@ -38,7 +38,8 @@ const dateOnly = z
   .refine((d) => d.getTime() <= Date.now() + 24 * 3600 * 1000, "Tanggal ukur pH tidak boleh di masa depan");
 
 // [REVISI] bagian 18.1: objek dasar dipakai bersama oleh skema PATCH dan POST (aturan tidak disalin).
-const farmObject = z
+// [REVISI] 18.4: diekspor agar PATCH Season memakai ulang aturan nilai.
+export const farmObject = z
   .strictObject(
     {
       name: z.string().trim().min(1, "Nama lahan wajib diisi").max(100, "Nama lahan terlalu panjang"),

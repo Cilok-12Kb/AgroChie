@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../config/prisma.js";
 import { HttpError } from "../utils/http-error.js";
 
@@ -40,6 +41,28 @@ export async function listSeasons(userId, farmId) {
   const farm = await prisma.farm.findFirst({ where: { id: farmId, userId }, select: { id: true } });
   if (!farm) throw new HttpError(404, FARM_NOT_FOUND);
   return prisma.season.findMany({ where: { farmId, farm: { userId } }, orderBy: { id: "asc" }, select: SEASON_SELECT });
+}
+
+// [REVISI] 18.4: ubah musim. `data` sudah divalidasi (hanya kunci yang dikirim).
+// Hook (pola 17.11): bila crop/areaHa benar-benar berubah, CostPlan terbaru Season ini ditandai
+// needsRecalc = true dalam transaksi yang sama. Kolom lain dan nilai yang sama tidak memicu hook.
+export async function updateSeason(userId, id, data) {
+  return prisma.$transaction(async (tx) => {
+    const old = await tx.season.findFirst({ where: { id, farm: { userId } } });
+    if (!old) throw new HttpError(404, "Musim tidak ditemukan");
+    if (old.status === "SELESAI") throw new HttpError(409, "Musim yang sudah selesai tidak bisa diubah");
+    if (data.crop !== undefined && ["TANAM", "PANEN"].includes(old.status)) {
+      throw new HttpError(409, "Tanaman tidak bisa diganti setelah penanaman dimulai");
+    }
+    const cropChanged = data.crop !== undefined && data.crop !== old.crop;
+    const areaChanged = data.areaHa !== undefined && !new Prisma.Decimal(old.areaHa).equals(new Prisma.Decimal(data.areaHa));
+    const season = await tx.season.update({ where: { id }, data, select: SEASON_SELECT });
+    if (cropChanged || areaChanged) {
+      const plan = await tx.costPlan.findFirst({ where: { seasonId: id }, orderBy: { createdAt: "desc" }, select: { id: true } });
+      if (plan) await tx.costPlan.update({ where: { id: plan.id }, data: { needsRecalc: true } });
+    }
+    return season;
+  });
 }
 
 export async function getSeason(userId, id) {

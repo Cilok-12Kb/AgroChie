@@ -120,5 +120,84 @@ describe("Buat dan baca musim (butuh database uji)", { skip }, () => {
     assert.equal((await api("GET", `/seasons/${s.id}`, users.b.cookie)).status, 404);
     assert.equal(await prisma.season.count({ where: { farmId: farm.id } }), 1);
   });
-});
+
+  // ---- 18.4: PATCH Season ----
+  const mkSeason = async (cookie, farmData, crop = "CABAI") => {
+    const farm = await mkFarm(cookie, farmData);
+    const s = await (await api("POST", `/farms/${farm.id}/seasons`, cookie, { crop })).json();
+    return { farm, s };
+  };
+  const mkPlan = (seasonId, createdAt) =>
+    prisma.costPlan.create({
+      data: { seasonId, createdAt, totalJt: 10, p10Jt: 9, p50Jt: 10, p90Jt: 11, weeklyJt: [], modelVersion: "uji" },
+    });
+  const flags = async (seasonId) =>
+    (await prisma.costPlan.findMany({ where: { seasonId }, orderBy: { createdAt: "asc" } })).map((p) => p.needsRecalc);
+
+  test("patch: tanpa sesi 401; milik orang lain 404 dan data tidak berubah", async () => {
+    const { s } = await mkSeason(users.a.cookie, { name: "P1", areaHa: 1, capitalJt: 5 });
+    assert.equal((await api("PATCH", `/seasons/${s.id}`, null, { capitalJt: 1 })).status, 401);
+    assert.equal((await api("PATCH", `/seasons/${s.id}`, users.b.cookie, { capitalJt: 1 })).status, 404);
+    assert.equal((await prisma.season.findUnique({ where: { id: s.id } })).capitalJt.toString(), "5");
+  });
+
+  test("patch parsial tidak mengubah kolom lain; null mengosongkan; body buruk 400", async () => {
+    const { s } = await mkSeason(users.a.cookie, { name: "P2", areaHa: 2, capitalJt: 5, sellPricePerKg: 100, profitTargetJt: 3 });
+    const res = await api("PATCH", `/seasons/${s.id}`, users.a.cookie, { capitalJt: 8.5 });
+    assert.equal(res.status, 200);
+    const b = await res.json();
+    assert.equal(b.capitalJt, "8.5");
+    assert.equal(b.areaHa, "2");
+    assert.equal(b.sellPricePerKg, "100");
+    assert.equal(b.profitTargetJt, "3");
+    assert.equal(b.crop, "CABAI");
+    assert.equal(b.status, "DRAFT");
+    const n = await (await api("PATCH", `/seasons/${s.id}`, users.a.cookie, { profitTargetJt: null })).json();
+    assert.equal(n.profitTargetJt, null);
+    assert.equal(n.capitalJt, "8.5");
+    assert.equal("costPlans" in n, false);
+    assert.equal((await api("PATCH", `/seasons/${s.id}`, users.a.cookie, { status: "TANAM" })).status, 400);
+    assert.equal((await api("PATCH", `/seasons/${s.id}`, users.a.cookie, {})).status, 400);
+  });
+
+  test("hook: crop dan areaHa menyalakan needsRecalc hanya pada CostPlan terbaru", async () => {
+    const { s } = await mkSeason(users.a.cookie, { name: "P3", areaHa: 1 });
+    await mkPlan(s.id, new Date("2026-01-01T00:00:00Z"));
+    await mkPlan(s.id, new Date("2026-02-01T00:00:00Z"));
+    assert.equal((await api("PATCH", `/seasons/${s.id}`, users.a.cookie, { crop: "TOMAT" })).status, 200);
+    assert.deepEqual(await flags(s.id), [false, true]);
+    await prisma.costPlan.updateMany({ where: { seasonId: s.id }, data: { needsRecalc: false } });
+    assert.equal((await api("PATCH", `/seasons/${s.id}`, users.a.cookie, { areaHa: 2 })).status, 200);
+    assert.deepEqual(await flags(s.id), [false, true]);
+  });
+
+  test("hook: tidak menyala bila nilai sama atau hanya rupiah berubah; tanpa CostPlan aman", async () => {
+    const { s } = await mkSeason(users.a.cookie, { name: "P4", areaHa: 1.5 });
+    assert.equal((await api("PATCH", `/seasons/${s.id}`, users.a.cookie, { crop: "CABAI", areaHa: "1.50" })).status, 200);
+    await mkPlan(s.id, new Date());
+    assert.equal((await api("PATCH", `/seasons/${s.id}`, users.a.cookie, { crop: "CABAI", areaHa: "1.50" })).status, 200);
+    assert.equal((await api("PATCH", `/seasons/${s.id}`, users.a.cookie, { capitalJt: 7, sellPricePerKg: 1, profitTargetJt: 2 })).status, 200);
+    assert.deepEqual(await flags(s.id), [false]);
+  });
+
+  test("crop 409 setelah TANAM/PANEN tetapi boleh pada PEMBIAYAAN; kolom lain tetap boleh saat TANAM", async () => {
+    const { s } = await mkSeason(users.a.cookie, { name: "P5", areaHa: 1 });
+    await prisma.season.update({ where: { id: s.id }, data: { status: "PEMBIAYAAN" } });
+    assert.equal((await api("PATCH", `/seasons/${s.id}`, users.a.cookie, { crop: "BAWANG" })).status, 200);
+    await prisma.season.update({ where: { id: s.id }, data: { status: "TANAM" } });
+    assert.equal((await api("PATCH", `/seasons/${s.id}`, users.a.cookie, { crop: "TOMAT" })).status, 409);
+    assert.equal((await prisma.season.findUnique({ where: { id: s.id } })).crop, "BAWANG");
+    assert.equal((await api("PATCH", `/seasons/${s.id}`, users.a.cookie, { capitalJt: 4 })).status, 200);
+    await prisma.season.update({ where: { id: s.id }, data: { status: "PANEN" } });
+    assert.equal((await api("PATCH", `/seasons/${s.id}`, users.a.cookie, { crop: "TOMAT" })).status, 409);
+  });
+
+  test("semua perubahan 409 setelah SELESAI", async () => {
+    const { s } = await mkSeason(users.a.cookie, { name: "P6", areaHa: 1, capitalJt: 5 });
+    await prisma.season.update({ where: { id: s.id }, data: { status: "SELESAI" } });
+    for (const b of [{ crop: "TOMAT" }, { areaHa: 2 }, { capitalJt: 1 }, { sellPricePerKg: 1 }, { profitTargetJt: null }]) {
+      assert.equal((await api("PATCH", `/seasons/${s.id}`, users.a.cookie, b)).status, 409, JSON.stringify(b));
+    }
+    assert.equal((await prisma.season.findUnique({ where: { id: s.id } })).capitalJt.toString(), "5");
+  });});
 
