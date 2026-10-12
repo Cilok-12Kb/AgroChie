@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import { Prisma } from "@prisma/client"; // [REVISI] 18.8
 import { prisma } from "../config/prisma.js";
 import { HttpError } from "../utils/http-error.js";
 
@@ -6,20 +7,23 @@ const DURATION = { CABAI: 16, TOMAT: 14, BAWANG: 10 };
 const WEEK_MS = 7 * 86_400_000;
 
 /** Jumlahkan catatan per minggu musim. Catatan simulasi tidak dihitung. */
+// [REVISI] 18.8: penjumlahan dan rasio memakai Prisma.Decimal (tanpa galat floating point). Aturan 90-110 persen dan
+// penjepit minggu tidak berubah. Hasil diubah ke angka hanya di batas keluaran agar kontrak lama (dan tesnya) tetap.
 export function weeklyFromExpenses(expenses, start, durationWks, totalJt) {
-  const sums = new Array(durationWks).fill(0);
-  let counted = 0;
+  const sums = Array.from({ length: durationWks }, () => new Prisma.Decimal(0));
+  let counted = new Prisma.Decimal(0);
   for (const e of expenses) {
     if (e.simulated) continue;
     const wk = Math.floor((e.spentOn.getTime() - start.getTime()) / WEEK_MS) + 1;
     const idx = Math.min(durationWks, Math.max(1, wk)); // sebelum musim -> minggu 1, sesudah -> terakhir
-    const v = Number(e.amountJt); // Decimal Prisma -> angka
-    sums[idx - 1] += v;
-    counted += v;
+    const v = new Prisma.Decimal(e.amountJt);
+    sums[idx - 1] = sums[idx - 1].plus(v);
+    counted = counted.plus(v);
   }
-  const ratio = totalJt > 0 ? counted / totalJt : 0;
-  const usable = ratio >= 0.9 && ratio <= 1.1; // aturan 90-110 persen
-  return { weekly: usable ? sums : null, ratio };
+  const total = new Prisma.Decimal(totalJt);
+  const ratio = total.gt(0) ? counted.div(total) : new Prisma.Decimal(0);
+  const usable = ratio.gte("0.9") && ratio.lte("1.1"); // aturan 90-110 persen
+  return { weekly: usable ? sums.map((s) => s.toNumber()) : null, ratio: ratio.toNumber() };
 }
 
 export async function closeSeason(userId, seasonId, input) {
