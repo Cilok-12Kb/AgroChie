@@ -65,6 +65,41 @@ Satu sub-langkah = bisa diuji dan di-commit sendiri. Kerjakan satu per task, jal
 - [x] **9. Panen dan sampel (F5 langkah 3).** `POST /api/seasons/:id/harvests` (kg > 0, harga > 0), `PUT /api/seasons/:id/sample` (kg dan m2 > 0). `mismatchOver30` dari `kg/m2 x 10000 x areaHa` (selisih tepat 30 persen masih selaras). Panen pertama memindahkan `TANAM` ke `PANEN`. Tes: dua validasi, ambang 30 persen, urutan status.
 - [x] **10. Foto sampel (metadata) dan revisi tutup musim.** Foto: metadata saja (`objectKey`, `sha256` unik global, waktu, lokasi), maksimal 6. `closeSeason` direvisi dengan `[REVISI]`: urutan validasi persis docs/03 (panen, sampel, foto, total biaya), status harus `PANEN`, tutup dua kali 409, isi `yieldKg`/`pricePerKg`/`label`/`note`, hitung untung/rugi dengan Decimal, tambah controller `close` (D1). Tes: tiap pesan validasi, 409 status salah/duplikat, aturan biaya mingguan 90-110 persen, kualitas record benar.
 - [x] **11. Gerbang uang di API.** Saat `DRAFT`, respons menyembunyikan angka hasil prediksi (`CostPlan`); modal/harga/target Season tetap tampil. Tes: DRAFT tanpa angka prediksi, setelah Mulai muncul, setelah Hentikan hilang lagi, field Season tetap ada.
-- [ ] **12. Dokumen dan tes alur penuh.** Tes DB satu musim penuh di `agrochie_test` (buat, mulai, tanam, catat, panen, tutup), pembaruan catatan di dokumen ini, dan `docs/tutorial.md` (contoh PowerShell dengan `-WebSession`, daftar perbedaan).
+- [x] **12. Dokumen dan tes alur penuh.** Tes DB satu musim penuh di `agrochie_test` (buat, mulai, tanam, catat, panen, tutup), pembaruan catatan di dokumen ini, dan `docs/tutorial.md` (contoh PowerShell dengan `-WebSession`, daftar perbedaan).
+
+
+## 5. Catatan penutup
+
+### Perubahan bentuk respons sepanjang bagian 18
+
+- **Season** memuat `costPlan` (CostPlan terbaru, kolom publik saja). Saat `DRAFT` (atau belum ada plan) nilainya `null`; modal, harga jual, dan target tetap tampil.
+- **Tutup musim** (`POST /api/seasons/:id/close`) menjawab `{ record, summary }`.
+- **Plan** di `start-financing` dan `recalc-cost` tidak memuat `input` dan `seasonId`. `start-financing` menjawab `{ plan, output }`; `recalc-cost` menjawab `{ plan, output, selisih }`.
+- **`predict-cost`** dijawab 409 saat `DRAFT` (D14).
+
+### Status D1-D14
+
+| # | Status | Diselesaikan di |
+| --- | --- | --- |
+| D1 | Selesai: server tetap dimuat (ekspor `season.close` hilang hanya memberi `undefined` pada rute); controller `close` ditambah | sub-langkah 10 |
+| D2 | Selesai: endpoint musim, tanam, hentikan, hitung ulang, Expense, Harvest, sampel | sub-langkah 3-9 |
+| D3 | Selesai: tanaman di `Season.crop`, hook di PATCH Season | sub-langkah 4 |
+| D4 | Selesai: Season sumber tunggal luas (Q4) | sub-langkah 3-4 |
+| D5 | Selesai: modal opsional, default dari Season, masukan engine disimpan | sub-langkah 5 |
+| D6 | Selesai: cuaca dan indeks dari body (Q3); F6 tetap belum ada | sub-langkah 5-6 |
+| D7 | Selesai: `closeSeason` direvisi | sub-langkah 10 |
+| D8 | Selesai: `weeklyFromExpenses` memakai Decimal | sub-langkah 8 |
+| D9 | Selesai: `POST /farms` dirapikan | sub-langkah 1 |
+| D10 | Selesai sebagian: metadata dan `sha256` unik global; penyimpanan objek ditunda | sub-langkah 10 |
+| D11 | Selesai: `catFrac` dan pemetaan enum | sub-langkah 2 |
+| D12 | Tidak berlaku: hitungan biaya oleh engine | - |
+| D13 | Tidak berlaku: sudah diganti keputusan bagian 17 | - |
+| D14 | Selesai: `predict-cost` 409 saat `DRAFT`; contoh di tutorial diperbarui | sub-langkah 11 dan 12 |
+
+### Sengaja ditunda
+
+- `breakEvenPerKg` tetap `null` sampai bagian 20.
+- Penyimpanan objek foto ke bagian 21 (sekarang metadata saja).
+- Konstanta `DURATION` di `season-record.service.js` belum disatukan dengan `CROP_DURATION` di `utils/season-flow.js` (nilainya sama: CABAI 16, TOMAT 14, BAWANG 10).
 
 

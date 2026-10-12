@@ -980,7 +980,7 @@ Respons register, login, dan me berisi `id`, `name`, `phone`, `role`, `isGuest`.
 
 Setelah PATCH di atas (luas 3,5 ha dan pH 8), `kelengkapan.percent` menjadi 17 dan `rentang_latih` menjadi `{ "di_luar_rentang_latih": true, "alasan": ["luas", "ph"] }`. `lokasi` dianggap terisi hanya bila latitude dan longitude keduanya ada. Lahan milik orang lain dijawab 404.
 
-Alur di atas (register, login, me, POST/GET/PATCH farm, logout, me sesudah logout, guest) sudah saya jalankan terhadap server lokal dengan database `agrochie_test` pada 12 Oktober 2026 dan hasilnya sesuai. Pemanggilan `predict-cost`, `start-financing`, `leaf-quality`, dan asisten (bagian 13 dan 14) tidak saya jalankan ulang; untuk itu hanya autentikasinya yang diganti ke `-WebSession $s`.
+Alur di atas (register, login, me, POST/GET/PATCH farm, logout, me sesudah logout, guest) sudah saya jalankan terhadap server lokal dengan database `agrochie_test` pada 12 Oktober 2026 dan hasilnya sesuai. Pemanggilan `predict-cost`, `start-financing`, `leaf-quality`, dan asisten (bagian 13 dan 14) tidak saya jalankan ulang; untuk itu hanya autentikasinya yang diganti ke `-WebSession $s`. **[REVISI bagian 18]** `predict-cost` hanya berlaku setelah `start-financing`; pada musim `DRAFT` jawabannya 409 (lihat bagian 18).
 
 ### Perbedaan dengan tutorial sebelumnya (bagian 17)
 
@@ -2519,13 +2519,14 @@ Jalankan `npm test`. Uji manual dengan engine menyala (bagian 12) dan server `np
 $farm = Invoke-RestMethod -Method Post http://localhost:3000/api/farms -ContentType "application/json" -WebSession $s `
   -Body '{"areaHa":0.5,"province":"Jawa Tengah","soilType":"Lempung","waterSource":"Irigasi teknis","ph":6.0,"nitrogen":"SEDANG","phosphorus":"SEDANG","potassium":"TINGGI"}'
 
-# Endpoint pembuat musim belum ada di tutorial ini. Buat satu lewat `npx prisma studio`:
-# tabel seasons -> farmId = $farm.id, crop = CABAI, areaHa = 0.5, status = DRAFT. Salin id-nya.
-$sid = "ID_MUSIM"
+# [REVISI bagian 18] Musim kini dibuat lewat API (bukan Prisma Studio).
+$season = Invoke-RestMethod -Method Post http://localhost:3000/api/farms/$($farm.id)/seasons -ContentType "application/json" -WebSession $s -Body '{"crop":"CABAI"}'
+$sid = $season.id
 $body = '{"startMonth":9,"capitalJt":30,"weather":{"rainAvgMm":60,"heavyRainWks":1,"tempMaxAvg":30},"indices":{"fertIndex":105,"wageIndex":103,"pestIndex":104}}'
 
-Invoke-RestMethod -Method Post http://localhost:3000/api/seasons/$sid/predict-cost -ContentType "application/json" -WebSession $s -Body $body
+# [REVISI bagian 18] predict-cost pada musim DRAFT dijawab 409; mulai pembiayaan dulu.
 Invoke-RestMethod -Method Post http://localhost:3000/api/seasons/$sid/start-financing -ContentType "application/json" -WebSession $s -Body $body
+Invoke-RestMethod -Method Post http://localhost:3000/api/seasons/$sid/predict-cost -ContentType "application/json" -WebSession $s -Body $body
 
 # kualitas daun
 $b64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes("E:\foto\daun.jpg"))
@@ -2533,7 +2534,7 @@ $json = @{ imageBase64 = $b64; crop = "CABAI" } | ConvertTo-Json
 Invoke-RestMethod -Method Post http://localhost:3000/api/crops/leaf-quality -ContentType "application/json" -WebSession $s -Body $json
 ```
 
-Hasil yang benar: `predict-cost` mengembalikan `total_jt` (low, mid, high), 16 baris `weekly` untuk cabai, dan `warnings`; `start-financing` kedua kalinya dijawab 409; musim milik pengguna lain dijawab 404; engine dimatikan dijawab 503. Untuk foto daun: `label_id`, `confidence`, `top3`, `needs_retake`, dan `crop_mismatch` (bernilai `true` bila foto tomat dikirim untuk musim cabai).
+Hasil yang benar: `start-financing` mengembalikan `{ plan, output }` (tanpa `input`); `predict-cost` (setelah pembiayaan dimulai) mengembalikan `total_jt` (low, mid, high), 16 baris `weekly` untuk cabai, dan `warnings`; **[REVISI bagian 18]** `predict-cost` pada musim `DRAFT` dijawab 409 "Prediksi hanya untuk musim yang pembiayaannya sudah dimulai"; `start-financing` kedua kalinya dijawab 409; musim milik pengguna lain dijawab 404; engine dimatikan dijawab 503. Untuk foto daun: `label_id`, `confidence`, `top3`, `needs_retake`, dan `crop_mismatch` (bernilai `true` bila foto tomat dikirim untuk musim cabai).
 
 ## 14. Asisten chatbot: RAG + Gemini
 
@@ -3378,7 +3379,7 @@ Satu endpoint: `POST /api/assistant/chat` dengan badan `{ "message", "sessionId"
 4. `npm test` lulus; `curl.exe localhost:3000/api/health` menjawab `ok: true`.
 5. `closeSeason` membuat record; di `E:\Fintechton-ml`, `python export_real.py` menulis `data/processed/dataset_nyata.csv`.
 6. `python build_artifacts.py` sukses; artefak disalin ke `engine\models`; `curl.exe localhost:8000/health` menampilkan versi ketiga model; `python -m pytest -q tests` lulus di folder `engine`, termasuk `test_ml.py` yang cocok dengan notebook.
-7. Bagian 13: `predict-cost` dan `start-financing` mengembalikan rencana biaya; `crops/leaf-quality` mengembalikan kelas dan keyakinan.
+7. Bagian 13: `start-financing` dan `predict-cost` (yang kedua hanya setelah pembiayaan dimulai; musim `DRAFT` dijawab 409, bagian 18) mengembalikan rencana biaya; `crops/leaf-quality` mengembalikan kelas dan keyakinan.
 8. Bagian 14: `prisma migrate dev --name assistant` menghasilkan 19 tabel; `npm run ingest` mencetak jumlah potongan; asisten menjawab dengan `sources`, dan menolak mengarang di luar dokumen.
 
 **Yang sudah saya uji.**
@@ -3396,4 +3397,95 @@ Satu endpoint: `POST /api/assistant/chat` dengan badan `{ "message", "sessionId"
 - **Panggilan nyata ke Gemini**, nama model terbarunya, dan sebaran skor kemiripan asli (lihat bagian 14).
 - **Migrasi `assistant`, `prisma validate` untuk model baru, dan seed versi baru** terhadap PostgreSQL: sandbox saya tidak bisa mengunduh mesin migrasi Prisma.
 - **Berkas rute dan controller Express** hanya saya periksa sintaksnya.
+
+## 17. Alur musim penuh (bagian 18) **[REVISI 12 Okt 2026]**
+
+Bagian ini tidak mengubah skema. Nama rute, isian, dan pesan galat di bawah dibaca dari `season.routes.js`, `farm.routes.js`, dan validator di `backend/src/validators`. Jalankan backend (`npm run dev`) dan engine (bagian 12). Semua uang dalam juta Rupiah dan dikirim sebagai string (Decimal).
+
+```powershell
+$b = "http://localhost:3000/api"; $j = "application/json"
+
+# 1. Login (cookie disimpan di $s)
+Invoke-RestMethod -Method Post $b/auth/login -ContentType $j -SessionVariable s `
+  -Body '{"phone":"081234567890","password":"rahasia123"}'
+
+# 2. Buat lahan (areaHa wajib; modal, harga jual, dan target boleh dikosongkan)
+$farm = Invoke-RestMethod -Method Post $b/farms -ContentType $j -WebSession $s -Body '{"name":"Lahan Utara","areaHa":1,"soilType":"Lempung","waterSource":"Irigasi teknis","province":"Jawa Tengah","ph":6,"phMeasuredOn":"2026-03-01","nitrogen":"SEDANG","phosphorus":"SEDANG","potassium":"TINGGI","capitalJt":8,"sellPricePerKg":25000,"profitTargetJt":5}'
+
+# 3. Buat musim: status DRAFT, costPlan null; luas/modal/harga/target disalin dari lahan
+$season = Invoke-RestMethod -Method Post $b/farms/$($farm.id)/seasons -ContentType $j -WebSession $s -Body '{"crop":"CABAI"}'
+$sid = $season.id
+
+# 4. Mulai pembiayaan (butuh engine). Cuaca dan indeks harga dari body, tidak ditebak.
+$body = '{"startMonth":9,"weather":{"rainAvgMm":60,"heavyRainWks":1,"tempMaxAvg":30},"indices":{"fertIndex":105,"wageIndex":103,"pestIndex":104}}'
+Invoke-RestMethod -Method Post $b/seasons/$sid/start-financing -ContentType $j -WebSession $s -Body $body
+Invoke-RestMethod -Method Get $b/seasons/$sid -WebSession $s     # costPlan sekarang terisi, tanpa `input`
+
+# 5. Mulai tanam (plantedOn opsional, default hari ini, maksimal 60 hari lalu)
+Invoke-RestMethod -Method Post $b/seasons/$sid/start-planting -ContentType $j -WebSession $s -Body '{"plantedOn":"2026-09-01"}'
+
+# 6. Catat pengeluaran. category: BENIH, PUPUK, OBAT, TENAGA_KERJA, LAIN
+Invoke-RestMethod -Method Post $b/seasons/$sid/expenses -ContentType $j -WebSession $s -Body '{"category":"PUPUK","amountJt":"1.2","spentOn":"2026-09-10","note":"NPK"}'
+Invoke-RestMethod -Method Get $b/seasons/$sid/expenses -WebSession $s
+
+# 7. Ringkasan rencana vs kenyataan per kategori (catatan simulasi tidak dihitung)
+Invoke-RestMethod -Method Get $b/seasons/$sid/expenses/summary -WebSession $s
+
+# 8. Panen (boleh lebih dari satu; yang pertama memindahkan status ke PANEN). grade: A, B, C, SORTIRAN
+Invoke-RestMethod -Method Post $b/seasons/$sid/harvests -ContentType $j -WebSession $s -Body '{"kg":"600","pricePerKg":"20000","harvestedOn":"2026-10-10","grade":"A","buyer":"Pengepul"}'
+Invoke-RestMethod -Method Post $b/seasons/$sid/harvests -ContentType $j -WebSession $s -Body '{"kg":"400","pricePerKg":"25000","harvestedOn":"2026-10-11","grade":"B"}'
+
+# 9. Sampel panen (hanya saat PANEN); mismatchOver30 membandingkan dengan total panen
+Invoke-RestMethod -Method Put $b/seasons/$sid/sample -ContentType $j -WebSession $s -Body '{"sampleKg":10,"sampleM2":100}'
+
+# 10. Foto sampel (metadata saja; penyimpanan berkas ditunda ke bagian 21). sha256 = 64 heksadesimal, unik global
+$sha = (Get-FileHash -Algorithm SHA256 "E:\foto\sampel.jpg").Hash.ToLower()
+$foto = @{ kind = "SAMPEL"; objectKey = "sampel/musim1/1.jpg"; sha256 = $sha; takenAt = (Get-Date).ToUniversalTime().AddMinutes(-5).ToString("yyyy-MM-ddTHH:mm:ssZ") } | ConvertTo-Json
+Invoke-RestMethod -Method Post $b/seasons/$sid/photos -ContentType $j -WebSession $s -Body $foto
+
+# 11. Tutup musim (hanya dari PANEN). Respons: { record, summary }
+Invoke-RestMethod -Method Post $b/seasons/$sid/close -ContentType $j -WebSession $s -Body '{"totalCostJt":"2"}'
+```
+
+Catatan: tanggal tanam dan panen di contoh harus sudah lewat dan tidak lebih dari 60 hari lalu untuk tanam (galat 400 "Tanggal panen tidak boleh di masa depan"); sesuaikan dengan hari ini.
+
+Cabang di luar alur utama (pakai musim lain yang masih `PEMBIAYAAN` atau `TANAM`):
+
+```powershell
+# Hentikan pembiayaan: hanya dari PEMBIAYAAN, kembali ke DRAFT, angka rencana tidak tampil lagi (riwayat CostPlan tetap di database)
+Invoke-RestMethod -Method Post $b/seasons/$sid/stop-financing -WebSession $s
+# Mulai lagi: DRAFT -> PEMBIAYAAN dengan CostPlan baru
+Invoke-RestMethod -Method Post $b/seasons/$sid/start-financing -ContentType $j -WebSession $s -Body $body
+# Hitung ulang (PEMBIAYAAN atau TANAM): memakai masukan terakhir; respons { plan, output, selisih }
+Invoke-RestMethod -Method Post $b/seasons/$sid/recalc-cost -ContentType $j -WebSession $s -Body '{}'
+```
+
+Hasil yang benar (diperiksa oleh `backend/tests/season-flow.db.test.js`, engine di-stub, database `agrochie_test`):
+
+- Buat musim: 201, `status` `DRAFT`, `costPlan` `null`, `capitalJt`, `sellPricePerKg`, dan `profitTargetJt` tersalin dari lahan.
+- `predict-cost` pada `DRAFT`: 409 "Prediksi hanya untuk musim yang pembiayaannya sudah dimulai".
+- `start-financing`: 201, `{ plan, output }`, `plan.kind` `AWAL`, tanpa `input` dan `seasonId`.
+- `start-planting`: `currentWeek` 1 di hari tanam, `harvestEstimate` = tanggal tanam + durasi x 7 hari (cabai 16 minggu).
+- Tutup musim: `summary.profitJt` string Decimal, `record.pricePerKg` = harga rata-rata tertimbang (600 kg x 20.000 + 400 kg x 25.000 = 22.000 per kg), `record.label` "Cabai merah YYYY-MM-DD" (tanggal panen terakhir).
+- Setelah `SELESAI`: ubah musim, tambah/hapus pengeluaran, panen baru, dan tutup lagi semuanya 409. Lahan boleh membuat musim baru; selama masih ada musim yang belum `SELESAI`, musim berikutnya dijawab 409.
+- Kolom `simulated` pada pengeluaran tidak bisa dikirim lewat API (isian tak dikenal dijawab 400); catatan simulasi hanya ada bila dibuat di luar API dan tidak ikut dihitung.
+
+### Perbedaan perilaku API yang berubah di bagian 18
+
+| Hal | Sebelum | Sesudah |
+| --- | --- | --- |
+| Bentuk Season | Tanpa rencana biaya | Memuat `costPlan` (CostPlan terbaru tanpa `input`/`seasonId`); `null` bila `DRAFT` atau belum ada |
+| Angka prediksi saat `DRAFT` | Bisa keluar | Disembunyikan (gerbang uang); modal, harga jual, dan target milik petani tetap tampil |
+| `predict-cost` pada `DRAFT` | Dijalankan | 409 |
+| `start-financing` | `capitalJt` wajib; masukan tidak tersimpan | `capitalJt` opsional (default dari musim, boleh kosong); hanya dari `DRAFT`; respons `{ plan, output }` tanpa `input` dan `seasonId` |
+| `recalc-cost` | Belum ada | Respons `{ plan, output, selisih }`; hanya `PEMBIAYAAN`/`TANAM`; tanpa `input` dan `seasonId` |
+| `POST /farms` | Kunci tak dikenal dibuang | `strictObject` (400); respons memuat `kelengkapan` dan `rentang_latih` |
+| Pembuatan musim | Lewat Prisma Studio | `POST /api/farms/:farmId/seasons`; satu musim terbuka per lahan (409) |
+| Mengganti tanaman | Tanpa aturan | Boleh sampai `PEMBIAYAAN` (rencana ditandai `needsRecalc`); 409 setelah `TANAM` |
+| Tutup musim | Status tidak diperiksa; 500 pada kasus tertentu | Respons `{ record, summary }`; hanya dari `PANEN`; tutup dua kali 409; `yieldKg`, `pricePerKg` tertimbang, `label`, dan untung/rugi Decimal terisi |
+| Biaya mingguan | Hitungan `Number` | `Decimal`; aturan 90-110 persen tetap |
+| `breakEvenPerKg` | - | Tetap `null` sampai bagian 20 |
+| Foto sampel | - | Metadata saja, maksimal 6 per musim, `sha256` unik global |
+
+
 - **Windows:** kode saya uji di Linux. Perintah PowerShell dan langkah instalasi Windows disesuaikan dari perintah yang sama dan belum saya jalankan di Windows. Bila ada yang gagal, kirimkan pesan galatnya.
