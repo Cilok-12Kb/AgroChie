@@ -22,3 +22,10 @@ build/
 Thumbs.db
 .vscode/!.env.example
 !.env.example
+
+# Dokumen dan berkas Cline (tidak di-upload)
+/docs/
+/.clinerules
+/.clineignore
+/.cline/
+/cline_docs/
