@@ -27,7 +27,9 @@ async function runCost(season, body) {
 
 /** Prediksi biasa (misalnya skenario "bagaimana kalau"). Dicatat di prediction_logs, tidak mengubah musim. */
 export async function predictCost(userId, seasonId, body = {}) {
-  const season = await ownedSeason(userId, seasonId);
+  const season = await ownedSeason(userId, seasonId); // 404 (bukan milik / tidak ada) menang atas 409
+  // [REVISI] 18.11c: gerbang uang (Q5). Saat DRAFT tidak ada angka prediksi; cek SEBELUM engine dipanggil dan sebelum log ditulis.
+  if (season.status === "DRAFT") throw new HttpError(409, "Prediksi hanya untuk musim yang pembiayaannya sudah dimulai");
   const { input, output, modelVersion } = await runCost(season, body);
   await prisma.predictionLog.create({ data: { seasonId, input, output, modelVersion } });
   return output;

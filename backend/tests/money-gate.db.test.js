@@ -13,7 +13,7 @@ try {
 process.env.ENGINE_INTERNAL_KEY = "kunci-uji"; // sebelum env.js dimuat; engine selalu di-stub
 
 describe("Gerbang uang di API (butuh database uji, engine di-stub)", { skip }, () => {
-  let server, base, prisma, realFetch;
+  let server, base, prisma, realFetch, engineCalls = 0;
   const tag = String(Math.floor(Math.random() * 1e7)).padStart(7, "0");
   const users = {};
   const farmIds = [];
@@ -65,6 +65,7 @@ describe("Gerbang uang di API (butuh database uji, engine di-stub)", { skip }, (
     realFetch = globalThis.fetch;
     globalThis.fetch = async (url, opts) => {
       if (String(url).startsWith(env.engineUrl)) {
+        engineCalls++;
         return new Response(JSON.stringify(ENGINE_OUT), { status: 200, headers: { "content-type": "application/json" } });
       }
       return realFetch(url, opts);
@@ -73,6 +74,10 @@ describe("Gerbang uang di API (butuh database uji, engine di-stub)", { skip }, (
     const res = await api("POST", "/auth/register", null, { name: "Uji Gerbang", phone, password: "rahasia123" });
     const b = await res.json();
     users.a = { id: b.id, phone, cookie: (res.headers.getSetCookie()[0] ?? "").split(";")[0] };
+    const phoneB = `08972${tag}`;
+    const resB = await api("POST", "/auth/register", null, { name: "Uji Gerbang B", phone: phoneB, password: "rahasia123" });
+    const bb = await resB.json();
+    users.b = { id: bb.id, phone: phoneB, cookie: (resB.headers.getSetCookie()[0] ?? "").split(";")[0] };
   });
 
   after(async () => {
@@ -88,7 +93,7 @@ describe("Gerbang uang di API (butuh database uji, engine di-stub)", { skip }, (
         await prisma.season.deleteMany({ where: { farmId: { in: farmIds } } });
         await prisma.farm.deleteMany({ where: { id: { in: farmIds } } });
       }
-      if (users.a) await prisma.user.deleteMany({ where: { phone: users.a.phone } });
+      for (const u of Object.values(users)) await prisma.user.deleteMany({ where: { phone: u.phone } });
       await prisma.$disconnect();
     }
     server?.close();
@@ -224,6 +229,54 @@ describe("Gerbang uang di API (butuh database uji, engine di-stub)", { skip }, (
     for (const k of PRED_KEYS) assert.doesNotMatch(txt, new RegExp(`"${k}"`), `close memuat ${k}`);
     assert.doesNotMatch(txt, INPUT_KEY);
     assert.equal(JSON.parse(txt).summary.status, "SELESAI");
+  });
+
+  // [REVISI] 18.11c: predict-cost ditolak 409 saat DRAFT.
+  const predict = (id, cookieStr = cookie()) => api("POST", `/seasons/${id}/predict-cost`, cookieStr, BODY);
+  const logs = (id) => prisma.predictionLog.count({ where: { seasonId: id } });
+
+  test("predict-cost DRAFT: 409, engine tidak dipanggil, tidak ada log, tanpa angka", async () => {
+    const s = await mkSeason();
+    const calls0 = engineCalls, logs0 = await logs(s.id);
+    const res = await predict(s.id);
+    assert.equal(res.status, 409);
+    const txt = await res.text();
+    assert.doesNotMatch(txt, /total_jt|"weekly"|"low"|"mid"|"high"/);
+    assert.doesNotMatch(txt, LEAK);
+    assert.equal(engineCalls, calls0, "engine tidak boleh dipanggil");
+    assert.equal(await logs(s.id), logs0, "predictionLog tidak boleh bertambah");
+  });
+
+  test("predict-cost DRAFT dengan riwayat CostPlan (setelah Hentikan): tetap 409", async () => {
+    const s = await mkSeason();
+    assert.equal((await start(s.id)).status, 201);
+    await stop(s.id);
+    const calls0 = engineCalls, logs0 = await logs(s.id);
+    assert.equal((await predict(s.id)).status, 409);
+    assert.equal(engineCalls, calls0);
+    assert.equal(await logs(s.id), logs0);
+  });
+
+  test("predict-cost PEMBIAYAAN: tetap berfungsi (200, angka, engine dipanggil, satu log bertambah)", async () => {
+    const s = await mkSeason();
+    assert.equal((await start(s.id)).status, 201);
+    const calls0 = engineCalls, logs0 = await logs(s.id);
+    const res = await predict(s.id);
+    assert.equal(res.status, 200);
+    const b = await res.json();
+    assert.equal(b.total_jt.mid, 10);
+    assert.deepEqual(b.weekly, [1, 2, 3]);
+    assert.equal(engineCalls, calls0 + 1);
+    assert.equal(await logs(s.id), logs0 + 1);
+  });
+
+  test("predict-cost: tanpa sesi 401; milik orang lain 404 (menang atas 409) pada musim DRAFT", async () => {
+    const s = await mkSeason(); // DRAFT
+    const calls0 = engineCalls;
+    assert.equal((await predict(s.id, null)).status, 401);
+    assert.equal((await predict(s.id, users.b.cookie)).status, 404);
+    assert.equal((await predict("tidak-ada-id")).status, 404);
+    assert.equal(engineCalls, calls0);
   });
 
   test("ringkasan pengeluaran: rencana muncul saat PEMBIAYAAN, hilang saat DRAFT", async () => {

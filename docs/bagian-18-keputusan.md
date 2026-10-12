@@ -34,6 +34,7 @@ Tambahan: **periksa D1 sejak sub-langkah 2** dan laporkan hasilnya. D1 = `season
 - D11: konstanta kategori `catFrac` belum ada di backend (Q6).
 - D12: docs/03 bagian 14 butir 1-2 (fosfor, NPK contoh) tidak relevan; hitungan biaya oleh engine.
 - D13: sandi minimal 6 dan kelengkapan 10 butir di docs/03 sudah diganti keputusan bagian 17 (8 dan 12 butir).
+- D14: `POST /api/seasons/:id/predict-cost` ditolak 409 saat `DRAFT` (konsisten dengan Q5 dan `recalc-cost`); status lain tidak berubah. Panduan manual di docs/tutorial.md yang memanggilnya pada musim DRAFT perlu `start-financing` dulu.
 
 ## 3. Perubahan skema
 
