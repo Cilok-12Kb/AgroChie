@@ -18,6 +18,25 @@ export function buildEnv(src) {
   const jwtSecret = required("JWT_SECRET");
   if (jwtSecret.length < 32) throw new Error("JWT_SECRET minimal 32 karakter.");
 
+  // [REVISI] bagian 17.8: TRUST_PROXY = kosong/false (bawaan), true, atau jumlah hop (bilangan bulat > 0)
+  const parseTrustProxy = (v) => {
+    if (v === undefined || v === "" || v === "false") return false;
+    if (v === "true") return true;
+    if (/^[1-9]\d*$/.test(v)) return Number(v);
+    throw new Error("TRUST_PROXY harus kosong, true, false, atau bilangan bulat lebih dari 0.");
+  };
+
+  // CORS dengan credentials tidak boleh memakai "*"; satu alamat http(s) tanpa path.
+  const frontendOrigin = (src.FRONTEND_ORIGIN ?? "http://localhost:3001").replace(/\/+$/, "");
+  let originOk = false;
+  try {
+    const u = new URL(frontendOrigin);
+    originOk = ["http:", "https:"].includes(u.protocol) && u.origin === frontendOrigin;
+  } catch {
+    /* tidak valid */
+  }
+  if (!originOk) throw new Error("FRONTEND_ORIGIN harus berupa satu alamat http(s) seperti http://localhost:3001 (bukan *).");
+
   return {
     port: Number(src.PORT ?? 3000),
     nodeEnv: src.NODE_ENV ?? "development",
@@ -39,7 +58,7 @@ export function buildEnv(src) {
     jwtTtlDays: positive("JWT_TTL_DAYS", 7),
     guestTtlHours: positive("GUEST_TTL_HOURS", 24),
     cookieName: src.COOKIE_NAME ?? "agro_session",
-    frontendOrigin: src.FRONTEND_ORIGIN ?? "http://localhost:3001",
-    trustProxy: src.TRUST_PROXY === "true",
+    frontendOrigin,
+    trustProxy: parseTrustProxy(src.TRUST_PROXY),
   };
 }
