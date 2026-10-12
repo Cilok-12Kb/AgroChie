@@ -1,5 +1,5 @@
 import { predictCost, startFinancing } from "../services/prediction.service.js";
-import { createSeason, listSeasons, getSeason, updateSeason } from "../services/season.service.js";
+import { createSeason, listSeasons, getSeason, updateSeason, stopFinancing } from "../services/season.service.js";
 import { parseSeasonCreate, parseSeasonPatch } from "../validators/season.validator.js";
 
 // [REVISI] 18.3: buat dan baca musim.
@@ -11,6 +11,9 @@ export async function listByFarm(req, res) {
 }
 export async function get(req, res) {
   res.json(await getSeason(req.userId, req.params.id));
+}
+export async function stop(req, res) {
+  res.json(await stopFinancing(req.userId, req.params.id));
 }
 export async function patch(req, res) {
   res.json(await updateSeason(req.userId, req.params.id, parseSeasonPatch(req.body)));

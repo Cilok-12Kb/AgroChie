@@ -1,7 +1,12 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../config/prisma.js";
+import { farmObject } from "../validators/farm.validator.js";
 import { HttpError } from "../utils/http-error.js";
 import { engineCost, engineLeaf } from "./engine.service.js";
 import { toEngineInput, checkLeafCrop } from "../utils/engine-input.js";
+
+// [REVISI] 18.5: aturan capitalJt dipakai ulang dari farmObject (Decimal tidak negatif, maks 2 desimal; null = kosong).
+const capitalSchema = farmObject.shape.capitalJt;
 
 /** Musim harus milik pengguna yang login; selain itu dijawab 404 (tidak membocorkan keberadaannya). */
 async function ownedSeason(userId, seasonId) {
@@ -27,27 +32,36 @@ export async function predictCost(userId, seasonId, body = {}) {
 }
 
 /** Tombol Mulai: hitung, simpan potret rencana biaya (CostPlan), dan ubah status musim. */
+// [REVISI] 18.5: capitalJt opsional (tidak dikirim -> Season.capitalJt; null -> kosong, tidak ditebak).
+// Decimal, bukan Number. Masukan engine disimpan di CostPlan.input. breakEvenPerKg tetap null (Q10).
+// Hanya dari DRAFT; financingStoppedAt dikosongkan.
 export async function startFinancing(userId, seasonId, body = {}) {
-  const capitalJt = Number(body.capitalJt);
-  if (!Number.isFinite(capitalJt) || capitalJt < 0) throw new HttpError(400, "Modal harus berupa angka (juta Rupiah)");
+  const sent = body.capitalJt !== undefined;
+  const parsed = capitalSchema.safeParse(body.capitalJt);
+  if (sent && !parsed.success) throw new HttpError(400, parsed.error.issues.map((i) => i.message).join("; "));
 
   const season = await ownedSeason(userId, seasonId);
   if (season.status !== "DRAFT") throw new HttpError(409, "Pembiayaan sudah dimulai untuk musim ini");
+  const capital = sent ? parsed.data : season.capitalJt;
+  const capitalDec = capital == null ? null : new Prisma.Decimal(capital);
 
   const { input, output, modelVersion } = await runCost(season, body);
   const { low, mid, high } = output.total_jt;
+  const midDec = new Prisma.Decimal(mid);
+  // Modal kosong: kekurangan tidak bisa dihitung; kolom wajib diisi 0 (bukan perkiraan).
+  const shortfall = capitalDec == null ? new Prisma.Decimal(0) : Prisma.Decimal.max(0, midDec.minus(capitalDec));
 
   const plan = await prisma.$transaction(async (tx) => {
-    await tx.predictionLog.create({ data: { seasonId, input, output, modelVersion } });
-    await tx.season.update({
-      where: { id: seasonId },
-      data: { status: "PEMBIAYAAN", financingStartedAt: new Date(), capitalJt },
+    const moved = await tx.season.updateMany({
+      where: { id: seasonId, status: "DRAFT" },
+      data: { status: "PEMBIAYAAN", financingStartedAt: new Date(), financingStoppedAt: null, ...(sent ? { capitalJt: capitalDec } : {}) },
     });
+    if (moved.count !== 1) throw new HttpError(409, "Pembiayaan sudah dimulai untuk musim ini");
+    await tx.predictionLog.create({ data: { seasonId, input, output, modelVersion } });
     return tx.costPlan.create({
       data: {
-        seasonId, kind: "AWAL", totalJt: mid, p10Jt: low, p50Jt: mid, p90Jt: high, capitalJt,
-        shortfallJt: Math.max(0, mid - capitalJt), // samakan aturan ini dengan hitungan di prototipe
-        weeklyJt: output.weekly, modelVersion,
+        seasonId, kind: "AWAL", totalJt: midDec, p10Jt: low, p50Jt: mid, p90Jt: high, capitalJt: capitalDec,
+        shortfallJt: shortfall, breakEvenPerKg: null, weeklyJt: output.weekly, input, modelVersion,
       },
     });
   });

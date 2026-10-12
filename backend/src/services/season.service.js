@@ -65,6 +65,20 @@ export async function updateSeason(userId, id, data) {
   });
 }
 
+// [REVISI] 18.5: hentikan perhitungan. Hanya dari PEMBIAYAAN; kembali ke DRAFT. Riwayat CostPlan dipertahankan (Q8).
+export async function stopFinancing(userId, id) {
+  return prisma.$transaction(async (tx) => {
+    const cur = await tx.season.findFirst({ where: { id, farm: { userId } }, select: { status: true } });
+    if (!cur) throw new HttpError(404, "Musim tidak ditemukan");
+    const r = await tx.season.updateMany({
+      where: { id, status: "PEMBIAYAAN" },
+      data: { status: "DRAFT", financingStoppedAt: new Date() },
+    });
+    if (r.count !== 1) throw new HttpError(409, "Perhitungan hanya bisa dihentikan saat status PEMBIAYAAN");
+    return tx.season.findUnique({ where: { id }, select: SEASON_SELECT });
+  });
+}
+
 export async function getSeason(userId, id) {
   const season = await prisma.season.findFirst({ where: { id, farm: { userId } }, select: SEASON_SELECT });
   if (!season) throw new HttpError(404, "Musim tidak ditemukan");
