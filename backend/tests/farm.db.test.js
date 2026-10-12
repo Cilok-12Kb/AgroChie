@@ -61,6 +61,37 @@ describe("GET/PATCH /farms/:id (butuh database uji)", { skip }, () => {
     assert.equal(body.id, farmA.id);
     assert.equal(body.village, "Desa Awal");
   });
+  test("GET memuat kelengkapan dan rentang_latih (dihitung saat dibaca)", async () => {
+    const body = await (await call("GET", `/farms/${farmA.id}`, undefined, users[0].cookie)).json();
+    assert.equal(body.kelengkapan.percent, 25); // village, province, nitrogen = 3 dari 12
+    assert.deepEqual(body.kelengkapan.missing, [
+      "subdistrict", "soilType", "waterSource", "ph", "phosphorus", "potassium", "lokasi", "capitalJt", "sellPricePerKg",
+    ]);
+    assert.deepEqual(body.rentang_latih, { di_luar_rentang_latih: false, alasan: [] });
+  });
+
+  test("PATCH memuat kelengkapan dan rentang_latih terbaru; tidak disimpan di database", async () => {
+    const farmB = await prisma.farm.create({ data: { userId: users[0].id, name: "Lahan B", areaHa: "1" } });
+    try {
+      const res = await call(
+        "PATCH",
+        `/farms/${farmB.id}`,
+        { areaHa: 4, ph: 3.5, phMeasuredOn: "2026-03-01", latitude: -6.9, longitude: 107.6 },
+        users[0].cookie,
+      );
+      assert.equal(res.status, 200);
+      const body = await res.json();
+      assert.deepEqual(body.kelengkapan.missing.includes("ph") || body.kelengkapan.missing.includes("lokasi"), false);
+      assert.equal(body.kelengkapan.percent, 17); // ph + lokasi = 2 dari 12
+      assert.deepEqual(body.rentang_latih, { di_luar_rentang_latih: true, alasan: ["luas", "ph"] });
+      const row = await prisma.farm.findUnique({ where: { id: farmB.id } });
+      assert.equal("kelengkapan" in row || "rentang_latih" in row, false);
+    } finally {
+      await prisma.farm.deleteMany({ where: { id: farmB.id } });
+    }
+  });
+
+
 
   test("milik orang lain -> 404 untuk GET dan PATCH, data tidak berubah; id tak ada -> 404", async () => {
     assert.equal((await call("GET", `/farms/${farmA.id}`, undefined, users[1].cookie)).status, 404);
