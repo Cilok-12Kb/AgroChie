@@ -24,20 +24,30 @@ const ms = (iso) => Date.parse(`${iso}T00:00:00.000Z`);
 const coord = (v) => Number(v).toFixed(4);
 const dayMs = (d) => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
 
+const logUrl = (url) => { const u = new URL(url); return `${u.origin}${u.pathname}?start_date=${u.searchParams.get("start_date")}&end_date=${u.searchParams.get("end_date")}&past_days=${u.searchParams.get("past_days")}`; }; // [REVISI] tanpa koordinat
+
 // Satu panggilan HTTP: timeout 10 dtk, satu retry untuk galat jaringan/5xx, tanpa retry untuk 4xx.
 async function getJson(url) {
   for (let attempt = 0; attempt < 2; attempt++) {
     let res;
     try {
       res = await fetch(url, { headers: { "User-Agent": USER_AGENT }, signal: AbortSignal.timeout(TIMEOUT_MS) });
-    } catch {
+    } catch (err) {
+      console.error(`[weather] Open-Meteo gagal (percobaan ${attempt + 1}) ${logUrl(url)}: ${err?.name ?? "Error"} ${err?.message ?? ""}`); // [REVISI]
       continue; // galat jaringan / timeout -> coba sekali lagi
     }
-    if (res.status >= 500) continue;
-    if (!res.ok) throw fail(); // 4xx: tanpa retry
+    if (res.status >= 500) {
+      console.error(`[weather] Open-Meteo HTTP ${res.status} (percobaan ${attempt + 1}) ${logUrl(url)}`); // [REVISI]
+      continue;
+    }
+    if (!res.ok) {
+      console.error(`[weather] Open-Meteo HTTP ${res.status} ${logUrl(url)}`); // [REVISI]
+      throw fail(); // 4xx: tanpa retry
+    }
     try {
       return await res.json();
     } catch {
+      console.error(`[weather] Open-Meteo mengirim JSON tidak valid ${logUrl(url)}`); // [REVISI]
       throw fail();
     }
   }
@@ -132,6 +142,9 @@ export async function getSeasonWeather(userId, id, week, today = todayWib()) {
   const weeks = week === undefined ? sum.weeks : sum.weeks.map((w) => ({ ...w, minggu: week }));
   const full = week === undefined ? sum.full && windows.every((w) => w.passed) : sum.full && windows[week - 1].passed;
   const { rainAvgMm, heavyRainWks, tempMaxAvg, weeksCounted } = sum;
-  return { rainAvgMm, heavyRainWks, tempMaxAvg, weeksCounted, full, source: "Open-Meteo", weeks };
+  // [REVISI] status musim: belum ada minggu selesai -> not_started; semua minggu lewat -> complete.
+  const anyPassed = windows.some((w) => w.passed);
+  const status = !anyPassed ? "not_started" : windows.every((w) => w.passed) ? "complete" : "in_progress";
+  return { rainAvgMm, heavyRainWks, tempMaxAvg, weeksCounted, full, status, source: "Open-Meteo", weeks };
 }
 

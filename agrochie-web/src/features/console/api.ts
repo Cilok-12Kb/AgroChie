@@ -68,6 +68,12 @@ export interface WeatherNow {
   tempC: number | null; windKmh: number | null; rainMm: number | null;
   time: string | null; source: string;
 }
+// [REVISI] cuaca musim: GET /seasons/:id/weather
+export interface SeasonWeather {
+  rainAvgMm: number | null; heavyRainWks: number; tempMaxAvg: number | null;
+  weeksCounted: number; full: boolean; status?: 'not_started' | 'in_progress' | 'complete';
+  source: string; weeks: Array<{ minggu: number; rainMm: number | null; tempMaxAvg: number | null }>;
+}
 
 export const api = {
   auth: {
@@ -130,6 +136,7 @@ export const api = {
   history: { list: () => request<SeasonRecord[]>('/history') },
   assistant: { chat: (message: string, seasonId?: string, sessionId?: string) => post<{ answer: string; sessionId: string; sources: unknown[] }>('/assistant/chat', { message, seasonId, sessionId }) },
   weather: {
+    season: (seasonId: string) => request<SeasonWeather>(`/seasons/${seasonId}/weather`), // [REVISI]
     current: (latitude: number, longitude: number) => request<WeatherNow>(`/weather/current?latitude=${encodeURIComponent(latitude)}&longitude=${encodeURIComponent(longitude)}`),
     forecast: (latitude: number, longitude: number) => request<{source:string;days:Array<{date:string;rainMm:number|null;maxTempC:number|null}>}>(`/weather/forecast?latitude=${encodeURIComponent(latitude)}&longitude=${encodeURIComponent(longitude)}`),
   },
