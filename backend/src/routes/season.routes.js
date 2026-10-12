@@ -2,6 +2,7 @@ import { Router } from "express";
 import { asyncHandler } from "../utils/async-handler.js";
 import { requireUser } from "../middleware/auth.js";
 import * as season from "../controllers/season.controller.js";
+import * as harvest from "../controllers/harvest.controller.js"; // [REVISI] 18.9
 import * as expense from "../controllers/expense.controller.js"; // [REVISI] 18.8
 
 export const seasonRoutes = Router();
@@ -12,6 +13,9 @@ seasonRoutes.get("/:id/expenses/summary", asyncHandler(expense.summary)); // [RE
 seasonRoutes.get("/:id/expenses", asyncHandler(expense.list)); // [REVISI] 18.8
 seasonRoutes.post("/:id/expenses", asyncHandler(expense.create)); // [REVISI] 18.8
 seasonRoutes.delete("/:id/expenses/:expenseId", asyncHandler(expense.remove)); // [REVISI] 18.8
+seasonRoutes.get("/:id/harvests", asyncHandler(harvest.list)); // [REVISI] 18.9
+seasonRoutes.post("/:id/harvests", asyncHandler(harvest.create)); // [REVISI] 18.9
+seasonRoutes.put("/:id/sample", asyncHandler(harvest.sample)); // [REVISI] 18.9
 seasonRoutes.post("/:id/close", asyncHandler(season.close));
 seasonRoutes.post("/:id/predict-cost", asyncHandler(season.predict));
 seasonRoutes.post("/:id/stop-financing", asyncHandler(season.stop)); // [REVISI] 18.5
