@@ -3,6 +3,7 @@ import { createSeason, listSeasons, getSeason, updateSeason, stopFinancing, star
 import { parseSeasonCreate, parseSeasonPatch, parseStartPlanting } from "../validators/season.validator.js";
 import { closeSeason } from "../services/season-record.service.js"; // [REVISI] 18.10
 import { parseClose } from "../validators/close.validator.js";
+import { getSeasonWeather } from "../services/weather.service.js"; // [REVISI] cuaca musim
 
 export async function plant(req, res) { // [REVISI] 18.7
   res.json(await startPlanting(req.userId, req.params.id, parseStartPlanting(req.body)));
@@ -32,6 +33,10 @@ export async function predict(req, res) {
 }
 export async function close(req, res) { // [REVISI] 18.10 (D1)
   res.json(await closeSeason(req.userId, req.params.id, parseClose(req.body)));
+}
+export async function weather(req, res) { // [REVISI] cuaca musim
+  const week = req.query.week === undefined ? undefined : Number(req.query.week);
+  res.json(await getSeasonWeather(req.userId, req.params.id, week));
 }
 export async function start(req, res) {
   res.status(201).json(await startFinancing(req.userId, req.params.id, req.body ?? {}));

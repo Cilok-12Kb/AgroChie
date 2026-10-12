@@ -19,6 +19,7 @@ seasonRoutes.post("/:id/harvests", asyncHandler(harvest.create)); // [REVISI] 18
 seasonRoutes.put("/:id/sample", asyncHandler(harvest.sample)); // [REVISI] 18.9
 seasonRoutes.get("/:id/photos", asyncHandler(photo.list)); // [REVISI] 18.10
 seasonRoutes.post("/:id/photos", asyncHandler(photo.create)); // [REVISI] 18.10
+seasonRoutes.get("/:id/weather", asyncHandler(season.weather)); // [REVISI] cuaca musim (Open-Meteo)
 seasonRoutes.post("/:id/close", asyncHandler(season.close)); // [REVISI] 18.10: controller close kini ada (D1)
 seasonRoutes.post("/:id/predict-cost", asyncHandler(season.predict));
 seasonRoutes.post("/:id/stop-financing", asyncHandler(season.stop)); // [REVISI] 18.5
