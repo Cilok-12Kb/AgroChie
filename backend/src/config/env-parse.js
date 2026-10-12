@@ -1,0 +1,45 @@
+/**
+ * Membentuk objek konfigurasi dari sebuah sumber (mis. process.env).
+ * Dipisah dari env.js agar bisa diuji tanpa membaca berkas .env.
+ */
+export function buildEnv(src) {
+  const required = (name) => {
+    const v = src[name];
+    if (!v) throw new Error(`${name} belum diisi. Salin .env.example menjadi .env lalu isi nilainya.`);
+    return v;
+  };
+
+  const positive = (name, fallback) => {
+    const n = Number(src[name] ?? fallback);
+    if (!Number.isFinite(n) || n <= 0) throw new Error(`${name} harus berupa angka lebih dari 0.`);
+    return n;
+  };
+
+  const jwtSecret = required("JWT_SECRET");
+  if (jwtSecret.length < 32) throw new Error("JWT_SECRET minimal 32 karakter.");
+
+  return {
+    port: Number(src.PORT ?? 3000),
+    nodeEnv: src.NODE_ENV ?? "development",
+    databaseUrl: required("DATABASE_URL"),
+
+    // engine Python (bagian 12). Kunci diperiksa saat dipakai, bukan saat server menyala.
+    engineUrl: src.ENGINE_URL ?? "http://127.0.0.1:8000",
+    engineKey: src.ENGINE_INTERNAL_KEY ?? "",
+
+    // Gemini (bagian 14). Nama model bisa diganti lewat .env tanpa mengubah kode.
+    geminiKey: src.GEMINI_API_KEY ?? "",
+    geminiModel: src.GEMINI_MODEL ?? "gemini-3.5-flash",
+    geminiEmbedModel: src.GEMINI_EMBED_MODEL ?? "gemini-embedding-001",
+    embedDims: Number(src.EMBED_DIMS ?? 768),
+    ragMinScore: Number(src.RAG_MIN_SCORE ?? 0.5),
+
+    // [REVISI] bagian 17: sesi JWT di cookie httpOnly
+    jwtSecret,
+    jwtTtlDays: positive("JWT_TTL_DAYS", 7),
+    guestTtlHours: positive("GUEST_TTL_HOURS", 24),
+    cookieName: src.COOKIE_NAME ?? "agro_session",
+    frontendOrigin: src.FRONTEND_ORIGIN ?? "http://localhost:3001",
+    trustProxy: src.TRUST_PROXY === "true",
+  };
+}
