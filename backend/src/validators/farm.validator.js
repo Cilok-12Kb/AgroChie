@@ -37,7 +37,8 @@ const dateOnly = z
   .transform((s) => new Date(`${s}T00:00:00.000Z`))
   .refine((d) => d.getTime() <= Date.now() + 24 * 3600 * 1000, "Tanggal ukur pH tidak boleh di masa depan");
 
-export const farmPatchSchema = z
+// [REVISI] bagian 18.1: objek dasar dipakai bersama oleh skema PATCH dan POST (aturan tidak disalin).
+const farmObject = z
   .strictObject(
     {
       name: z.string().trim().min(1, "Nama lahan wajib diisi").max(100, "Nama lahan terlalu panjang"),
@@ -61,11 +62,11 @@ export const farmPatchSchema = z
       profitTargetJt: money("profitTargetJt"),
     },
     { error: (iss) => (iss.code === "unrecognized_keys" ? `Isian tidak dikenal: ${iss.keys.join(", ")}` : undefined) },
-  )
-  .partial()
-  .superRefine((d, ctx) => {
+  );
+
+// [REVISI] bagian 18.1: aturan pasangan (pH/tanggal ukur, koordinat) dipakai bersama PATCH dan POST.
+const pairRules = (d, ctx) => {
     const bad = (message, path) => ctx.addIssue({ code: "custom", message, path: [path] });
-    if (Object.keys(d).length === 0) bad("Tidak ada isian yang dikirim", "body");
     // pH dan tanggal ukur selalu sepasang; pH dikosongkan berarti tanggal ikut kosong.
     if ("ph" in d || "phMeasuredOn" in d) {
       if (d.ph == null && d.phMeasuredOn != null) bad("phMeasuredOn tidak boleh diisi tanpa ph", "phMeasuredOn");
@@ -75,7 +76,24 @@ export const farmPatchSchema = z
     if ("latitude" in d || "longitude" in d) {
       if ((d.latitude == null) !== (d.longitude == null)) bad("latitude dan longitude harus dikirim bersamaan", "latitude");
     }
-  });
+};
+
+export const farmPatchSchema = farmObject.partial().superRefine((d, ctx) => {
+  if (Object.keys(d).length === 0) ctx.addIssue({ code: "custom", message: "Tidak ada isian yang dikirim", path: ["body"] });
+  pairRules(d, ctx);
+});
+
+// [REVISI] bagian 18.1: skema POST /farms. Aturan sama dengan PATCH; areaHa wajib, dan name wajib
+// karena kolom wajib di DB (tanpa itu Prisma menjawab 500). Kunci lain opsional.
+export const farmCreateSchema = farmObject.partial().required({ name: true, areaHa: true }).superRefine(pairRules);
+
+export function parseFarmCreate(body) {
+  const r = farmCreateSchema.safeParse(body ?? {});
+  if (!r.success) throw new HttpError(400, r.error.issues.map((i) => i.message).join("; "));
+  const data = { ...r.data };
+  if ("ph" in data && data.ph == null) data.phMeasuredOn = null;
+  return data;
+}
 
 /** Hasil: objek berisi hanya kunci yang dikirim (nilai sudah dinormalisasi). Galat -> HttpError 400. */
 export function parseFarmPatch(body) {

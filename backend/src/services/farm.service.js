@@ -3,7 +3,6 @@ import { prisma } from "../config/prisma.js";
 import { HttpError } from "../utils/http-error.js";
 import { profileCompleteness, outOfTrainingRange } from "../utils/farm-profile.js";
 
-export const createFarm = (userId, data) => prisma.farm.create({ data: { userId, ...data } });
 export const listFarms = (userId) => prisma.farm.findMany({ where: { userId }, orderBy: { id: "asc" } });
 
 // [REVISI] bagian 17.9: ambil/ubah satu lahan. Kepemilikan lewat { id, userId }; milik orang lain = 404.
@@ -15,6 +14,9 @@ const withDerived = (farm) => ({
   kelengkapan: profileCompleteness(farm),
   rentang_latih: outOfTrainingRange(farm),
 });
+
+// [REVISI] bagian 18.1: respons memuat kelengkapan & rentang_latih. userId dari sesi, ditaruh setelah data.
+export const createFarm = async (userId, data) => withDerived(await prisma.farm.create({ data: { ...data, userId } }));
 
 export async function getFarm(userId, id) {
   const farm = await prisma.farm.findFirst({ where: { id, userId } });
