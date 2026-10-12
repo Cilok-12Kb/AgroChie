@@ -3,6 +3,7 @@ import { prisma } from "../config/prisma.js";
 import { HttpError } from "../utils/http-error.js";
 import { catFrac, CATEGORY_INDEX, currentWeek } from "../utils/season-flow.js";
 import { todayWib } from "../validators/season.validator.js";
+import { redactPlan } from "../utils/money-gate.js"; // [REVISI] 18.11
 
 // [REVISI] 18.8: catatan pengeluaran (F7). Semua rupiah Decimal (juta Rupiah), diserialisasi sebagai string.
 export const WARN_RATIO = new Prisma.Decimal("1.15"); // peringatan bila kenyataan > 115% rencana (tepat 15% belum)
@@ -53,7 +54,8 @@ export async function expenseSummary(userId, seasonId, now = new Date()) {
   const actual = Object.fromEntries(Object.keys(CATEGORY_INDEX).map((k) => [k, new Prisma.Decimal(0)]));
   for (const r of rows) actual[r.category] = actual[r.category].plus(r.amountJt);
 
-  const weekly = plan && Array.isArray(plan.weeklyJt) && plan.weeklyJt.length ? plan.weeklyJt : null;
+  const visiblePlan = redactPlan(season.status, plan); // [REVISI] 18.11: gerbang uang; DRAFT -> rencana tidak keluar
+  const weekly = visiblePlan && Array.isArray(visiblePlan.weeklyJt) && visiblePlan.weeklyJt.length ? visiblePlan.weeklyJt : null;
   const week = season.plantedOn ? currentWeek(season.plantedOn, todayWib(now), season.crop) : null;
   let cumulative = null;
   if (weekly && week !== null) {

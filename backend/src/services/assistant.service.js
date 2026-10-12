@@ -3,6 +3,7 @@ import { HttpError } from "../utils/http-error.js";
 import { retrieve } from "./rag/retriever.js";
 import { buildSystemPrompt, describeFarmer } from "./rag/prompt.js";
 import { generateAnswer } from "./llm.service.js";
+import { redactPlan } from "../utils/money-gate.js"; // [REVISI] 18.11
 
 const HISTORY_MESSAGES = 6; // 3 putaran tanya-jawab terakhir
 const MAX_CHARS = 1000;
@@ -12,7 +13,8 @@ async function farmerContext(userId, seasonId) {
   if (seasonId) {
     const season = await prisma.season.findFirst({ where: { id: seasonId, farm: { userId } }, include: { farm: true } });
     if (!season) throw new HttpError(404, "Musim tidak ditemukan");
-    const plan = await prisma.costPlan.findFirst({ where: { seasonId }, orderBy: { createdAt: "desc" } });
+    const latest = await prisma.costPlan.findFirst({ where: { seasonId }, orderBy: { createdAt: "desc" } });
+    const plan = redactPlan(season.status, latest); // [REVISI] 18.11: gerbang uang; DRAFT -> angka prediksi tidak masuk jawaban
     return { farm: season.farm, season, plan };
   }
   const farm = await prisma.farm.findFirst({ where: { userId }, orderBy: { id: "asc" } });
