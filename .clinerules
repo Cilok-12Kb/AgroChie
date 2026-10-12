@@ -13,6 +13,7 @@
 - Jangan mengarang hasil uji. Bila sesuatu tidak bisa dijalankan, katakan.
 - Acuan spesifikasi: docs/01 (fitur), docs/02 (arsitektur), docs/03 (rumus dan perilaku prototipe).
   Bila bertentangan dengan docs/tutorial.md soal skema atau kode yang sudah ada, ikuti tutorial.md dan catat perbedaannya.
+- Setelah schema.prisma berubah atau migrasi baru dibuat, jalankan prisma generate sebelum menjalankan tes.
 
 ## Git
 - Periksa git branch --show-current sebelum mulai; jangan pernah bekerja atau commit di main.
