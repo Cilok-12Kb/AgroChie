@@ -7,7 +7,6 @@ import {
   User,
   Wallet,
   CalendarDays,
-  BookOpen,
   ShieldCheck,
   ClipboardList,
   History,

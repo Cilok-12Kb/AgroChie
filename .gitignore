@@ -22,3 +22,5 @@ build/
 Thumbs.db
 .vscode/!.env.example
 !.env.example
+
+backend/uploads/

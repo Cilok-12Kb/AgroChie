@@ -1,8 +1,2 @@
-import type { Metadata } from 'next';
-import { PrediksiView } from '@/features/prediction/PrediksiView';
-
-export const metadata: Metadata = { title: 'Prediksi Musim' };
-
-export default function PrediksiPage() {
-  return <PrediksiView />;
-}
+import { Route } from '@/features/console/Route';
+export default function Page() { return <Route section="prediksi" />; }

@@ -1,8 +1,2 @@
-import type { Metadata } from 'next';
-import { RisikoKreditView } from '@/features/credit/RisikoKreditView';
-
-export const metadata: Metadata = { title: 'Risiko dan Kredit' };
-
-export default function RisikoKreditPage() {
-  return <RisikoKreditView />;
-}
+import { Route } from '@/features/console/Route';
+export default function Page() { return <Route section="risiko-kredit" />; }

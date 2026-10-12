@@ -1,27 +1,5 @@
 import Link from 'next/link';
 import { Leaf, ArrowLeft } from 'lucide-react';
-import { AppButton } from '@/components/ui/AppButton';
-
 export default function NotFound() {
-  return (
-    <div className="min-h-screen bg-[--surface-muted] flex flex-col items-center justify-center px-4">
-      <div className="text-center space-y-6 max-w-sm">
-        <div className="w-20 h-20 rounded-3xl bg-[--primary] flex items-center justify-center mx-auto shadow-lg">
-          <Leaf size={36} className="text-white" />
-        </div>
-        <div>
-          <h1 className="text-6xl font-extrabold text-[--primary]">404</h1>
-          <h2 className="text-xl font-bold text-[--text] mt-2">Halaman tidak ditemukan</h2>
-          <p className="text-sm text-[--text-muted] mt-1.5">
-            Halaman yang Anda cari tidak ada atau sudah dipindahkan.
-          </p>
-        </div>
-        <Link href="/">
-          <AppButton leftIcon={<ArrowLeft size={16} />} variant="outline">
-            Kembali ke beranda
-          </AppButton>
-        </Link>
-      </div>
-    </div>
-  );
+  return <div className="min-h-screen flex items-center justify-center bg-[#f5f9f5] px-5"><div className="bg-white border border-emerald-100 shadow-sm rounded-3xl max-w-md w-full p-10 text-center"><div className="console-brand-icon mx-auto"><Leaf size={23}/></div><h1 className="font-black text-[70px] text-emerald-800 tracking-tight mt-4 leading-none">404</h1><h2 className="font-extrabold text-slate-900 text-xl mt-4">Halaman tidak ditemukan</h2><p className="text-sm text-slate-500 mt-2 mb-7">Alamat yang Anda buka tidak ada atau sudah dipindahkan.</p><Link href="/beranda" className="console-button console-button-primary"><ArrowLeft size={17}/> Kembali ke beranda</Link></div></div>;
 }

@@ -1,8 +1,2 @@
-import type { Metadata } from 'next';
-import { RencanaBiayaView } from '@/features/budget/RencanaBiayaView';
-
-export const metadata: Metadata = { title: 'Rencana Biaya' };
-
-export default function RencanaBiayaPage() {
-  return <RencanaBiayaView />;
-}
+import { Route } from '@/features/console/Route';
+export default function Page() { return <Route section="rencana-biaya" />; }

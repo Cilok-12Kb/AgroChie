@@ -1,29 +1,25 @@
 import type { Metadata } from 'next';
-import { Nunito } from 'next/font/google';
+import { Plus_Jakarta_Sans } from 'next/font/google';
 import { QueryProvider } from '@/providers/QueryProvider';
 import './globals.css';
 
-const nunito = Nunito({
+const jakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
   display: 'swap',
-  variable: '--font-nunito',
-  weight: ['400', '500', '600', '700', '800', '900'],
+  weight: ['300', '400', '500', '600', '700', '800'],
+  style: ['normal', 'italic'],
+  variable: '--font-jakarta',
 });
 
 export const metadata: Metadata = {
-  title: {
-    default: 'AgroChie — Rencanakan biaya satu musim tanam',
-    template: '%s · AgroChie',
-  },
-  description:
-    'Perencanaan biaya musim tanam untuk petani hortikultura. Tahu berapa biaya, kapan uang dibutuhkan, dan apakah modal cukup hingga panen.',
-  keywords: ['pertanian', 'biaya tanam', 'petani', 'cabai', 'tomat', 'bawang', 'hortikultura'],
+  title: 'AgroChie | Smart Farming Workspace',
+  description: 'Perencanaan dan pemantauan biaya musim tanam hortikultura.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="id">
-      <body className={`${nunito.variable} font-sans antialiased`}>
+    <html lang="id" className={jakarta.variable}>
+      <body style={{ fontFamily: 'var(--font-jakarta), ui-sans-serif, system-ui, sans-serif' }}>
         <QueryProvider>{children}</QueryProvider>
       </body>
     </html>
