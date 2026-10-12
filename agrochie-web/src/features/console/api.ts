@@ -38,9 +38,11 @@ export interface Farm {
   capitalJt?: string | null; sellPricePerKg?: string | null; profitTargetJt?: string | null;
   kelengkapan?: number; rentang_latih?: boolean;
 }
+// [REVISI] Satu elemen weeklyJt dari API; biaya_jt dalam juta rupiah.
+export interface WeeklyCostItem { fase?: number; porsi?: number; minggu: number; biaya_jt: number | string; }
 export interface CostPlan {
   id: string; kind: string; totalJt: string; p10Jt: string; p50Jt: string; p90Jt: string;
-  capitalJt: string | null; shortfallJt: string; weeklyJt: Array<string | number>;
+  capitalJt: string | null; shortfallJt: string; weeklyJt: WeeklyCostItem[]; // [REVISI] bentuk asli API: objek, bukan angka
   breakEvenPerKg: string | null; modelVersion: string; needsRecalc: boolean; createdAt: string;
 }
 export interface Season {
@@ -138,6 +140,21 @@ export const CROP_WEEKS: Record<Crop, number> = { CABAI: 16, BAWANG: 10, TOMAT: 
 export const CATEGORY_NAME: Record<ExpenseCategory, string> = { BENIH: 'Benih & bibit', PUPUK: 'Pupuk', OBAT: 'Obat & pestisida', TENAGA_KERJA: 'Tenaga kerja', LAIN: 'Lain-lain' };
 export const JUTA = 1_000_000;
 export const amount = (value?: string | number | null) => Number(value ?? 0);
+// [REVISI] Baca weeklyJt dengan aman. Bila bukan array, kosong, atau ada elemen tak valid
+// (minggu bukan bilangan bulat >= 1, biaya_jt bukan angka hingga >= 0), kembalikan [] agar UI menampilkan keadaan kosong.
+export const weeklyCosts = (raw: unknown): Array<{ minggu: number; biaya: number }> => {
+  if (!Array.isArray(raw) || raw.length === 0) return [];
+  const out: Array<{ minggu: number; biaya: number }> = [];
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') return [];
+    const { minggu, biaya_jt } = item as { minggu?: unknown; biaya_jt?: unknown };
+    const m = typeof minggu === 'number' ? minggu : NaN;
+    const b = typeof biaya_jt === 'number' || (typeof biaya_jt === 'string' && biaya_jt.trim() !== '') ? Number(biaya_jt) : NaN;
+    if (!Number.isInteger(m) || m < 1 || !Number.isFinite(b) || b < 0) return [];
+    out.push({ minggu: m, biaya: b });
+  }
+  return out.sort((a, b) => a.minggu - b.minggu);
+};
 export const rupiah = (juta?: string | number | null) => `Rp ${amount(juta).toLocaleString('id-ID', { maximumFractionDigits: 2 })} jt`;
 export const idr = (value: number) => `Rp ${Math.round(value).toLocaleString('id-ID')}`;
 export const shortDate = (value?: string | null) => value ? new Date(value).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
