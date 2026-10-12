@@ -1,5 +1,10 @@
 .env
+.env.*
+!.env.example
 backend/.env
 engine/.env
 node_modules/
 engine/.venv/
+*.dump
+*.sql.bak
+backup*/

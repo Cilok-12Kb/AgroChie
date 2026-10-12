@@ -72,6 +72,7 @@ model User {
   email        String?   @unique
   passwordHash String
   role         Role      @default(PETANI)
+  isGuest      Boolean   @default(false) // [REVISI] bagian 17: akun tamu sementara, dihapus saat logout
   createdAt    DateTime  @default(now())
   farms        Farm[]
   reminder     Reminder?
@@ -100,6 +101,10 @@ model Farm {
   nitrogen     Level?
   phosphorus   Level?
   potassium    Level?
+  // [REVISI] bagian 17: hanya DEFAULT profil (juta Rupiah / Rp per kg), disalin ke Season saat musim dibuat (bagian 18)
+  capitalJt      Decimal? @db.Decimal(10, 2)
+  sellPricePerKg Decimal? @db.Decimal(12, 2)
+  profitTargetJt Decimal? @db.Decimal(10, 2)
   note         String?
   seasons      Season[]
 
@@ -151,6 +156,7 @@ model CostPlan {
   breakEvenPerKg Decimal? @db.Decimal(12, 2)
   weeklyJt       Json
   modelVersion   String
+  needsRecalc    Boolean  @default(false) // [REVISI] bagian 17: true bila luas lahan berubah; rencana perlu dihitung ulang
   createdAt      DateTime @default(now())
 
   @@index([seasonId, createdAt])
