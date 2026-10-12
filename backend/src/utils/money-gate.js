@@ -19,6 +19,11 @@ export const PLAN_PUBLIC_FIELDS = [
   "breakEvenPerKg", "weeklyJt", "needsRecalc", "modelVersion", "createdAt",
 ];
 
+/** Salinan CostPlan hanya dengan kolom publik (tanpa `input` dan `seasonId`). Murni; null tetap null. */
+export function planView(plan) {
+  return plan ? Object.fromEntries(PLAN_PUBLIC_FIELDS.filter((k) => k in plan).map((k) => [k, plan[k]])) : plan;
+}
+
 /**
  * Bentuk respons Season. Masukan: baris Season dengan `costPlans` (CostPlan terbaru, 0 atau 1 elemen; boleh tidak ada).
  * Keluaran: salinan Season tanpa `costPlans`, ditambah `costPlan`:
@@ -30,6 +35,5 @@ export function seasonView(season) {
   if (!season) return season;
   const { costPlans, ...rest } = season;
   const plan = redactPlan(season.status, Array.isArray(costPlans) ? costPlans[0] ?? null : null);
-  const costPlan = plan ? Object.fromEntries(PLAN_PUBLIC_FIELDS.filter((k) => k in plan).map((k) => [k, plan[k]])) : null;
-  return { ...rest, costPlan };
+  return { ...rest, costPlan: planView(plan) ?? null };
 }

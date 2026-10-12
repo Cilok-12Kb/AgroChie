@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { createHash } from "node:crypto";
 import { describe, test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { assertTestDatabase } from "./helpers/test-db.js";
@@ -163,6 +164,66 @@ describe("Gerbang uang di API (butuh database uji, engine di-stub)", { skip }, (
       for (const it of Array.isArray(j) ? j : [j]) if (it.status) hidden(it);
     }
     assert.equal(await plans(s.id), 1, "data CostPlan tidak berubah oleh penyaringan");
+  });
+
+  // [REVISI] 18.11b: pelengkap tes kebocoran (foto, start/recalc, close, kolom input).
+  const PRED_KEYS = ["p10Jt", "p50Jt", "p90Jt", "shortfallJt", "weeklyJt"];
+  const INPUT_KEY = /"input"\s*:/;
+  const sha = (n) => createHash("sha256").update(`${tag}-gate-${n}`).digest("hex");
+
+  test("DRAFT dengan riwayat CostPlan: rute foto tidak memuat angka prediksi atau kolom input", async () => {
+    const s = await mkSeason();
+    assert.equal((await start(s.id)).status, 201);
+    await stop(s.id);
+    assert.equal(await plans(s.id), 1);
+    const photo = { kind: "PROGRES", objectKey: `gate/${tag}/a.jpg`, sha256: sha("draft"), takenAt: new Date(Date.now() - 60_000).toISOString() };
+    for (const [m, p, b] of [["GET", `/seasons/${s.id}/photos`], ["POST", `/seasons/${s.id}/photos`, photo], ["GET", `/seasons/${s.id}/photos`]]) {
+      const res = await api(m, p, cookie(), b);
+      const txt = await res.text();
+      assert.ok(res.status < 500, `${m} ${p} -> ${res.status}`);
+      assert.doesNotMatch(txt, LEAK, `${m} ${p}`);
+      assert.doesNotMatch(txt, INPUT_KEY, `${m} ${p}`);
+    }
+  });
+
+  test("DRAFT: rute Season/ringkasan tidak mengeluarkan kolom input", async () => {
+    const s = await mkSeason();
+    await start(s.id);
+    await stop(s.id);
+    for (const p of [`/seasons/${s.id}`, `/farms/${s.farmId}/seasons`, `/seasons/${s.id}/expenses/summary`]) {
+      assert.doesNotMatch(await (await api("GET", p, cookie())).text(), INPUT_KEY, p);
+    }
+  });
+
+  test("start-financing dan recalc-cost (bukan DRAFT) MEMUAT angka; kolom input tidak keluar", async () => {
+    const s = await mkSeason();
+    const st = await start(s.id);
+    assert.equal(st.status, 201);
+    const a = await st.text();
+    for (const k of PRED_KEYS) assert.match(a, new RegExp(`"${k}"`), `start-financing tanpa ${k}`);
+    assert.doesNotMatch(a, INPUT_KEY, "start-financing mengeluarkan input");
+
+    const rc = await api("POST", `/seasons/${s.id}/recalc-cost`, cookie(), BODY);
+    assert.equal(rc.status, 200);
+    const b = await rc.text();
+    for (const k of PRED_KEYS) assert.match(b, new RegExp(`"${k}"`), `recalc-cost tanpa ${k}`);
+    assert.doesNotMatch(b, INPUT_KEY, "recalc-cost mengeluarkan input");
+  });
+
+  test("close (PANEN siap tutup, punya riwayat CostPlan): hanya data kenyataan, tanpa kunci prediksi dan input", async () => {
+    const s = await mkSeason();
+    assert.equal((await start(s.id)).status, 201);
+    await prisma.season.update({ where: { id: s.id }, data: { status: "PANEN", plantedOn: new Date(Date.now() - 30 * DAY) } });
+    await prisma.harvest.create({ data: { seasonId: s.id, harvestedOn: new Date(Date.now() - DAY), grade: "A", weightKg: "1000", pricePerKg: "20000" } });
+    await prisma.harvestSample.create({ data: { seasonId: s.id, sampleKg: "10", sampleM2: "100" } });
+    const ph = await api("POST", `/seasons/${s.id}/photos`, cookie(), { kind: "SAMPEL", objectKey: `gate/${tag}/s.jpg`, sha256: sha("close"), takenAt: new Date(Date.now() - 60_000).toISOString() });
+    assert.equal(ph.status, 201);
+    const res = await api("POST", `/seasons/${s.id}/close`, cookie(), { totalCostJt: "10" });
+    assert.equal(res.status, 200);
+    const txt = await res.text();
+    for (const k of PRED_KEYS) assert.doesNotMatch(txt, new RegExp(`"${k}"`), `close memuat ${k}`);
+    assert.doesNotMatch(txt, INPUT_KEY);
+    assert.equal(JSON.parse(txt).summary.status, "SELESAI");
   });
 
   test("ringkasan pengeluaran: rencana muncul saat PEMBIAYAAN, hilang saat DRAFT", async () => {

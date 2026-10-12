@@ -44,11 +44,16 @@ export async function closeSeason(userId, seasonId, input) {
 }
 
 async function closeInTx(tx, userId, seasonId, input) {
+  // [REVISI] 18.11b: relasi dibaca BERURUTAN. `include` banyak relasi di dalam transaksi membuat Prisma menjalankan
+  // query bersamaan pada satu koneksi pg -> DeprecationWarning "client.query() while already executing". Hasil sama.
   const season = await tx.season.findFirst({
     where: { id: seasonId, farm: { userId } },
-    include: { farm: true, expenses: true, harvests: true, sample: true },
+    include: { farm: true },
   });
   if (!season) throw new HttpError(404, "Musim tidak ditemukan");
+  season.expenses = await tx.expense.findMany({ where: { seasonId } });
+  season.harvests = await tx.harvest.findMany({ where: { seasonId } });
+  season.sample = await tx.harvestSample.findUnique({ where: { seasonId } });
   if (season.status !== "PANEN") throw new HttpError(409, "Musim hanya bisa ditutup saat status PANEN");
   if (!season.plantedOn) throw new HttpError(409, "Penanaman belum dimulai");
 

@@ -5,6 +5,7 @@ import { farmObject } from "../validators/farm.validator.js";
 import { HttpError } from "../utils/http-error.js";
 import { engineCost, engineLeaf } from "./engine.service.js";
 import { toEngineInput, checkLeafCrop } from "../utils/engine-input.js";
+import { planView } from "../utils/money-gate.js"; // [REVISI] 18.11b
 
 // [REVISI] 18.5: aturan capitalJt dipakai ulang dari farmObject (Decimal tidak negatif, maks 2 desimal; null = kosong).
 const capitalSchema = farmObject.shape.capitalJt;
@@ -66,7 +67,7 @@ export async function startFinancing(userId, seasonId, body = {}) {
       },
     });
   });
-  return { plan, output };
+  return { plan: planView(plan), output }; // [REVISI] 18.11b: kolom `input` (masukan engine) tidak dikirim ke klien
 }
 
 // [REVISI] 18.6: hitung ulang rencana biaya. Kunci body = yang dipakai start-financing.
@@ -146,7 +147,7 @@ export async function recalcCost(userId, seasonId, rawBody = {}) {
         p90Jt: diff(plan.p90Jt, awal.p90Jt), shortfallJt: diff(plan.shortfallJt, awal.shortfallJt),
       }
     : null;
-  return { plan, output, selisih };
+  return { plan: planView(plan), output, selisih }; // [REVISI] 18.11b: tanpa `input`
 }
 
 /** Kualitas tanaman dari foto daun. Foto tidak disimpan di sini (hanya dikirim ke engine). */
