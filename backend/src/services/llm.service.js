@@ -43,7 +43,7 @@ export async function generateAnswer({ system, history, userText, tools }) {
     return text;
   } catch (e) {
     if (e instanceof HttpError) throw e;
-    console.error("[gemini]", e?.status, e?.message);
+    console.error('[gemini-debug]', err?.status, String(err?.message).slice(0, 500));
     if (e?.status === 429) throw new HttpError(503, "Asisten sedang sibuk. Coba lagi sebentar lagi.");
     throw new HttpError(502, "Asisten tidak dapat dihubungi");
   }

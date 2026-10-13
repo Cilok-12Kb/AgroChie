@@ -44,7 +44,7 @@ test("detectionService menolak keluaran provider yang menyimpang dari skema", as
 test("env: nilai bawaan dan validasi ambang deteksi", () => {
   const base = { DATABASE_URL: "postgresql://x", JWT_SECRET: "a".repeat(32) };
   const e = buildEnv(base);
-  assert.equal(e.detectionProvider, "gemini");
+  assert.equal(e.detectionProvider, "engine"); // [REVISI] bawaan berubah dari gemini ke engine
   assert.equal(e.detectionMinConfidence, 0.5);
   assert.equal(e.geminiTimeoutMs, 30000);
   assert.throws(() => buildEnv({ ...base, DETECTION_MIN_CONFIDENCE: "2" }), /DETECTION_MIN_CONFIDENCE/);

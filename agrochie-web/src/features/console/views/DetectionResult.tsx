@@ -19,6 +19,8 @@ const rangeRp = (min: number, max: number) => min === max ? idr(min) : `${idr(mi
 const H3 = ({ children }: { children: string }) => <h3 className="font-extrabold text-sm mb-2">{children}</h3>;
 const Bullets = ({ items }: { items: string[] }) => <ul className="list-disc pl-5 text-sm text-slate-700 space-y-1">{items.map((c, i) => <li key={i}>{c}</li>)}</ul>;
 
+// [REVISI] label sumber deteksi (field opsional dari backend)
+const sourceLabel = (s: NonNullable<Detection["sumber_deteksi"]>) => s.provider === "engine" ? `Dianalisis oleh model AgroChie${s.model_versi ? ` v${s.model_versi.split("@").pop()}` : ""}` : `Dianalisis oleh ${s.provider}`;
 interface Props { d: Detection; farmName: string; saved: string | null; noteBusy: boolean; noteError: unknown; onNote: () => void; onAsk: () => void }
 
 export function ResultCard({ d, farmName, saved, noteBusy, noteError, onNote, onAsk }: Props) {
@@ -38,6 +40,7 @@ export function ResultCard({ d, farmName, saved, noteBusy, noteError, onNote, on
           : <ul className="space-y-2">{h.masalah_terdeteksi.map((m, i) => <li key={i} className="rounded-xl border border-slate-100 p-3"><div className="flex flex-wrap items-center gap-2"><span className="font-bold text-sm">{m.nama}</span><Tag color={SEVERITY[m.tingkat_keparahan].color}>{SEVERITY[m.tingkat_keparahan].label}</Tag></div><p className="text-xs text-slate-500 mt-1">{m.gejala_terlihat}</p></li>)}</ul>}
       </section>
       {s && <Solution s={s}/>}
+      {d.sumber_deteksi && <p className="text-xs text-slate-500">{sourceLabel(d.sumber_deteksi)}</p>}
       <Message color="amber">{DISCLAIMER}</Message>
       <div className="space-y-3">
         <div className="flex flex-wrap gap-2">

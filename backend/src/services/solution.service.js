@@ -5,6 +5,7 @@ import { retrieve } from "./rag/retriever.js";
 import { getFarmWeather } from "./weather.service.js";
 import { toResponseSchema } from "./detection/schema.js";
 import { recalculateCost, expenseCategoryFor } from "../utils/detection-cost.js";
+import { findTrainedCrop, TRAINED_CROPS } from "./detection/leaf-class-map.js";
 
 // [REVISI] Solusi penanganan + estimasi biaya dari Gemini. Biaya dalam Rupiah penuh (belum juta); hanya rentang
 // estimasi, BUKAN biaya mingguan. Pengecualian khusus fitur ini: kisaran dosis umum diperbolehkan (tanpa merek).
@@ -55,7 +56,22 @@ export function describeWeather(w) {
   ].join("\n");
 }
 
-export function buildSolutionPrompt({ detection, land = {}, weatherText, note, chunks = [] }) {
+// [REVISI] Sumber deteksi: hasil model engine (kelas terbatas) harus dinyatakan ke Gemini; komoditas lahan di luar yang dilatih ditandai.
+export const ENGINE_COMMODITY_ASSUMPTION = "Hasil deteksi mungkin kurang akurat karena model deteksi hanya dilatih untuk " + TRAINED_CROPS.join(" dan ") + ", sedangkan komoditas lahan ini berbeda.";
+
+/** true bila hasil berasal dari model engine dan komoditas lahan (atau tanaman pada kelas terdeteksi) bukan yang dilatih. */
+export function engineCropMismatch(sumber, land = {}) {
+  if (sumber?.provider !== "engine" || !land.komoditas) return false;
+  const trained = findTrainedCrop(land.komoditas);
+  return !trained || (sumber.komoditas_model != null && sumber.komoditas_model !== trained);
+}
+
+export function buildSolutionPrompt({ detection, land = {}, weatherText, note, chunks = [], sumber } = {}) {
+  const dariEngine = sumber?.provider === "engine";
+  const sumberText = dariEngine
+    ? ["Sumber: model klasifikasi daun internal AgroChie (versi " + (sumber.model_versi ?? "tidak diketahui") + ") dengan kelas terbatas (" + TRAINED_CROPS.join(", ") + "). Jangan mengklaim diagnosis di luar kelas yang terdeteksi, nyatakan ketidakpastian, dan sebut bahwa tingkat keparahan hanya perkiraan."
+        , ...(engineCropMismatch(sumber, land) ? ["PERINGATAN: komoditas lahan (" + land.komoditas + ") berbeda dari komoditas yang dilatih model; hasil deteksi mungkin kurang akurat. Sebutkan ini di asumsi."] : [])].join("\n")
+    : sumber?.provider ? "Sumber: " + sumber.provider : null;
   const masalah = (detection?.masalah_terdeteksi ?? [])
     .map((m) => `- ${m.nama} (${m.jenis}, ${m.tingkat_keparahan}): ${m.gejala_terlihat}`)
     .join("\n") || "- (tidak ada masalah spesifik terdeteksi)";
@@ -73,7 +89,7 @@ export function buildSolutionPrompt({ detection, land = {}, weatherText, note, c
 <hasil_deteksi>
 Kondisi: ${detection?.kondisi}
 Kualitas: ${detection?.kategori_kualitas} (keyakinan ${detection?.skor_kepercayaan})
-Masalah:
+${sumberText ? sumberText + "\n" : ""}Masalah:
 ${masalah}
 </hasil_deteksi>
 
@@ -115,7 +131,7 @@ export function finalizeSolution(sol) {
  *   catatan_estimasi, cuaca_tersedia, kategori_expense, sumber_rag[{source, title}] }
  * Galat: LlmError (code LLM_QUOTA | LLM_TIMEOUT | LLM_ERROR | LLM_EMPTY | AI_INVALID_OUTPUT). Tidak pernah simulasi.
  */
-export async function generateSolution({ detection, land = {}, coords, catatan } = {}, deps = {}) {
+export async function generateSolution({ detection, land = {}, coords, catatan, sumber } = {}, deps = {}) {
   const retrieveFn = deps.retrieveFn ?? retrieve;
   const weatherFn = deps.weatherFn ?? getFarmWeather;
 
@@ -137,7 +153,7 @@ export async function generateSolution({ detection, land = {}, coords, catatan }
     console.error("[solusi] RAG gagal, lanjut tanpa dokumen:", e?.message);
   }
 
-  const userText = buildSolutionPrompt({ detection, land, weatherText: describeWeather(weather), note: catatan, chunks });
+  const userText = buildSolutionPrompt({ detection, land, weatherText: describeWeather(weather), note: catatan, chunks, sumber });
   const jsonSchema = toResponseSchema(solutionSchema);
   const retryNote = "\n\nPERHATIAN: jawaban sebelumnya tidak valid. Kirim HANYA JSON valid sesuai skema.";
   const solusi = await generateValidated({
@@ -151,8 +167,12 @@ export async function generateSolution({ detection, land = {}, coords, catatan }
   if (!weather) {
     solusi.estimasi_total_biaya.asumsi.push("Data cuaca terkini tidak dapat diambil, sehingga saran belum mempertimbangkan cuaca.");
   }
+  // [REVISI] komoditas lahan beda dari yang dilatih model engine: tandai di respons dan asumsi
+  const komoditasBeda = engineCropMismatch(sumber, land);
+  if (komoditasBeda) solusi.estimasi_total_biaya.asumsi.push(ENGINE_COMMODITY_ASSUMPTION);
   return {
     ...solusi,
+    deteksi_komoditas_berbeda: komoditasBeda,
     catatan_estimasi: DISCLAIMER,
     cuaca_tersedia: Boolean(weather),
     kategori_expense: expenseCategoryFor(solusi.bahan_dan_alat).kategori,

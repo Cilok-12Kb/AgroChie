@@ -35,7 +35,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   const groups = [
-    { title: 'MENU UTAMA',  items: NAV_ITEMS.filter(i => ['/beranda', '/musim-tanam', '/cuaca-lahan', '/prediksi'].includes(i.href)) },
+    { title: 'MENU UTAMA',  items: NAV_ITEMS.filter(i => ['/beranda', '/musim-tanam', '/cuaca-lahan', '/deteksi-tanaman', '/prediksi'].includes(i.href)) },
     { title: 'OPERASIONAL', items: NAV_ITEMS.filter(i => ['/rencana-biaya', '/kalender-uang', '/catatan', '/riwayat-musim', '/risiko-kredit'].includes(i.href)) },
     { title: 'PENDUKUNG',   items: NAV_ITEMS.filter(i => ['/pengingat', '/asisten', '/profil'].includes(i.href)) },
   ];

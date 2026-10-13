@@ -91,6 +91,7 @@ export interface DetectionSolution {
 export interface Detection {
   id: string; lahan_id: string; status: 'SELESAI' | 'TIDAK_YAKIN';
   alasan: string | null; pesan: string | null; provider: string; catatan: string | null; dibuat_pada: string; foto_url: string;
+  sumber_deteksi?: { provider: string; model_versi: string | null } | null; // [REVISI] opsional
   hasil: { tanaman_terlihat?: boolean; kondisi: string; kategori_kualitas: DetectionQuality; skor_kepercayaan: number; masalah_terdeteksi: DetectionProblem[] } | null;
   solusi: DetectionSolution | null;
   biaya_jt: { min: string; max: string } | null;

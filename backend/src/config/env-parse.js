@@ -58,7 +58,14 @@ export function buildEnv(src) {
     detectionMaxBytes: Math.round(positive("DETECTION_MAX_MB", 5) * 1024 * 1024),
     // [REVISI] deteksi tanaman (sub-langkah 2): batas waktu Gemini, pilihan provider deteksi, ambang keyakinan 0..1
     geminiTimeoutMs: positive("GEMINI_TIMEOUT_MS", 30000),
-    detectionProvider: (src.DETECTION_PROVIDER || "gemini").trim().toLowerCase(),
+    // [REVISI] provider utama sekarang "engine" (model CNN sendiri); fallback kosong = nonaktif; margin minimal skor #1 - #2
+    detectionProvider: (src.DETECTION_PROVIDER || "engine").trim().toLowerCase(),
+    detectionFallbackProvider: (src.DETECTION_FALLBACK_PROVIDER || "").trim().toLowerCase(),
+    detectionMinMargin: (() => {
+      const n = Number(src.DETECTION_MIN_MARGIN ?? 0.15);
+      if (!Number.isFinite(n) || n < 0 || n > 1) throw new Error("DETECTION_MIN_MARGIN harus angka 0 sampai 1.");
+      return n;
+    })(),
     detectionMinConfidence: (() => {
       const n = Number(src.DETECTION_MIN_CONFIDENCE ?? 0.5);
       if (!Number.isFinite(n) || n < 0 || n > 1) throw new Error("DETECTION_MIN_CONFIDENCE harus angka 0 sampai 1.");

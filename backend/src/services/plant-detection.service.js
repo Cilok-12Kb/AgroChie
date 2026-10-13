@@ -78,6 +78,7 @@ export function toView(row, season = undefined) {
     dibuat_pada: row.createdAt,
     foto_url: `/api/deteksi-tanaman/${row.id}/foto`,
     hasil: det.hasil ?? null,
+    sumber_deteksi: det.sumber ? { provider: det.sumber.provider, model_versi: det.sumber.model_versi ?? null } : null, // [REVISI] opsional
     solusi: row.solution ?? null,
     biaya_jt: row.costMinJt != null && row.costMaxJt != null ? { min: row.costMinJt, max: row.costMaxJt } : null,
     ke_catatan: { ...noteInfo, expense_id: row.expenseId ?? null },
@@ -107,7 +108,8 @@ export function createPlantDetectionService({ db = prisma, detector = detectionS
       const photoKey = await storage.save(file.buffer, ext);
       try {
         const det = await detector.detect(file.buffer, mime, { komoditas: land.komoditas });
-        const detection = { hasil: det.hasil, alasan: det.alasan, pesan: det.pesan };
+        // [REVISI] sumber = { provider, model_versi, kelas, ... } disimpan di JSON yang sudah ada (tanpa kolom baru)
+        const detection = { hasil: det.hasil, alasan: det.alasan, pesan: det.pesan, sumber: det.sumber ?? { provider: det.provider } };
         const base = { userId, farmId: farm.id, photoKey, photoMime: mime, note: catatan ?? null, provider: det.provider, detection };
 
         if (det.status === "TIDAK_YAKIN") {
@@ -117,7 +119,7 @@ export function createPlantDetectionService({ db = prisma, detector = detectionS
         }
 
         const coords = farm.latitude != null && farm.longitude != null ? { lat: farm.latitude, lon: farm.longitude } : undefined;
-        const solusi = await solver.generate({ detection: det.hasil, land, coords, catatan });
+        const solusi = await solver.generate({ detection: det.hasil, land, coords, catatan, sumber: det.sumber });
         const row = await db.plantDetection.create({
           data: {
             ...base,
