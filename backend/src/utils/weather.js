@@ -68,3 +68,76 @@ export function summarize(daily, durasi, startDate = daily[0]?.date) {
     weeks,
   };
 }
+
+// [REVISI] asisten: kode cuaca WMO (Open-Meteo) -> kondisi dalam Bahasa Indonesia.
+const WMO_ID = new Map([
+  [0, "Cerah"], [1, "Cerah berawan"], [2, "Berawan sebagian"], [3, "Berawan tebal"],
+  [45, "Berkabut"], [48, "Berkabut"],
+  [51, "Gerimis ringan"], [53, "Gerimis"], [55, "Gerimis lebat"],
+  [56, "Gerimis beku"], [57, "Gerimis beku"],
+  [61, "Hujan ringan"], [63, "Hujan sedang"], [65, "Hujan lebat"],
+  [66, "Hujan beku"], [67, "Hujan beku"],
+  [71, "Salju ringan"], [73, "Salju"], [75, "Salju lebat"], [77, "Butiran salju"],
+  [80, "Hujan lokal ringan"], [81, "Hujan lokal sedang"], [82, "Hujan lokal lebat"],
+  [85, "Salju lokal"], [86, "Salju lokal lebat"],
+  [95, "Badai petir"], [96, "Badai petir dengan es"], [99, "Badai petir dengan es lebat"],
+]);
+export const describeWeatherCode = (code) => (isNum(code) && WMO_ID.get(code)) || null;
+
+const numOrNull = (v) => (isNum(v) ? v : null);
+
+/**
+ * [REVISI] Ubah respons Open-Meteo (current + daily, forecast_days=4) menjadi
+ * { current, today, forecast[3 hari berikutnya] }. Nilai tak ada tetap null (tidak ditebak).
+ * Melempar RangeError bila bentuk respons tidak sesuai.
+ */
+export function parseFarmWeather(body) {
+  const c = body?.current;
+  const d = body?.daily;
+  if (!c || typeof c !== "object" || !d || !Array.isArray(d.time) || d.time.length < 1) {
+    throw new RangeError("Respons cuaca tidak valid");
+  }
+  const day = (i) => ({
+    date: d.time[i],
+    condition: describeWeatherCode(d.weather_code?.[i]),
+    rainMm: numOrNull(d.precipitation_sum?.[i]),
+    rainProbabilityPct: numOrNull(d.precipitation_probability_max?.[i]),
+    tempMinC: numOrNull(d.temperature_2m_min?.[i]),
+    tempMaxC: numOrNull(d.temperature_2m_max?.[i]),
+  });
+  return {
+    current: {
+      time: typeof c.time === "string" ? c.time : null,
+      tempC: numOrNull(c.temperature_2m),
+      humidityPct: numOrNull(c.relative_humidity_2m),
+      rainMm: numOrNull(c.precipitation),
+      windKmh: numOrNull(c.wind_speed_10m),
+      condition: describeWeatherCode(c.weather_code),
+    },
+    today: day(0),
+    forecast: d.time.slice(1, 4).map((_, i) => day(i + 1)),
+  };
+}
+
+const PHASES = Object.freeze({
+  CABAI: [["persiapan lahan", 2], ["penanaman", 2], ["perawatan", 8], ["panen dan pascapanen", 4]],
+  TOMAT: [["persiapan lahan", 2], ["penanaman", 2], ["perawatan", 7], ["panen dan pascapanen", 3]],
+  BAWANG: [["persiapan lahan", 2], ["penanaman", 1], ["perawatan", 5], ["panen dan pascapanen", 2]],
+});
+
+/** [REVISI] Minggu ke-n dan fase musim (sesuai knowledge/fase-dan-durasi.md). null bila belum ditanam. */
+export function seasonPhase(crop, plantedOn, today) {
+  const phases = PHASES[crop];
+  if (!phases || !plantedOn) return null;
+  const week = Math.floor((toMs(today) - toMs(plantedOn)) / (7 * DAY_MS)) + 1;
+  if (week < 1) return null;
+  const total = phases.reduce((a, [, w]) => a + w, 0);
+  if (week > total) return { week, phase: "melewati durasi musim", totalWeeks: total };
+  let left = week;
+  for (const [name, w] of phases) {
+    if (left <= w) return { week, phase: name, totalWeeks: total };
+    left -= w;
+  }
+  return null;
+}
+

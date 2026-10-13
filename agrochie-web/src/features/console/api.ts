@@ -134,7 +134,7 @@ export const api = {
     sample: (seasonId: string, body: object) => put<object>(`/seasons/${seasonId}/sample`, body),
   },
   history: { list: () => request<SeasonRecord[]>('/history') },
-  assistant: { chat: (message: string, seasonId?: string, sessionId?: string) => post<{ answer: string; sessionId: string; sources: unknown[] }>('/assistant/chat', { message, seasonId, sessionId }) },
+  assistant: { chat: (message: string, seasonId?: string, sessionId?: string, farmId?: string) => post<{ answer: string; sessionId: string; sources: unknown[] }>('/assistant/chat', { message, seasonId, sessionId, farmId }) }, // [REVISI] farmId lahan aktif
   weather: {
     season: (seasonId: string) => request<SeasonWeather>(`/seasons/${seasonId}/weather`), // [REVISI]
     current: (latitude: number, longitude: number) => request<WeatherNow>(`/weather/current?latitude=${encodeURIComponent(latitude)}&longitude=${encodeURIComponent(longitude)}`),

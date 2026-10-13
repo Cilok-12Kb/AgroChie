@@ -2,7 +2,7 @@ import { prisma } from "../config/prisma.js";
 import { HttpError } from "../utils/http-error.js";
 import { CROP_DURATION } from "../utils/season-flow.js";
 import { todayWib } from "../validators/season.validator.js";
-import { weekWindows, summarize, isoDay } from "../utils/weather.js";
+import { weekWindows, summarize, isoDay, parseFarmWeather } from "../utils/weather.js";
 
 const ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive";
 const FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
@@ -109,6 +109,54 @@ export async function fetchDaily(lat, lon, start, end, today = todayWib()) {
   const rows = [...byDate.values()].sort((a, b) => (a.date < b.date ? -1 : 1));
   cache.set(key, { rows, exp: Date.now() + CACHE_TTL_MS });
   return rows;
+}
+
+// [REVISI] asisten: cuaca terkini + prakiraan 3 hari per koordinat lahan. Cache pendek, timeout, tanpa tulis DB.
+const FARM_CACHE_TTL_MS = 15 * 60 * 1000;
+const FARM_TIMEOUT_MS = 8_000;
+const farmCache = new Map();
+export function clearFarmWeatherCache() {
+  farmCache.clear();
+}
+
+export async function getFarmWeather(lat, lon, now = Date.now()) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
+    throw new HttpError(409, "Lengkapi dulu: lokasi lahan");
+  }
+  const key = `${coord(lat)},${coord(lon)}`;
+  const hit = farmCache.get(key);
+  if (hit && hit.exp > now) return { ...hit.data, cached: true };
+
+  const u = new URL(FORECAST_URL);
+  u.searchParams.set("latitude", coord(lat));
+  u.searchParams.set("longitude", coord(lon));
+  u.searchParams.set("current", "temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,weather_code");
+  u.searchParams.set("daily", "weather_code,precipitation_sum,precipitation_probability_max,temperature_2m_max,temperature_2m_min");
+  u.searchParams.set("forecast_days", "4");
+  u.searchParams.set("timezone", "Asia/Jakarta");
+  let body;
+  try {
+    const res = await fetch(u, { headers: { "User-Agent": USER_AGENT }, signal: AbortSignal.timeout(FARM_TIMEOUT_MS) });
+    if (!res.ok) {
+      console.error(`[weather] asisten: Open-Meteo HTTP ${res.status}`); // tanpa koordinat
+      throw fail();
+    }
+    body = await res.json();
+  } catch (err) {
+    if (err instanceof HttpError) throw err;
+    console.error(`[weather] asisten: Open-Meteo gagal: ${err?.name ?? "Error"}`);
+    throw fail();
+  }
+  let parsed;
+  try {
+    parsed = parseFarmWeather(body);
+  } catch {
+    console.error("[weather] asisten: respons Open-Meteo tidak valid");
+    throw fail();
+  }
+  const data = { ...parsed, source: "Open-Meteo", timezone: "WIB (Asia/Jakarta)", fetchedAt: new Date(now).toISOString() };
+  farmCache.set(key, { data, exp: now + FARM_CACHE_TTL_MS });
+  return { ...data, cached: false };
 }
 
 // Hanya membaca; tidak menulis ke database.
