@@ -7,7 +7,8 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
   const response = await fetch(`/api${path}`, {
     ...init,
     credentials: 'include',
-    headers: { ...(init.body ? { 'Content-Type': 'application/json' } : {}), ...init.headers },
+    // [REVISI] FormData: jangan set Content-Type agar browser mengisi boundary multipart sendiri.
+    headers: { ...(init.body && !(init.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}), ...init.headers },
     cache: 'no-store',
   });
   if (!response.ok) {
@@ -75,6 +76,28 @@ export interface SeasonWeather {
   source: string; weeks: Array<{ minggu: number; rainMm: number | null; tempMaxAvg: number | null }>;
 }
 
+// [REVISI] deteksi kualitas tanaman: /api/deteksi-tanaman
+export type DetectionQuality = 'baik' | 'sedang' | 'buruk';
+export type DetectionSeverity = 'ringan' | 'sedang' | 'berat';
+export type DetectionPriority = 'segera' | 'minggu_ini' | 'pencegahan';
+export interface DetectionProblem { nama: string; jenis: string; tingkat_keparahan: DetectionSeverity; gejala_terlihat: string }
+export interface DetectionSolution {
+  ringkasan: string; kemungkinan_penyebab: string[];
+  langkah_penanganan: Array<{ urutan: number; langkah: string; prioritas: DetectionPriority }>;
+  bahan_dan_alat: Array<{ nama: string; dosis_atau_jumlah: string; estimasi_biaya_min: number; estimasi_biaya_max: number }>;
+  estimasi_total_biaya: { min: number; max: number; per_hektar_atau_per_lahan: string; asumsi: string[] }; // Rupiah penuh
+  risiko_jika_tidak_ditangani: string; pencegahan: string[]; kapan_konsultasi_ahli: string;
+}
+export interface Detection {
+  id: string; lahan_id: string; status: 'SELESAI' | 'TIDAK_YAKIN';
+  alasan: string | null; pesan: string | null; provider: string; catatan: string | null; dibuat_pada: string; foto_url: string;
+  hasil: { tanaman_terlihat?: boolean; kondisi: string; kategori_kualitas: DetectionQuality; skor_kepercayaan: number; masalah_terdeteksi: DetectionProblem[] } | null;
+  solusi: DetectionSolution | null;
+  biaya_jt: { min: string; max: string } | null;
+  ke_catatan: { tersedia?: boolean; sudah_disimpan: boolean; alasan?: string | null; expense_id: string | null };
+}
+export interface DetectionPage { data: Detection[]; page: number; limit: number; total: number; total_halaman: number }
+
 export const api = {
   auth: {
     me: () => request<Account>('/auth/me'),
@@ -135,6 +158,19 @@ export const api = {
   },
   history: { list: () => request<SeasonRecord[]>('/history') },
   assistant: { chat: (message: string, seasonId?: string, sessionId?: string, farmId?: string) => post<{ answer: string; sessionId: string; sources: unknown[] }>('/assistant/chat', { message, seasonId, sessionId, farmId }) }, // [REVISI] farmId lahan aktif
+  detection: {
+    analyze: (farmId: string, file: File, note?: string) => {
+      const form = new FormData();
+      form.append('lahan_id', farmId);
+      if (note?.trim()) form.append('catatan', note.trim());
+      form.append('foto', file); // file terakhir agar field teks terbaca lebih dulu oleh multer
+      return request<Detection>('/deteksi-tanaman', { method: 'POST', body: form });
+    },
+    list: (farmId: string, page = 1, limit = 10) => request<DetectionPage>(`/deteksi-tanaman?lahan_id=${encodeURIComponent(farmId)}&page=${page}&limit=${limit}`),
+    get: (id: string) => request<Detection>(`/deteksi-tanaman/${encodeURIComponent(id)}`),
+    photoUrl: (id: string) => `/api/deteksi-tanaman/${encodeURIComponent(id)}/foto`,
+    toNote: (id: string) => request<{ expense_id: string; musim_id: string; kategori: string; jumlah_jt: string; tanggal: string; catatan: string }>(`/deteksi-tanaman/${encodeURIComponent(id)}/ke-catatan`, { method: 'POST' }),
+  },
   weather: {
     season: (seasonId: string) => request<SeasonWeather>(`/seasons/${seasonId}/weather`), // [REVISI]
     current: (latitude: number, longitude: number) => request<WeatherNow>(`/weather/current?latitude=${encodeURIComponent(latitude)}&longitude=${encodeURIComponent(longitude)}`),

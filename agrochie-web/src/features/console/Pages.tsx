@@ -8,7 +8,8 @@ import { Prediction, Budget, Cashflow } from './views/FinanceViews';
 import { FieldWeather } from './views/EnvironmentView';
 import { HistoryPage, Credit, ReminderPage } from './views/OperationsViews';
 import { Assistant } from './views/AssistantView';
-export type Section = 'beranda' | 'profil' | 'musim-tanam' | 'catatan' | 'prediksi' | 'rencana-biaya' | 'kalender-uang' | 'cuaca-lahan' | 'riwayat-musim' | 'risiko-kredit' | 'pengingat' | 'asisten';
+import { DetectionView } from './views/DetectionView'; // [REVISI]
+export type Section = 'beranda' | 'profil' | 'musim-tanam' | 'catatan' | 'prediksi' | 'rencana-biaya' | 'kalender-uang' | 'cuaca-lahan' | 'riwayat-musim' | 'risiko-kredit' | 'pengingat' | 'asisten' | 'deteksi-tanaman';
 export function ConsoleRoute({section,w}:{section:Section;w:Workspace}) {
   switch(section){
     case 'beranda': return <Dashboard workspace={w}/>;
@@ -23,5 +24,6 @@ export function ConsoleRoute({section,w}:{section:Section;w:Workspace}) {
     case 'risiko-kredit': return <Credit w={w}/>;
     case 'pengingat': return <ReminderPage w={w}/>;
     case 'asisten': return <Assistant w={w}/>;
+    case 'deteksi-tanaman': return <DetectionView w={w}/>;
   }
 }

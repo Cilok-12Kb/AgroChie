@@ -6,7 +6,7 @@ import type {Workspace} from '../hooks';
 import {Button,Card,Empty,ErrorLine,Heading,inputClass,Tag} from '../ui';
 export function Assistant({ w }: { w: Workspace }) {
   const [messages,setMessages]=useState<{role:'user'|'assistant';text:string}[]>([]);
-  const [draft,setDraft]=useState(''); const [sessionId,setSessionId]=useState<string>();
+  const [draft,setDraft]=useState(()=>{ /* [REVISI] konteks awal dari Deteksi tanaman (sekali pakai): hanya mengisi kolom tulis, tidak otomatis terkirim */ if(typeof window==='undefined')return '';const ctx=window.sessionStorage.getItem('agrochie:assistant-context');if(!ctx)return '';window.sessionStorage.removeItem('agrochie:assistant-context');return ctx.slice(0,1000);}); const [sessionId,setSessionId]=useState<string>();
   const [loading,setLoading]=useState(false); const [error,setError]=useState<unknown>(null);
   const send=async(text:string)=>{if(!text.trim()||loading)return;setMessages(prev=>[...prev,{role:'user',text}]);setDraft('');setLoading(true);setError(null);try{const res=await api.assistant.chat(text,w.season?.id,sessionId,w.farm?.id);setSessionId(res.sessionId);setMessages(prev=>[...prev,{role:'assistant',text:res.answer}]);}catch(e){setError(e);}finally{setLoading(false);}};
   const submit=(e:FormEvent)=>{e.preventDefault();void send(draft);};

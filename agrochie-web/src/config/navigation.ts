@@ -11,6 +11,7 @@ import {
   ClipboardList,
   History,
   Bell,
+  ScanSearch,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -33,6 +34,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/rencana-biaya', label: 'Rencana biaya', icon: Wallet, mobile: false, priority: 'P0', requiresFinancing: true },
   { href: '/kalender-uang', label: 'Kalender uang', icon: CalendarDays, mobile: false, priority: 'P0', requiresFinancing: true },
   { href: '/cuaca-lahan', label: 'Cuaca dan lahan', icon: CloudSun, mobile: false, priority: 'P1' },
+  { href: '/deteksi-tanaman', label: 'Deteksi tanaman', icon: ScanSearch, mobile: false, priority: 'P1' }, // [REVISI]
   { href: '/risiko-kredit', label: 'Risiko dan kredit', icon: ShieldCheck, mobile: false, priority: 'P1', requiresFinancing: true },
   { href: '/catatan', label: 'Catatan', icon: ClipboardList, mobile: false, priority: 'P1', requiresFinancing: true },
   { href: '/riwayat-musim', label: 'Riwayat musim', icon: History, mobile: false, priority: 'P1' },
