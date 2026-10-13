@@ -100,13 +100,13 @@ export function DetectionView({ w }: { w: Workspace }) {
   return <div className="space-y-5">
     <Heading title="Deteksi kualitas tanaman" description="Unggah foto daun atau tanaman untuk mengetahui kondisi, penyebab, dan langkah penanganannya." action={<Tag>Lahan: {farm.name}</Tag>}/>
     <Message color="amber">{DISCLAIMER}</Message>
-    <div className="grid lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,.8fr)] gap-5">
-      <Card title="Unggah foto" subtitle={`Lahan yang dianalisis: ${farm.name}. Format JPG, PNG, atau WebP, maksimal ${MAX_MB} MB.`}>
+    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,.8fr)] gap-5">  {/* [REVISI] grid-cols-1 = minmax(0,1fr) agar kolom tidak melebar mengikuti konten */}
+      <Card className="min-w-0 max-w-full" title="Unggah foto" subtitle={`Lahan yang dianalisis: ${farm.name}. Format JPG, PNG, atau WebP, maksimal ${MAX_MB} MB.`}>
         <div onDragOver={(e) => { e.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={onDrop}
-          className={`rounded-2xl border-2 border-dashed p-5 text-center transition ${dragging ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 bg-slate-50'}`}>
+          className={`w-full max-w-full min-w-0 box-border rounded-2xl border-2 border-dashed p-4 sm:p-5 text-center transition ${dragging ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 bg-slate-50'}`}>
           {preview
             // eslint-disable-next-line @next/next/no-img-element
-            ? <img src={preview} alt="Pratinjau foto tanaman" className="mx-auto max-h-72 rounded-xl object-contain"/>
+            ? <img src={preview} alt="Pratinjau foto tanaman" className="mx-auto h-auto max-h-72 max-w-full rounded-xl object-contain"/>
             : <div className="py-6"><ImagePlus className="mx-auto text-emerald-700" size={34}/><p className="mt-3 text-sm font-bold text-slate-700">Tarik dan lepas foto di sini</p><p className="text-xs text-slate-500 mt-1">atau pilih dari perangkat Anda</p></div>}
           <div className="mt-4 flex flex-wrap justify-center gap-2">
             <Button variant="secondary" icon={Upload} onClick={() => fileInput.current?.click()}>Pilih foto</Button>
@@ -118,9 +118,9 @@ export function DetectionView({ w }: { w: Workspace }) {
         </div>
         {fileError && <div className="mt-3"><Message color="red">{fileError}</Message></div>}
         <label className="block mt-4"><span className="block text-xs font-bold text-slate-700 mb-2">Catatan (opsional)</span>
-          <textarea className="console-input" rows={2} maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Contoh: daun menguning sejak 3 hari lalu, habis hujan deras"/>
+          <textarea className="console-input w-full max-w-full box-border" rows={2} maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Contoh: daun menguning sejak 3 hari lalu, habis hujan deras"/>
           <span className="block mt-1.5 text-xs text-slate-500">{note.length}/500 karakter</span></label>
-        <div className="mt-4"><Button icon={ScanSearch} busy={analyze.isPending} disabled={!file} onClick={() => analyze.mutate()}>Analisis</Button></div>
+        <div className="mt-4 [&>button]:w-full sm:[&>button]:w-auto"><Button icon={ScanSearch} busy={analyze.isPending} disabled={!file} onClick={() => analyze.mutate()}>Analisis</Button></div>
         {analyze.isPending && <div className="mt-4 flex items-center gap-3 text-sm text-slate-600" role="status"><LoaderCircle className="animate-spin text-emerald-700" size={18}/> Menganalisis foto... Proses ini bisa memakan waktu sekitar setengah menit.</div>}
         <div className="mt-4"><ErrorLine error={analyze.error}/></div>
       </Card>

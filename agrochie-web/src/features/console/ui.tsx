@@ -7,7 +7,7 @@ import { rupiah, type Season } from './api';
 export function Card({ title, subtitle, action, children, className = '' }: { title?: string; subtitle?: string; action?: ReactNode; children: ReactNode; className?: string }) {
   return <section className={`console-card ${className}`}>
     {(title || subtitle || action) && <div className="flex flex-wrap items-start justify-between gap-3 mb-5">
-      <div>{title && <h2 className="font-extrabold text-[17px] tracking-tight text-slate-900">{title}</h2>}{subtitle && <p className="text-[13px] text-slate-500 mt-1">{subtitle}</p>}</div>{action}
+      <div className="min-w-0 max-w-full break-words">{title && <h2 className="font-extrabold text-[17px] tracking-tight text-slate-900">{title}</h2>}{subtitle && <p className="text-[13px] text-slate-500 mt-1">{subtitle}</p>}</div>{action}
     </div>}
     {children}
   </section>;
