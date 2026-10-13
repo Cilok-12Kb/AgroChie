@@ -241,7 +241,7 @@ Sumber: `backend/.env.example`, `engine/.env.example`, dan pemakaian variabel di
 | `AGROCHIE_UPLOAD_DIR` | Folder foto unggahan (pengembangan lokal) | Opsional | `./uploads` |
 | `SEED_BANK_NAME`, `SEED_BANK_PHONE`, `SEED_BANK_PASSWORD` | Seed akun petugas bank; bila ada yang kosong, seed akun ini dilewati | Opsional | (kosong) |
 
-`GEMINI_FALLBACK_MODEL` tidak ada di kode maupun `.env.example`, jadi tidak didukung.
+`GEMINI_FALLBACK_MODEL` (opsional, kosong = nonaktif, harus beda dari `GEMINI_MODEL`) dicoba satu kali bila model utama 503 atau kuota habis. `GEMINI_MAX_RETRIES` (bawaan `1`) dan `GEMINI_RETRY_BASE_MS` (bawaan `2000`) mengatur ulangan khusus 503.
 
 ### Engine (`engine/.env`)
 

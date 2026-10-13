@@ -1,3 +1,13 @@
+/** [REVISI] Pola id model Gemini: huruf kecil, angka, titik, tanda hubung. Mengembalikan daftar peringatan (kosong = baik). */
+export function modelNameWarnings(label, name) {
+  if (!name) return [];
+  const w = [];
+  if (/[A-Z]/.test(name)) w.push("mengandung huruf kapital");
+  if (/\s/.test(name)) w.push("mengandung spasi");
+  if (!/^[a-z0-9][a-z0-9.-]*$/.test(name)) w.push("tidak cocok pola id model (huruf kecil, angka, titik, tanda hubung)");
+  return w.length ? [`[config] PERINGATAN: ${label}="${name}" ${w.join(", ")}. Panggilan Gemini kemungkinan gagal (HTTP 400). Periksa backend/.env.`] : [];
+}
+
 /**
  * Membentuk objek konfigurasi dari sebuah sumber (mis. process.env).
  * Dipisah dari env.js agar bisa diuji tanpa membaca berkas .env.
@@ -49,6 +59,22 @@ export function buildEnv(src) {
     // Gemini (bagian 14). Nama model bisa diganti lewat .env tanpa mengubah kode.
     geminiKey: src.GEMINI_API_KEY ?? "",
     geminiModel: src.GEMINI_MODEL ?? "gemini-3.5-flash",
+    // [REVISI] retry hemat (hanya untuk 503) dan model cadangan opsional (kosong = nonaktif; harus beda dari GEMINI_MODEL)
+    geminiMaxRetries: (() => {
+      const n = Number(src.GEMINI_MAX_RETRIES ?? 1);
+      if (!Number.isInteger(n) || n < 0) throw new Error("GEMINI_MAX_RETRIES harus bilangan bulat 0 atau lebih.");
+      return n;
+    })(),
+    geminiRetryBaseMs: (() => {
+      const n = Number(src.GEMINI_RETRY_BASE_MS ?? 2000);
+      if (!Number.isFinite(n) || n < 0) throw new Error("GEMINI_RETRY_BASE_MS harus angka 0 atau lebih.");
+      return n;
+    })(),
+    geminiFallbackModel: (() => {
+      const f = (src.GEMINI_FALLBACK_MODEL ?? "").trim();
+      if (f && f === (src.GEMINI_MODEL ?? "gemini-3.5-flash")) throw new Error("GEMINI_FALLBACK_MODEL harus berbeda dari GEMINI_MODEL (atau kosongkan).");
+      return f;
+    })(),
     geminiEmbedModel: src.GEMINI_EMBED_MODEL ?? "gemini-embedding-001",
     embedDims: Number(src.EMBED_DIMS ?? 768),
     ragMinScore: Number(src.RAG_MIN_SCORE ?? 0.5),

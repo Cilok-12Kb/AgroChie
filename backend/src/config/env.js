@@ -1,10 +1,10 @@
 import "dotenv/config";
 
-import { buildEnv } from "./env-parse.js";
+import { buildEnv, modelNameWarnings } from "./env-parse.js";
 
-// [REVISI] bagian 17: isi objek dipindah ke buildEnv (env-parse.js) agar bisa diuji; bentuk `env` tidak berubah
-// kecuali tambahan kunci sesi.
+// [REVISI] peringatan (bukan crash) bila nama model Gemini salah format
 export const env = buildEnv(process.env);
+for (const m of [...modelNameWarnings("GEMINI_MODEL", env.geminiModel), ...modelNameWarnings("GEMINI_FALLBACK_MODEL", env.geminiFallbackModel)]) console.warn(m);
 
 /** Penanda model embedding. Vektor dari model/dimensi berbeda tidak boleh dibandingkan. */
 export const embedTag = () => `${env.geminiEmbedModel}:${env.embedDims}`;

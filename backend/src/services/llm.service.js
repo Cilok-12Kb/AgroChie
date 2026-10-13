@@ -9,7 +9,8 @@ const MAX_TOOL_ROUNDS = 3; // [REVISI] batas putaran pemanggilan fungsi agar tid
  * [REVISI] tools (opsional): { declarations: [FunctionDeclaration], handlers: { nama: async (args) => objek } }.
  * Galat di handler dikembalikan ke Gemini sebagai { error } agar dijawab jujur, bukan dikarang.
  */
-export async function generateAnswer({ system, history, userText, tools }) {
+export async function generateAnswer({ system, history, userText, tools }, client = null /* [REVISI] klien palsu untuk uji */, opts = {} /* [REVISI] uji: { cfg, sleep } */) {
+  const deadline = Date.now() + (opts.cfg ?? env).geminiTimeoutMs; // [REVISI] anggaran waktu untuk retry
   const contents = [
     ...history.map((m) => ({ role: m.role === "USER" ? "user" : "model", parts: [{ text: m.content }] })),
     { role: "user", parts: [{ text: userText }] },
@@ -19,7 +20,7 @@ export async function generateAnswer({ system, history, userText, tools }) {
   try {
     let res;
     for (let round = 0; ; round++) {
-      res = await gemini().models.generateContent({ model: env.geminiModel, contents, config });
+      res = await callGemini((m) => (client ?? gemini()).models.generateContent({ model: m, contents, config }), { deadline, ...opts });
       const calls = res.functionCalls ?? [];
       if (!calls.length || !tools) break;
       if (round >= MAX_TOOL_ROUNDS) throw new HttpError(502, "Asisten tidak memberi jawaban. Coba ulangi.");
@@ -43,9 +44,9 @@ export async function generateAnswer({ system, history, userText, tools }) {
     return text;
   } catch (e) {
     if (e instanceof HttpError) throw e;
-    console.error('[gemini-debug]', err?.status, String(err?.message).slice(0, 500));
-    if (e?.status === 429) throw new HttpError(503, "Asisten sedang sibuk. Coba lagi sebentar lagi.");
-    throw new HttpError(502, "Asisten tidak dapat dihubungi");
+    // [REVISI] galat panggilan Gemini sudah diklasifikasi+dilog di callGemini (HttpError di atas); sisanya galat tak terduga.
+    logGeminiError(e);
+    throw classifyLlmError(e);
   }
 }
 
@@ -58,15 +59,71 @@ export class LlmError extends HttpError {
   }
 }
 
+// [REVISI] satu-satunya klasifikasi galat Gemini (dipakai generateAnswer dan generateStructured).
+// Status HTTP didahulukan; teks status gRPC (mis. "INVALID_ARGUMENT") hanya bila status tidak ada.
+// Pesan ke pengguna selalu umum; detail asli hanya di log server (lihat logGeminiError).
 export function classifyLlmError(e, signal) {
   if (e instanceof LlmError) return e;
   if (signal?.aborted || e?.name === "TimeoutError" || e?.name === "AbortError") {
     return new LlmError(504, "LLM_TIMEOUT", "Analisis AI melewati batas waktu. Coba lagi sebentar lagi.");
   }
-  if (e?.status === 429 || /RESOURCE_EXHAUSTED|quota/i.test(String(e?.message ?? ""))) {
-    return new LlmError(503, "LLM_QUOTA", "Kuota layanan AI sedang habis atau penuh. Coba lagi nanti.");
+  const status = Number(e?.status ?? e?.error?.code);
+  const text = String(e?.message ?? "");
+  const is = (code, re) => status === code || (!Number.isFinite(status) && re.test(text));
+  if (is(429, /RESOURCE_EXHAUSTED/)) {
+    return new LlmError(503, "LLM_QUOTA", "Kuota AI hari ini habis, coba lagi besok atau hubungi admin.");
+  }
+  if (is(503, /UNAVAILABLE/)) {
+    return new LlmError(503, "LLM_BUSY", "Layanan AI sedang sibuk, coba lagi sebentar lagi.");
+  }
+  if ([400, 401, 403, 404].includes(status) || (!Number.isFinite(status) && /INVALID_ARGUMENT|NOT_FOUND|PERMISSION_DENIED|UNAUTHENTICATED/.test(text))) {
+    return new LlmError(500, "LLM_CONFIG", "Konfigurasi layanan AI bermasalah, hubungi admin.");
   }
   return new LlmError(502, "LLM_ERROR", "Layanan AI tidak dapat dihubungi");
+}
+
+/** Log server: status + pesan asli (maks 300 karakter, API key disamarkan). Tidak pernah masuk respons. */
+export function logGeminiError(e) {
+  const msg = String(e?.message ?? "").replace(/AIza[\w-]+/g, "[disembunyikan]").replace(/(key=)[^&\s"]+/gi, "$1[disembunyikan]").slice(0, 300);
+  console.error("[gemini]", e?.status ?? "", msg);
+}
+
+const defaultSleep = (ms, signal) =>
+  new Promise((resolve, reject) => {
+    const t = setTimeout(resolve, ms);
+    signal?.addEventListener("abort", () => { clearTimeout(t); reject(signal.reason); }, { once: true });
+  });
+
+/**
+ * [REVISI] Menjalankan fn(model) dengan kebijakan hemat:
+ * - LLM_BUSY (503): ulang sampai cfg.geminiMaxRetries kali, jeda base*2^n, hanya bila masih muat sebelum deadline.
+ * - LLM_QUOTA (429): tanpa ulang. LLM_CONFIG/lainnya: langsung gagal.
+ * - Model cadangan (opsional, harus beda dari model utama) dicoba satu kali bila utama gagal BUSY atau QUOTA.
+ */
+export async function callGemini(fn, { model, signal, deadline, cfg = env, sleep = defaultSleep } = {}) {
+  const primary = model ?? cfg.geminiModel;
+  const fb = cfg.geminiFallbackModel;
+  const models = fb && fb !== primary ? [primary, fb] : [primary];
+  for (let i = 0; ; i++) {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await fn(models[i]);
+      } catch (e) {
+        if (e instanceof HttpError && !(e instanceof LlmError)) throw e; // mis. 503 kunci belum diisi
+        const err = classifyLlmError(e, signal);
+        logGeminiError(e);
+        if (err.code === "LLM_BUSY" && attempt < cfg.geminiMaxRetries) {
+          const delay = cfg.geminiRetryBaseMs * 2 ** attempt;
+          if (Date.now() + delay < (deadline ?? Infinity)) {
+            try { await sleep(delay, signal); } catch (x) { throw classifyLlmError(x, signal); }
+            continue;
+          }
+        }
+        if (i < models.length - 1 && (err.code === "LLM_BUSY" || err.code === "LLM_QUOTA")) break; // ke model cadangan
+        throw err;
+      }
+    }
+  }
 }
 
 /**
@@ -77,6 +134,7 @@ export function classifyLlmError(e, signal) {
 export async function generateStructured(
   { system, userText, images = [], jsonSchema, temperature = 0.2, timeoutMs = env.geminiTimeoutMs, model = env.geminiModel },
   client = null,
+  opts = {}, // [REVISI] uji: { cfg, sleep }
 ) {
   const signal = AbortSignal.timeout(timeoutMs);
   const parts = [
@@ -86,14 +144,17 @@ export async function generateStructured(
   const config = { systemInstruction: system, temperature, responseMimeType: "application/json", abortSignal: signal };
   if (jsonSchema) config.responseJsonSchema = jsonSchema;
   try {
-    const res = await (client ?? gemini()).models.generateContent({ model, contents: [{ role: "user", parts }], config });
+    const res = await callGemini(
+      (m) => (client ?? gemini()).models.generateContent({ model: m, contents: [{ role: "user", parts }], config }),
+      { model, signal, deadline: Date.now() + timeoutMs, ...opts },
+    );
     const text = res.text?.trim();
     if (!text) throw new LlmError(502, "LLM_EMPTY", "Layanan AI tidak memberi jawaban. Coba ulangi.");
     return text;
   } catch (e) {
     if (e instanceof HttpError && !(e instanceof LlmError)) throw e; // mis. 503 kunci belum diisi
-    const err = classifyLlmError(e, signal);
-    console.error("[gemini]", err.code, e?.status ?? "", e?.name ?? ""); // tanpa isi pesan/gambar
+    const err = classifyLlmError(e, signal); // galat panggilan sudah dilog di callGemini
+    if (!(e instanceof LlmError)) logGeminiError(e);
     throw err;
   }
 }
