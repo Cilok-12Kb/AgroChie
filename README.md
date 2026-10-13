@@ -1,138 +1,374 @@
-# AgroChie — Frontend redesign + Express integration
+﻿# AgroChie
 
-Repo ini merupakan hasil perapian UI frontend (berdasarkan referensi visual dashboard agrikultur) sekaligus penyambungan ke backend Express/Prisma yang telah ada. UI memprioritaskan putih–hijau, tipografi **Nunito**, informasi terbaca, responsive layout, navigasi konsisten, dan komponen modular. Tidak ada pemalsuan respons API jika server/engine mati.
+**Asisten digital untuk petani: rencanakan biaya musim tanam, pantau lahan, prediksi, dan tanya asisten AI.**
 
-> **Batas pengujian:** Kode TS/TSX telah lolos pemeriksaan sintaks melalui compiler TypeScript dan semua backend JS lolos `node --check`. Environment pembuatan paket tidak dapat menuntaskan `npm ci` karena registry tidak dapat diakses, sehingga `next build`, koneksi PostgreSQL, login browser, XGBoost, dan Gemini **belum dapat diverifikasi end-to-end**. Jalankan langkah di bawah pada mesin dengan Node.js dan koneksi registry, kemudian uji secara lokal.
+AgroChie adalah aplikasi web smart farming untuk petani cabai, tomat, dan bawang. Petani sering memulai musim tanam tanpa gambaran biaya per fase, tanpa catatan pengeluaran yang rapi, dan sulit mengenali masalah tanaman sejak dini. AgroChie membantu dengan:
+
+- prediksi biaya musim dan biaya mingguan dari model machine learning;
+- pencatatan biaya aktual dan kalender uang;
+- cuaca lahan dari Open-Meteo;
+- deteksi kualitas tanaman dari foto daun beserta rekomendasi tindakan;
+- asisten AI (Gemini + RAG) yang menjawab berdasarkan data lahan dan cuaca.
+
+<!-- Placeholder screenshot: tambahkan tangkapan layar Beranda di sini -->
+
+## Daftar Isi
+
+1. [Fitur utama](#fitur-utama)
+2. [Arsitektur](#arsitektur)
+3. [Teknologi](#teknologi)
+4. [Prasyarat](#prasyarat)
+5. [Instalasi dan menjalankan](#instalasi-dan-menjalankan)
+6. [Variabel lingkungan](#variabel-lingkungan)
+7. [Ringkasan API](#ringkasan-api)
+8. [Menjalankan tes](#menjalankan-tes)
+9. [Catatan penting dan keterbatasan](#catatan-penting-dan-keterbatasan)
+10. [Struktur folder](#struktur-folder)
+11. [Kontribusi](#kontribusi)
+
+## Fitur utama
+
+Daftar mengikuti menu di aplikasi (`agrochie-web/src/config/navigation.ts`).
+
+| Menu | Fungsi |
+| --- | --- |
+| Beranda | Ringkasan lahan, musim aktif, biaya, dan cuaca. |
+| Musim tanam | Membuat musim, memulai pembiayaan dan penanaman, mencatat panen, serta menutup musim. |
+| Prediksi musim | Menampilkan hasil prediksi biaya musim (rentang P10/P50/P90) dan biaya mingguan dari engine. |
+| Cuaca dan lahan | Cuaca saat ini dan prakiraan berdasarkan koordinat lahan (Open-Meteo). |
+| Deteksi tanaman | Alur: foto daun, lalu model CNN di engine mengklasifikasi, lalu hasilnya dikirim ke Gemini, lalu keluar rekomendasi tindakan, bahan/obat, dan estimasi biaya. Hasil tersimpan di riwayat dan bisa dikirim lewat tombol "Tambahkan ke Catatan biaya". |
+| Rencana biaya | Rincian rencana biaya musim per fase. |
+| Kalender uang | Biaya mingguan terhadap pencatatan aktual. |
+| Risiko dan kredit | Ringkasan risiko dan pembuatan kode rujukan pinjaman (tersimpan lokal, **bukan** persetujuan bank). |
+| Catatan | Mencatat, melihat, dan menghapus pengeluaran aktual musim. |
+| Riwayat musim | Riwayat musim milik pengguna beserta status kualitas data. |
+| Cek lahan | Daftar periksa mingguan per musim (rute `/pengingat`). |
+| Asisten | Chat berbasis Gemini dengan RAG atas dokumen di `backend/knowledge`, dan alat (function calling) untuk data cuaca Open-Meteo serta konteks lahan pengguna. |
+
+Menu **Profil** mengelola data lahan (jenis tanah, NPK, pH, koordinat). Pengguna dapat mendaftar, masuk, atau memakai mode tamu.
 
 ## Arsitektur
 
 ```text
-agrochie-web (Next.js, TypeScript, React Query)
-  ├── src/features/console/api.ts       <-- typed API client dan formatters
-  ├── src/features/console/hooks.ts     <-- server queries + active farm
-  ├── src/features/console/context.tsx  <-- workspace provider
-  ├── src/features/console/ui.tsx       <-- reusable UI primitives
-  ├── src/features/console/FieldMap.tsx <-- ilustrasi / opt-in citra satelit
-  ├── src/features/console/Dashboard.tsx
-  ├── src/features/console/forms/*      <-- profil, musim, pengeluaran, panen
-  ├── src/features/console/views/*       <-- views finansial, cuaca, kredit, dll
-  ├── src/features/console/Pages.tsx    <-- dispatcher rute tipis
-  ├── src/features/console/AuthForm.tsx <-- login/register/tamu nyata
-  ├── src/components/layout/AppShell.tsx <-- nav responsive + auth gate
-  └── src/app/(farmer)/*/page.tsx        <-- entrypoint tipis per rute
-
-                 /api/* (rewrite, same origin)
-                            |
-backend (Express.js, Prisma, PostgreSQL)
-  ├── src/routes/...                    <-- endpoints existing
-  ├── src/routes/history.routes.js      <-- history by owner
-  ├── src/routes/weather.routes.js      <-- Open-Meteo current & forecast
-  └── src/routes/extended-season.routes.js
-        ├── photo upload & private read (local storage dev)
-        ├── persisted weekly checklist
-        └── persisted loan referral (no bank approval/integration)
-
-Python prediction engine (folder engine/ dan artefak model disertakan) <-- ENGINE_URL, ENGINE_INTERNAL_KEY
-Google Gemini (configured separately)           <-- GEMINI_API_KEY
+ Browser
+    |
+    v
++-----------------+     /api/* (rewrite, same origin)     +--------------------+
+| agrochie-web    | ------------------------------------> | backend            |
+| Next.js :3001   |                                       | Express 5 :3000    |
++-----------------+                                       +--------------------+
+                                                            |    |      |     |
+                          +---------------------------------+    |      |     |
+                          v                                      v      |     |
+                 +----------------+                +----------------+   |     |
+                 | PostgreSQL     |                | engine :8000   |   |     |
+                 | (via Prisma)   |                | FastAPI + model|   |     |
+                 +----------------+                +----------------+   |     |
+                                                                        v     v
+                                                                Gemini API  Open-Meteo
 ```
 
-## Cara menjalankan
+| Bagian | Peran |
+| --- | --- |
+| `agrochie-web` (port 3001) | Antarmuka pengguna. Meneruskan `/api/*` ke backend; sesi memakai cookie `httpOnly`. |
+| `backend` (port 3000) | API, autentikasi, aturan bisnis, akses database, serta pemanggilan engine, Gemini, dan Open-Meteo. Hanya backend yang mengakses database. |
+| PostgreSQL | Penyimpanan data (lahan, musim, biaya, deteksi, chat, potongan pengetahuan RAG). |
+| `engine` (port 8000) | Memuat model dan memprediksi: biaya musim, biaya mingguan (XGBoost), dan kualitas daun (CNN Keras). Dilindungi header `x-internal-key`. |
+| Gemini API | Rekomendasi tindakan deteksi, asisten chat, dan embedding RAG. |
+| Open-Meteo | Data cuaca. |
 
-Syarat: Node.js yang kompatibel dengan Next.js 16 dan Prisma 7, PostgreSQL, serta Python dengan dependencies yang tercantum dalam `engine/requirements.txt`. Kode engine Python dan artefak model XGBoost sudah tersedia di folder `engine/` dalam paket ini, tetapi layanannya harus dijalankan secara terpisah.
+## Teknologi
 
-**1. Mesin prediksi Python (FastAPI, terminal pertama)**
+| Bagian | Teknologi | Versi |
+| --- | --- | --- |
+| Frontend | Next.js | 16.4.0 |
+| | React / React DOM | 19.3.0 |
+| | TypeScript | ^5 |
+| | Tailwind CSS | ^4 |
+| | TanStack React Query | ^5.104.2 |
+| | React Hook Form / Zod | ^7.90.0 / ^3.25.76 |
+| | Recharts | ^3.10.1 |
+| | Lucide React | ^1.55.0 |
+| Backend | Express | ^5.2.1 |
+| | Prisma, `@prisma/client`, adapter pg | 7.10.0 |
+| | `pg` | ^8.23.1 |
+| | Zod | 4.6.5 |
+| | jose (JWT) | 6.2.12 |
+| | argon2 | ^0.45.1 |
+| | helmet / cors / cookie-parser / multer | 8.3.0 / 2.8.6 / 1.4.7 / 2.4.0 |
+| Engine | FastAPI, Uvicorn | tidak dikunci |
+| | XGBoost | 3.4.1 |
+| | TensorFlow (model CNN Keras) | tidak dikunci |
+| | scikit-learn, pandas, numpy, pillow | tidak dikunci |
+| Data/AI | Google Gemini SDK (`@google/genai`) | 2.28.0 |
+| | Model Gemini bawaan | `gemini-3.5-flash` |
+| | Model embedding bawaan | `gemini-embedding-001` (768 dimensi) |
+| | Cuaca | Open-Meteo |
 
-```bash
+## Prasyarat
+
+| Kebutuhan | Versi |
+| --- | --- |
+| Node.js | Tidak ada field `engines` di `package.json`. Next.js 16 dan Prisma 7 membutuhkan Node.js modern; pengembangan dilakukan dengan Node.js 22 ke atas. TODO: perlu dilengkapi (versi minimum resmi). |
+| Python | Engine diuji dengan Python 3.12. Versi minimum lain belum diverifikasi. |
+| PostgreSQL | TODO: perlu dilengkapi (versi minimum belum tercatat di kode). |
+| Git | Untuk clone repositori. |
+
+## Instalasi dan menjalankan
+
+Perintah memakai PowerShell (Windows). Padanan macOS/Linux dicantumkan hanya bila berbeda.
+
+### 1. Clone repositori
+
+```powershell
+git clone <URL_REPOSITORI_ANDA> Fintechton
+cd Fintechton
+```
+
+### 2. Database
+
+Buat database PostgreSQL, misalnya `agrochie`:
+
+```powershell
+psql -U postgres -c "CREATE DATABASE agrochie;"
+```
+
+Isi `DATABASE_URL` di `backend/.env` (lihat langkah Backend), lalu dari folder `backend`:
+
+```powershell
+cd backend
+npx prisma generate
+npx prisma migrate deploy
+npm run seed
+```
+
+`npm run seed` mengisi data fase tanaman dan hujan klimatologi, serta akun petugas bank bila variabel `SEED_BANK_*` terisi lengkap.
+
+### 3. Backend
+
+```powershell
+cd backend
+Copy-Item .env.example .env      # macOS/Linux: cp .env.example .env
+# Edit .env: DATABASE_URL, JWT_SECRET (min. 32 karakter), ENGINE_INTERNAL_KEY, GEMINI_API_KEY
+npm ci
+npm run dev                      # atau: npm start
+```
+
+Cek: `http://localhost:3000/api/health`.
+
+Untuk mengisi basis pengetahuan RAG asisten (butuh `GEMINI_API_KEY` dan database aktif):
+
+```powershell
+npm run ingest
+```
+
+### 4. Engine
+
+```powershell
 cd engine
 python -m venv .venv
-# Linux/macOS: source .venv/bin/activate
-# Windows PowerShell: .venv\Scripts\Activate.ps1
+.venv\Scripts\Activate.ps1       # macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env
-# Ubah ENGINE_INTERNAL_KEY menjadi nilai acak dan sama dengan backend/.env
+Copy-Item .env.example .env      # macOS/Linux: cp .env.example .env
+# Edit .env: ENGINE_INTERNAL_KEY harus sama dengan backend/.env
 uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-Periksa `http://127.0.0.1:8000/health`. Folder `engine/models/biaya_musim` dan `biaya_mingguan` sudah menyertakan artefak model; cek status model pada respons health sebelum memakai prediksi. Instalasi TensorFlow untuk model daun dapat memerlukan waktu dan dependency sistem tambahan.
+Cek: `http://127.0.0.1:8000/health` (menampilkan status model). Engine menolak start bila `ENGINE_INTERNAL_KEY` kosong.
 
-**2. Backend (terminal kedua)**
+Model sudah ada di repositori, di `engine/models/`, sehingga tidak perlu diunduh:
 
-```bash
-cd backend
-cp .env.example .env
-# Atur DATABASE_URL, JWT_SECRET (min 32 karakter), ENGINE_URL dan ENGINE_INTERNAL_KEY.
-# API Gemini perlu GEMINI_API_KEY + setup embeddings/RAG.
-npm ci
-npx prisma generate
-npx prisma migrate deploy
-npm run dev
-```
+- `biaya_musim/` dan `biaya_mingguan/` (XGBoost, berkas `.json`);
+- `kualitas_tanaman/` (CNN Keras, `best_model.keras`).
 
-Backend: `http://localhost:3000/api/health` (membutuhkan PostgreSQL aktif).
+Skrip pelatihan belum tersedia: `engine/scripts/train.py` saat ini kosong. TODO: perlu dilengkapi (cara melatih ulang model). Pemasangan TensorFlow dapat memakan waktu.
 
-**3. Frontend** (terminal ketiga)
+### 5. Frontend
 
-```bash
+Frontend tidak punya `.env.example` di repositori (pola `.env*` diabaikan oleh `agrochie-web/.gitignore`). Variabel frontend bersifat opsional, jadi `.env.local` boleh dilewati bila backend berjalan di `http://127.0.0.1:3000`.
+
+```powershell
 cd agrochie-web
-cp .env.example .env.local
+# Opsional: buat .env.local (lihat tabel variabel lingkungan frontend)
 npm ci
 npm run dev -- -p 3001
 ```
 
-Buka `http://localhost:3001`. Frontend Next.js mem-proxy `/api/*` ke backend melalui `API_PROXY_TARGET`. **Jangan jalankan kedua aplikasi di port 3000**. Sesuaikan `FRONTEND_ORIGIN=http://localhost:3001` pada backend. Cookie sesi dikelola Express sebagai `httpOnly`, bukan `localStorage` token.
+### 6. Urutan menjalankan dan alamat
 
-**4. Data pengujian**
+Jalankan berurutan, layanan aplikasi di terminal terpisah:
 
-Gunakan daftar akun atau login sesuai data Anda. Mode tamu meminta sesi asli ke `POST /api/auth/guest`; data tamu berada di server dan dihapus ketika logout. Buat profil lahan yang valid sebelum membuat musim. Untuk memulai pembiayaan, lengkapi lokasi, jenis tanah, sumber air, pH + tanggal ukur, N/P/K, serta parameter cuaca dan indeks harga. Tidak ada default cuaca buatan. **Jika mesin Python belum dinyalakan, artefaknya gagal dimuat, atau tidak merespons, pembiayaan tidak dapat berjalan dan status musim tetap DRAFT.**
-
-## Fitur dan sumber data
-
-| Menu | Backend yang digunakan | Catatan |
+| Urutan | Layanan | Alamat |
 | --- | --- | --- |
-| Masuk / Daftar / Tamu | `/api/auth/login`, `/register`, `/guest`, `/me`, `/logout` | Nomor HP, bukan email; sesi cookie |
-| Profil | `/api/farms` GET/POST/PATCH | Nama, tanah, NPK, pH, koordinat, modal |
-| Musim tanam | `/api/farms/:id/seasons`, `/api/seasons/:id/start-financing`, `/start-planting`, `/harvests`, `/sample`, `/close` | Mesin biaya Python diperlukan saat mulai pembiayaan |
-| Beranda | Data farm/season/expense + cuaca | Tidak mencampur mock dengan data nyata |
-| Prediksi | `season.costPlan` dari API | Model version, P10/P50/P90, biaya mingguan |
-| Rencana biaya | `season.costPlan` + fase baseline | Porsi fase 19/16/50/15 ditandai aturan indikatif |
-| Kalender uang | CostPlan + Expense | Biaya mingguan dan pencatatan aktual |
-| Catatan | `/api/seasons/:id/expenses` | Tambah/list/hapus transaksi aktual |
-| Cuaca & lahan | `/api/weather/current` + `/forecast` | Open-Meteo dari Express, 7 hari |
-| Panen/foto | `/api/seasons/:id/photos/upload` + `/photos/:photoId/file` | Simpan JPEG/PNG/WebP asli, **lokal dev**, bukan verifikasi GPS |
-| Riwayat musim | `/api/history` | Status kualitas dan persetujuan data dari DB |
-| Pengingat | `/api/seasons/:id/checklist` | Checkbox per minggu ke tabel ReminderCheck |
-| Risiko & kredit | `/api/seasons/:id/loans` | Membuat kode rujukan lokal, **bukan persetujuan bank** |
-| Asisten | `/api/assistant/chat` | Gemini dan RAG wajib terkonfigurasi; tidak ada jawaban palsu |
+| 1 | PostgreSQL | `localhost:5432` |
+| 2 | Engine | `http://127.0.0.1:8000` |
+| 3 | Backend | `http://localhost:3000` |
+| 4 | Frontend | `http://localhost:3001` (buka ini di browser) |
 
-## Desain & UX
+`FRONTEND_ORIGIN` di backend harus sama dengan alamat frontend.
 
-- Tampilan utama putih dengan hijau tanaman, cards ringan, Nunito, sidebar berkelompok, bottom nav mobile.
-- Dashboard mengikuti komposisi referensi: visual lahan dominan kiri, panel ringkasan kanan. **Ilustrasi** tidak dianggap batas geografis.
-- Jika ada koordinat lahan, pengguna dapat secara sadar menekan **Lihat satelit** untuk citra World Imagery Esri (dengan atribusi). Titik koordinat **bukan** poligon lahan. Citra dan lokasi dikirim ke pihak penyedia tile setelah opt-in; koneksi internet diperlukan.
-- Input proses tetap berurutan: buat profil → buat musim → mulai pembiayaan → mulai penanaman → catat panen → tutup musim.
-- Sebelum pembiayaan dimulai, prediksi, anggaran, kalender, dan kredit dijaga oleh **money gate**, bukan diisi angka contoh.
-- Error jaringan dan validasi nyata ditampilkan kepada petani tanpa mengklaim aksi berhasil.
 
-## Batasan yang masih ada
+## Variabel lingkungan
 
-1. **Engine Python dan artefak model biaya disertakan**, tetapi wajib dipasang dependency, disetel kunci internal, dan dijalankan secara terpisah. Integrasi belum diuji end-to-end di lingkungan ini; akurasi dunia nyata tidak dinyatakan telah tervalidasi.
-2. Integrasi Gemini memerlukan `GEMINI_API_KEY` dan pipeline embeddings/RAG yang benar-benar berjalan.
-3. Upload foto menyimpan berkas privat di `backend/uploads` secara lokal untuk pengembangan. Di produksi, pindahkan ke S3-compatible object storage dan pertahankan kontrol akses. Metadata GPS/waktu asli perangkat belum diverifikasi; tidak boleh mengklaim foto sudah autentik.
-4. Pinjaman tersimpan pada backend sebagai kode rujukan manual, belum dikirim ke bank. Status DIAJUKAN **tidak berarti** bank menerima atau menyetujui.
-5. Ekspor CSV 32 kolom belum tersedia sebagai endpoint backend. Riwayat hanya menampilkan record actual dengan kualitas/consent dari DB.
-6. Dashboard menggunakan satu titik koordinat lahan. Batas GIS polygon yang asli belum tersedia dari alur frontend ini.
-7. Modul frontend sebelumnya yang bergantung pada mock repo dipindahkan ke `legacy_frontend/` sebagai arsip nonaktif (di luar kompilasi Next). **Rute aplikasi aktif** memakai `src/features/console`. Tidak ada fallback diam-diam ke mock repo saat API gagal.
+Sumber: `backend/.env.example`, `engine/.env.example`, dan pemakaian variabel di kode. Semua nilai contoh adalah nilai palsu. Jangan pernah meng-commit berkas `.env`.
 
-## Pemeriksaan yang disarankan sebelum deploy
+### Backend (`backend/.env`)
 
-```bash
+| Variabel | Fungsi | Wajib | Contoh aman |
+| --- | --- | --- | --- |
+| `DATABASE_URL` | Koneksi PostgreSQL | Wajib | `postgresql://USER:PASSWORD@localhost:5432/agrochie?schema=public` |
+| `PORT` | Port backend (bawaan 3000) | Opsional | `3000` |
+| `NODE_ENV` | Mode lingkungan | Opsional | `development` |
+| `ENGINE_URL` | Alamat engine | Opsional (bawaan `http://127.0.0.1:8000`) | `http://127.0.0.1:8000` |
+| `ENGINE_INTERNAL_KEY` | Kunci bersama dengan engine, dikirim sebagai header `x-internal-key` | Wajib untuk prediksi dan deteksi | `isi_kunci_acak_anda` |
+| `GEMINI_API_KEY` | Kunci Gemini; tanpa ini asisten dan solusi deteksi menjawab 503 | Wajib untuk asisten dan deteksi | `isi_api_key_anda` |
+| `GEMINI_MODEL` | Model Gemini | Opsional | `gemini-3.5-flash` |
+| `GEMINI_EMBED_MODEL` | Model embedding RAG | Opsional | `gemini-embedding-001` |
+| `EMBED_DIMS` | Dimensi embedding | Opsional | `768` |
+| `RAG_MIN_SCORE` | Skor kemiripan minimal RAG | Opsional | `0.5` |
+| `GEMINI_TIMEOUT_MS` | Batas waktu satu panggilan Gemini (ms, > 0) | Opsional | `30000` |
+| `DETECTION_PROVIDER` | Penyedia deteksi foto: `engine` (bawaan) atau `gemini` | Opsional | `engine` |
+| `DETECTION_FALLBACK_PROVIDER` | Penyedia cadangan (kosong = nonaktif; nilai: `gemini`); memakai kuota Gemini | Opsional | (kosong) |
+| `DETECTION_MIN_MARGIN` | Selisih minimal skor kelas #1 dan #2 (0 sampai 1) | Opsional | `0.15` |
+| `DETECTION_MIN_CONFIDENCE` | Ambang keyakinan (0 sampai 1) | Opsional | `0.5` |
+| `DETECTION_MAX_MB` | Ukuran maksimal foto unggahan (MB, > 0) | Opsional | `5` |
+| `JWT_SECRET` | Rahasia penanda tangan sesi, minimal 32 karakter | Wajib | `isi_teks_acak_minimal_32_karakter` |
+| `JWT_TTL_DAYS` | Masa berlaku sesi (hari) | Opsional | `7` |
+| `GUEST_TTL_HOURS` | Masa berlaku sesi tamu (jam) | Opsional | `24` |
+| `COOKIE_NAME` | Nama cookie sesi | Opsional | `agro_session` |
+| `FRONTEND_ORIGIN` | Origin frontend untuk CORS (satu alamat http/https, bukan `*`) | Opsional (bawaan `http://localhost:3001`) | `http://localhost:3001` |
+| `TRUST_PROXY` | `false` (bawaan), `true`, atau jumlah hop proxy | Opsional | `false` |
+| `AGROCHIE_UPLOAD_DIR` | Folder foto unggahan (pengembangan lokal) | Opsional | `./uploads` |
+| `SEED_BANK_NAME`, `SEED_BANK_PHONE`, `SEED_BANK_PASSWORD` | Seed akun petugas bank; bila ada yang kosong, seed akun ini dilewati | Opsional | (kosong) |
+
+`GEMINI_FALLBACK_MODEL` tidak ada di kode maupun `.env.example`, jadi tidak didukung.
+
+### Engine (`engine/.env`)
+
+| Variabel | Fungsi | Wajib | Contoh aman |
+| --- | --- | --- | --- |
+| `ENGINE_INTERNAL_KEY` | Harus sama dengan backend; engine tidak mau start bila kosong | Wajib | `isi_kunci_acak_anda` |
+| `MODELS_DIR` | Folder artefak model (bawaan `engine/models`); dibaca kode, tidak ada di `.env.example` | Opsional | `./models` |
+
+### Frontend (`agrochie-web/.env.local`)
+
+Tidak ada `.env.example` yang dilacak git. Variabel berikut dibaca dari kode:
+
+| Variabel | Fungsi | Wajib | Contoh aman |
+| --- | --- | --- | --- |
+| `API_PROXY_TARGET` | Alamat backend untuk proxy `/api/*` (bawaan `http://127.0.0.1:3000`) | Opsional | `http://127.0.0.1:3000` |
+| `NEXT_PUBLIC_DETECTION_MAX_MB` | Batas ukuran foto di sisi klien (bawaan 5); samakan dengan `DETECTION_MAX_MB` | Opsional | `5` |
+
+
+## Ringkasan API
+
+Semua path berawalan `/api`. Semua endpoint **butuh sesi** (cookie), kecuali `GET /health`, `POST /auth/register`, `POST /auth/login`, dan `POST /auth/guest`. Data milik pengguna lain dijawab 404.
+
+| Modul | Metode dan path | Fungsi |
+| --- | --- | --- |
+| Umum | `GET /health` | Cek layanan |
+| Auth | `POST /auth/register` | Daftar |
+| | `POST /auth/login` | Masuk |
+| | `POST /auth/guest` | Sesi tamu |
+| | `GET /auth/me` | Data sesi saat ini |
+| | `POST /auth/logout` | Keluar |
+| Farms | `GET /farms`, `POST /farms` | Daftar dan buat lahan |
+| | `GET /farms/:id`, `PATCH /farms/:id` | Detail dan ubah lahan |
+| | `GET /farms/:farmId/seasons`, `POST /farms/:farmId/seasons` | Daftar dan buat musim |
+| Seasons | `GET /seasons/:id`, `PATCH /seasons/:id` | Detail dan ubah musim |
+| | `POST /seasons/:id/start-financing`, `/predict-cost`, `/recalc-cost`, `/stop-financing` | Pembiayaan dan prediksi biaya |
+| | `POST /seasons/:id/start-planting`, `/close` | Mulai tanam dan tutup musim |
+| | `GET /seasons/:id/weather` | Cuaca musim |
+| | `GET`, `POST /seasons/:id/harvests` | Panen |
+| | `GET /seasons/:id/sample`, `PUT /seasons/:id/sample` | Sampel panen |
+| | `GET`, `POST /seasons/:id/photos` | Data foto musim |
+| | `POST /seasons/:id/photos/upload`, `GET /seasons/:id/photos/:photoId/file` | Unggah dan baca berkas foto |
+| | `GET /seasons/:id/checklist`, `PUT /seasons/:id/checklist/:taskKey` | Daftar periksa mingguan |
+| | `GET`, `POST /seasons/:id/loans` | Rujukan pinjaman |
+| Expenses | `GET /seasons/:id/expenses`, `GET /seasons/:id/expenses/summary` | Daftar dan ringkasan pengeluaran |
+| | `POST /seasons/:id/expenses`, `DELETE /seasons/:id/expenses/:expenseId` | Tambah dan hapus pengeluaran |
+| Cuaca | `GET /weather/current?latitude=&longitude=` | Cuaca saat ini |
+| | `GET /weather/forecast?latitude=&longitude=` | Prakiraan |
+| Asisten | `POST /assistant/chat` | Kirim pesan (dibatasi 20 per 10 menit) |
+| | `GET /assistant/sessions/:id` | Ambil sesi chat |
+| Deteksi tanaman | `POST /deteksi-tanaman` | Unggah foto dan analisis |
+| | `GET /deteksi-tanaman`, `GET /deteksi-tanaman/:id` | Riwayat dan detail |
+| | `GET /deteksi-tanaman/:id/foto` | Foto hasil deteksi |
+| | `POST /deteksi-tanaman/:id/ke-catatan` | Tambahkan ke Catatan biaya |
+| Crops | `POST /crops/leaf-quality` | Kualitas daun (foto base64) |
+| History | `GET /history` | Riwayat musim |
+
+Engine (internal, butuh header `x-internal-key`): `POST /predict/cost`, `POST /predict/leaf`. `GET /health` pada engine tidak memerlukan kunci.
+
+## Menjalankan tes
+
+**Backend** (`node --test`):
+
+```powershell
+cd backend
+npm test
+```
+
+Sebagian tes (berakhiran `.db.test.js`) membuat dan menghapus data, sehingga hanya berjalan bila `DATABASE_URL` menunjuk ke database yang namanya mengandung `_test` (misalnya `agrochie_test`, dengan migrasi sudah diterapkan). Bila tidak, tes tersebut otomatis dilewati. Jangan mengarahkan `DATABASE_URL` ke database berisi data penting saat menjalankan tes.
+
+**Frontend** (tidak ada skrip tes; tersedia lint dan build):
+
+```powershell
 cd agrochie-web
 npm run lint
 npx tsc --noEmit
 npm run build
-
-cd ../backend
-npm test
 ```
 
-Lakukan pengujian end-to-end di PostgreSQL khusus tes: akun, otorisasi per user, farm CRUD, prediksi sukses/gagal, aturan money gate, transaksi, sampel panen, unggah foto, penutupan, riwayat, rujukan dan pengingat. Periksa mobile 375px dan desktop 1440px. Jangan arahkan perangkat publik ke storage foto lokal tanpa audit keamanan.
+**Engine** (pytest, dengan virtual environment aktif):
+
+```powershell
+cd engine
+python -m pytest
+```
+
+
+## Catatan penting dan keterbatasan
+
+- **Cakupan model CNN.** Model kualitas tanaman hanya mengenali kelas yang pernah dilatih: cabai (cercospora, sehat, keriting daun/kompleks murda, gangguan hara, embun tepung) dan tomat (bercak bakteri, jamur hitam, bercak abu-abu, hawar daun, sehat, embun tepung). Komoditas atau penyakit lain tidak dikenali. Hasil berkeyakinan rendah dianggap "tidak yakin".
+- **Estimasi biaya dari AI hanyalah perkiraan** dan bukan pengganti penyuluh pertanian.
+- **Kuota Gemini.** Free tier memiliki kuota kecil sehingga bisa muncul galat sibuk atau kuota habis. Fallback deteksi ke Gemini menambah pemakaian kuota (hingga 4 panggilan per analisis).
+- **Cuaca** bergantung pada Open-Meteo; bila tidak terjangkau, API menjawab 503.
+- **Prediksi biaya** butuh engine yang berjalan dan data lahan lengkap; tanpa itu musim tetap berstatus draf. Tidak ada nilai cuaca atau biaya buatan sebagai pengganti.
+- **Foto** disimpan di disk lokal (`backend/uploads`, tidak masuk repositori) untuk pengembangan. Untuk produksi, gunakan penyimpanan objek dan lakukan audit keamanan.
+- **Rujukan pinjaman** hanya kode rujukan tersimpan; tidak terhubung ke bank dan bukan persetujuan bank.
+- **Lahan** direpresentasikan oleh satu titik koordinat, bukan batas poligon.
+
+## Struktur folder
+
+```text
+Fintechton/
+├── agrochie-web/        # Frontend Next.js (port 3001)
+│   ├── public/
+│   └── src/             # app (rute), components, config, features, providers
+├── backend/             # API Express 5 + Prisma (port 3000)
+│   ├── knowledge/       # dokumen sumber RAG asisten (.md)
+│   ├── prisma/          # schema.prisma, migrations, seed
+│   ├── scripts/         # ingest-knowledge.js
+│   ├── src/             # config, controllers, middleware, routes, services, utils
+│   └── tests/           # tes node --test
+├── engine/              # FastAPI + model (port 8000)
+│   ├── app/             # api, core, ml, schemas, services
+│   ├── models/          # biaya_musim, biaya_mingguan, kualitas_tanaman
+│   ├── scripts/
+│   └── tests/           # tes pytest
+├── legacy_frontend/     # arsip frontend lama, tidak dipakai/dikompilasi
+└── README.md
+```
+
+## Kontribusi
+
+- Kerjakan perubahan di branch terpisah (riwayat memakai pola seperti `feat/...`), bukan langsung di `main`.
+- Pesan commit mengikuti pola Conventional Commits dengan cakupan, misalnya `feat(deteksi): ...`, `fix(cuaca): ...`, `chore: ...`.
+- Jalankan tes terkait sebelum commit.
+- Jangan meng-commit `.env`, kunci, atau data pengguna.
+
+## Lisensi
+
+TODO: perlu dilengkapi. Berkas `LICENSE` tidak ditemukan di repositori.
+
