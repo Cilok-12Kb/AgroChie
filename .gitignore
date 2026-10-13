@@ -2,9 +2,10 @@
 node_modules/
 
 # Environment & rahasia
-.venv
+.venv/
 .env
 .env.*
+!.env.example
 *.pem
 *.key
 
@@ -12,6 +13,7 @@ node_modules/
 *.log
 npm-debug.log*
 .cache/
+.next/
 
 # Build output
 dist/
@@ -20,22 +22,21 @@ build/
 # OS & editor
 .DS_Store
 Thumbs.db
-.vscode/!.env.example
-!.env.example
+.vscode/
 
-<<<<<<< HEAD
 # Dokumen dan berkas Cline (tidak di-upload)
-/docs/
-/.clinerules
-/.clineignore
-/.cline/
-/cline_docs/
+docs/
+.clinerules
+.clinerules/
+.clineignore
+.cline/
+cline_docs/
+memory-bank/
 
+# Python
 __pycache__/
 *.pyc
+.pytest_cache/
 
-__pycache__/
-*.pyc
-=======
+# Upload pengguna
 backend/uploads/
->>>>>>> 9a6d8738198ab93e0a53bf971e4d45a82560133a
