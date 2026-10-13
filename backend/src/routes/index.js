@@ -9,6 +9,7 @@ import { assistantRoutes } from "./assistant.routes.js";
 import { historyRoutes } from "./history.routes.js";
 import { weatherRoutes } from "./weather.routes.js";
 import { extendedSeasonRoutes } from "./extended-season.routes.js";
+import { detectionRoutes } from "./detection.routes.js";
 
 export const routes = Router();
 
@@ -25,3 +26,4 @@ routes.use("/assistant", assistantRoutes);
 routes.use("/history", historyRoutes);
 routes.use("/weather", weatherRoutes);
 routes.use("/seasons", extendedSeasonRoutes);
+routes.use("/deteksi-tanaman", detectionRoutes); // [REVISI] deteksi kualitas tanaman

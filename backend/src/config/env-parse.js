@@ -56,6 +56,14 @@ export function buildEnv(src) {
     // [REVISI] deteksi tanaman: foto disimpan di luar folder publik; batas ukuran dalam MB
     uploadDir: src.AGROCHIE_UPLOAD_DIR || "./uploads",
     detectionMaxBytes: Math.round(positive("DETECTION_MAX_MB", 5) * 1024 * 1024),
+    // [REVISI] deteksi tanaman (sub-langkah 2): batas waktu Gemini, pilihan provider deteksi, ambang keyakinan 0..1
+    geminiTimeoutMs: positive("GEMINI_TIMEOUT_MS", 30000),
+    detectionProvider: (src.DETECTION_PROVIDER || "gemini").trim().toLowerCase(),
+    detectionMinConfidence: (() => {
+      const n = Number(src.DETECTION_MIN_CONFIDENCE ?? 0.5);
+      if (!Number.isFinite(n) || n < 0 || n > 1) throw new Error("DETECTION_MIN_CONFIDENCE harus angka 0 sampai 1.");
+      return n;
+    })(),
 
     // [REVISI] bagian 17: sesi JWT di cookie httpOnly
     jwtSecret,

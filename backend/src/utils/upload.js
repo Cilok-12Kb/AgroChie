@@ -1,6 +1,6 @@
 import multer from "multer";
 import { randomUUID } from "node:crypto";
-import { mkdir, writeFile, readFile } from "node:fs/promises";
+import { mkdir, writeFile, readFile, unlink } from "node:fs/promises"; // [REVISI] unlink
 import path from "node:path";
 import { env } from "../config/env.js";
 import { HttpError } from "./http-error.js";
@@ -44,6 +44,12 @@ export async function saveImage(buffer, ext) {
   await mkdir(dir(), { recursive: true });
   await writeFile(path.join(dir(), key), buffer, { flag: "wx" });
   return key;
+}
+
+/** [REVISI] sub-langkah 3: hapus satu foto lewat kunci (mis. analisis gagal, agar tidak ada berkas yatim). Senyap bila tidak ada. */
+export async function deleteImage(key) {
+  if (!KEY_RE.test(String(key))) return;
+  await unlink(path.join(dir(), key)).catch(() => {});
 }
 
 /** Membaca foto lewat kunci. Kunci dipastikan berpola UUID.ekstensi agar tidak bisa keluar dari folder unggahan. */

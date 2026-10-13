@@ -177,6 +177,7 @@ model Expense {
   note      String?
   simulated Boolean         @default(false)
   createdAt DateTime        @default(now())
+  plantDetection PlantDetection? // [REVISI] sub-langkah 3: asal catatan dari deteksi tanaman
 
   @@index([seasonId, spentOn])
   @@map("expenses")
@@ -404,6 +405,9 @@ model PlantDetection {
   costMinJt   Decimal?        @db.Decimal(10, 3) // juta Rupiah; null bila tidak ada estimasi
   costMaxJt   Decimal?        @db.Decimal(10, 3)
   provider    String
+  // [REVISI] sub-langkah 3: Expense hasil "Tambahkan ke Catatan"; unik agar satu deteksi hanya bisa dikirim sekali
+  expenseId   String?         @unique
+  expense     Expense?        @relation(fields: [expenseId], references: [id], onDelete: SetNull)
   createdAt   DateTime        @default(now())
 
   @@index([farmId, createdAt])

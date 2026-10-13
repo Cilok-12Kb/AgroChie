@@ -55,3 +55,20 @@ export function parseDetectionCreate(body) {
   if (catatan.length > MAX_NOTE) throw new HttpError(400, `Catatan maksimal ${MAX_NOTE} karakter`);
   return { lahanId: r.data.lahan_id, catatan: catatan || null };
 }
+
+// [REVISI] sub-langkah 3: query riwayat. lahan_id wajib; page >= 1 (bawaan 1); limit 1..50 (bawaan 10).
+export const MAX_LIMIT = 50;
+export function parseDetectionList(query) {
+  const q = query ?? {};
+  const lahan = z.string().trim().min(1).max(64).regex(/^[A-Za-z0-9_-]+$/).safeParse(q.lahan_id);
+  if (!lahan.success) throw new HttpError(400, "lahan_id wajib dan harus valid");
+  const int = (v, name, min, max, fallback) => {
+    if (v === undefined || v === "") return fallback;
+    if (typeof v !== "string" || !/^\d+$/.test(v) || Number(v) < min || Number(v) > max) {
+      throw new HttpError(400, `${name} harus bilangan bulat ${min} sampai ${max}`);
+    }
+    return Number(v);
+  };
+  return { lahanId: lahan.data, page: int(q.page, "page", 1, 100000, 1), limit: int(q.limit, "limit", 1, MAX_LIMIT, 10) };
+}
+
