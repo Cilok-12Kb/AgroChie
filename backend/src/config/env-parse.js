@@ -53,6 +53,10 @@ export function buildEnv(src) {
     embedDims: Number(src.EMBED_DIMS ?? 768),
     ragMinScore: Number(src.RAG_MIN_SCORE ?? 0.5),
 
+    // [REVISI] deteksi tanaman: foto disimpan di luar folder publik; batas ukuran dalam MB
+    uploadDir: src.AGROCHIE_UPLOAD_DIR || "./uploads",
+    detectionMaxBytes: Math.round(positive("DETECTION_MAX_MB", 5) * 1024 * 1024),
+
     // [REVISI] bagian 17: sesi JWT di cookie httpOnly
     jwtSecret,
     jwtTtlDays: positive("JWT_TTL_DAYS", 7),

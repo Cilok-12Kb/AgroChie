@@ -77,6 +77,7 @@ model User {
   farms        Farm[]
   reminder     Reminder?
   chatSessions ChatSession[]
+  plantDetections PlantDetection[] // [REVISI] deteksi kualitas tanaman
 
   @@map("users")
 }
@@ -107,6 +108,7 @@ model Farm {
   profitTargetJt Decimal? @db.Decimal(10, 2)
   note         String?
   seasons      Season[]
+  plantDetections PlantDetection[] // [REVISI] deteksi kualitas tanaman
 
   @@index([userId])
   @@map("farms")
@@ -379,6 +381,34 @@ model ChatSession {
 
   @@index([userId, createdAt])
   @@map("chat_sessions")
+}
+
+// [REVISI] Deteksi kualitas tanaman. Foto disimpan di luar folder publik; photoKey hanya nama berkas acak.
+enum DetectionStatus {
+  SELESAI
+  TIDAK_YAKIN
+}
+
+model PlantDetection {
+  id          String          @id @default(cuid())
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  farmId      String
+  farm        Farm            @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  status      DetectionStatus
+  photoKey    String
+  photoMime   String
+  note        String?
+  detection   Json            // hasil detectionService (kondisi, kategori_kualitas, skor_kepercayaan, masalah_terdeteksi)
+  solution    Json?           // hasil solutionService; null bila TIDAK_YAKIN
+  costMinJt   Decimal?        @db.Decimal(10, 3) // juta Rupiah; null bila tidak ada estimasi
+  costMaxJt   Decimal?        @db.Decimal(10, 3)
+  provider    String
+  createdAt   DateTime        @default(now())
+
+  @@index([farmId, createdAt])
+  @@index([userId, createdAt])
+  @@map("deteksi_tanaman")
 }
 
 model ChatMessage {
