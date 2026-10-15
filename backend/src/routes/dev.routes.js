@@ -14,6 +14,13 @@ export function renderGoogleLoginPage({ clientId, nonce }) {
     ? `<div id="g_id_onload" data-client_id="${id}" data-callback="onGoogleCredential" data-auto_prompt="false"></div>
   <div class="g_id_signin" data-type="standard" data-size="large" data-text="signin_with"></div>`
     : `<p><strong>GOOGLE_CLIENT_ID belum diisi di backend/.env.</strong> Isi lalu mulai ulang server.</p>`;
+  // [REVISI] Langkah 10: bagian tautkan Google ke akun yang sedang login (butuh sesi + password).
+  const linkSection = id
+    ? `<h2>Tautkan Google ke akun yang sedang login</h2>
+  <p>Masuk dulu (mis. lewat login password), isi kata sandi akun ini, lalu klik tombol Google di bawah.</p>
+  <label>Kata sandi akun: <input id="linkPassword" type="password" autocomplete="current-password"></label>
+  <div id="linkButton" class="g_id_signin" data-type="standard" data-size="large" data-text="continue_with"></div>`
+    : "";
   return `<!doctype html>
 <html lang="id">
 <head>
@@ -23,7 +30,8 @@ export function renderGoogleLoginPage({ clientId, nonce }) {
 </head>
 <body>
   <h1>Uji login Google (khusus development)</h1>
-  ${body}
+  <div id="loginButton">${body}</div>
+  ${linkSection}
   <h2>Hasil</h2>
   <pre id="out">Belum masuk.</pre>
   <script nonce="${nonce}">
@@ -31,7 +39,36 @@ export function renderGoogleLoginPage({ clientId, nonce }) {
     const show = (label, status, data) => {
       out.textContent += "\\n\\n" + label + " -> HTTP " + status + "\\n" + JSON.stringify(data, null, 2);
     };
+    // [REVISI] Satu callback GIS dipakai dua tombol; mode ditentukan tombol yang terakhir di-hover.
+    let mode = "login";
+    document.getElementById("loginButton").addEventListener("mouseenter", () => { mode = "login"; });
+    const linkBtn = document.getElementById("linkButton");
+    if (linkBtn) linkBtn.addEventListener("mouseenter", () => { mode = "link"; });
+    async function linkGoogle(idToken) {
+      const pwInput = document.getElementById("linkPassword");
+      const password = pwInput ? pwInput.value : "";
+      if (pwInput) pwInput.value = ""; // tidak disimpan di halaman
+      if (!password) {
+        out.textContent = "Isi kata sandi akun dulu sebelum menautkan.";
+        return;
+      }
+      out.textContent = "Mengirim ke POST /api/auth/google/link ...";
+      try {
+        const r = await fetch("/api/auth/google/link", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ idToken, password }),
+        });
+        show("POST /api/auth/google/link", r.status, await r.json().catch(() => null));
+        const me = await fetch("/api/auth/me", { credentials: "same-origin" });
+        show("GET /api/auth/me", me.status, await me.json().catch(() => null));
+      } catch (e) {
+        out.textContent += "\\nGalat jaringan: " + e.message;
+      }
+    }
     async function onGoogleCredential(response) {
+      if (mode === "link") return linkGoogle(response.credential);
       out.textContent = "Mengirim ke POST /api/auth/google ...";
       try {
         const r = await fetch("/api/auth/google", {

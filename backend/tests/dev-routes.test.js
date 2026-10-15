@@ -40,6 +40,19 @@ describe("GET /dev/google-login", () => {
     assert.equal(res.headers.get("cross-origin-opener-policy"), "same-origin-allow-popups");
   });
 
+  test("bagian tautkan Google: input password, panggil /api/auth/google/link, tanpa menyimpan password", async () => {
+    const html = await (await fetch(`${dev.url}/dev/google-login`)).text();
+    assert.match(html, /Tautkan Google ke akun yang sedang login/);
+    assert.match(html, /<input id="linkPassword" type="password"/);
+    assert.match(html, /\/api\/auth\/google\/link/);
+    assert.ok(!/localStorage|sessionStorage|console\.log/.test(html));
+    assert.ok(!/value="[^"]+"[^>]*linkPassword|linkPassword[^>]*value=/.test(html));
+  });
+
+  test("tanpa client ID: bagian tautkan tidak dirender", () => {
+    assert.ok(!renderGoogleLoginPage({ clientId: "", nonce: "n" }).includes("linkPassword\" type"));
+  });
+
   test("production: 404 dan halaman tidak disajikan", async () => {
     const res = await fetch(`${prod.url}/dev/google-login`);
     assert.equal(res.status, 404);
