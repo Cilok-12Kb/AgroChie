@@ -1,6 +1,6 @@
 import nodemailer from "nodemailer";
 import { HttpError } from "../utils/http-error.js";
-import { buildLink, resetPasswordTemplate, verifyEmailTemplate } from "./email-templates.js";
+import { buildLink, passwordChangedTemplate, resetPasswordTemplate, verifyEmailTemplate } from "./email-templates.js";
 
 // Mailer berbasis Nodemailer. Konfigurasi dan transport diinjeksi agar tes memakai
 // jsonTransport (tanpa SMTP sungguhan). Rahasia (SMTP_PASS) tidak pernah dicatat.
@@ -36,6 +36,10 @@ export function createMailer(cfg, transport) {
     async sendPasswordResetEmail({ to, name, token, lang }) {
       const url = buildLink(cfg.appBaseUrl, "/reset-password", token);
       return deliver(to, resetPasswordTemplate({ lang, name, url, minutes: cfg.passwordResetTtlMinutes }));
+    },
+    // [REVISI] langkah 8: pemberitahuan password diganti (tanpa tautan)
+    async sendPasswordChangedEmail({ to, name, lang }) {
+      return deliver(to, passwordChangedTemplate({ lang, name }));
     },
   };
 }

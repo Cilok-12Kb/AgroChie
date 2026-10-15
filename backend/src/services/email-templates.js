@@ -91,6 +91,34 @@ export function verifyEmailTemplate({ lang = "id", name, url, hours }) {
   return render("verify", { lang, name, url, hours });
 }
 
+// [REVISI] langkah 8: pemberitahuan password berubah (tanpa tautan apa pun).
+const CHANGED = {
+  id: {
+    subject: "Kata sandi AgroChie Anda telah diganti",
+    greeting: (n) => (n ? `Halo ${n},` : "Halo,"),
+    body: "Kata sandi akun AgroChie Anda baru saja diganti. Semua sesi masuk sebelumnya telah dikeluarkan.",
+    warn: "Jika ini bukan Anda, segera atur ulang kata sandi lewat fitur lupa kata sandi atau hubungi kami.",
+  },
+  en: {
+    subject: "Your AgroChie password was changed",
+    greeting: (n) => (n ? `Hello ${n},` : "Hello,"),
+    body: "The password of your AgroChie account was just changed. All previous sessions have been signed out.",
+    warn: "If this was not you, reset your password right away using forgot password, or contact us.",
+  },
+};
+
+/** Email pemberitahuan password diganti. Tidak memuat tautan. */
+export function passwordChangedTemplate({ lang = "id", name } = {}) {
+  const t = CHANGED[SUPPORTED_LANGS.includes(lang) ? lang : "id"];
+  const greeting = t.greeting(name);
+  const text = [greeting, "", t.body, t.warn, "", "AgroChie"].join("\n");
+  const html =
+    `<!doctype html><html><body style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;line-height:1.5">` +
+    `<p>${escapeHtml(greeting)}</p><p>${escapeHtml(t.body)}</p>` +
+    `<p style="font-size:13px;color:#475569">${escapeHtml(t.warn)}</p><p>AgroChie</p></body></html>`;
+  return { subject: t.subject, text, html };
+}
+
 /** Email reset password. url = tautan lengkap; minutes = masa berlaku (menit). */
 export function resetPasswordTemplate({ lang = "id", name, url, minutes }) {
   return render("reset", { lang, name, url, minutes });

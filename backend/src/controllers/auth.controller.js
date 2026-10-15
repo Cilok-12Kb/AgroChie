@@ -4,6 +4,8 @@ import { getSessionTools } from "../utils/session.js";
 import { parseSetEmail, parseVerifyEmail } from "../validators/auth-email.validator.js";
 import { setEmail, resendVerification, verifyEmail } from "../services/email-verification.service.js";
 import { pickLang } from "../services/email-templates.js";
+import { parseForgotPassword, parseResetPassword } from "../validators/auth-email.validator.js";
+import { assertMailReady, startForgotJob, resetPassword, FORGOT_MESSAGE } from "../services/password-reset.service.js";
 
 // [REVISI] bagian 17.4: register memvalidasi dengan zod dan langsung membuat sesi; tambah login, me, logout.
 export async function register(req, res) {
@@ -52,3 +54,25 @@ export async function resendVerificationHandler(req, res) {
 export async function verifyEmailHandler(req, res) {
   res.json(await verifyEmail(parseVerifyEmail(req.body)));
 }
+
+// [REVISI] langkah 8: lupa dan reset password.
+// forgot: validasi -> 503 bila mail belum siap -> balas 202 -> baru kerjakan di latar.
+export async function forgotPasswordHandler(req, res) {
+  const { email, lang } = parseForgotPassword(req.body);
+  await assertMailReady();
+  res.status(202).json({ ok: true, message: FORGOT_MESSAGE });
+  startForgotJob({ email, lang: pickLang(lang, req.headers["accept-language"]) });
+}
+
+// reset: tanpa login otomatis; cookie sesi dibersihkan.
+export async function resetPasswordHandler(req, res) {
+  const { token, passwordBaru } = parseResetPassword(req.body);
+  const result = await resetPassword({
+    token,
+    passwordBaru,
+    lang: pickLang(req.body?.lang, req.headers["accept-language"]),
+  });
+  (await getSessionTools()).clearSessionCookie(res);
+  res.json(result);
+}
+

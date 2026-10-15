@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { asyncHandler } from "../utils/async-handler.js";
 import { requireUser, optionalUser } from "../middleware/auth.js";
-import { loginRateLimit, guestRateLimit, emailRateLimit, verifyEmailRateLimit } from "../middleware/rate-limit.js";
+import { loginRateLimit, guestRateLimit, emailRateLimit, verifyEmailRateLimit, forgotPasswordRateLimit, resetPasswordRateLimit } from "../middleware/rate-limit.js";
 import * as auth from "../controllers/auth.controller.js";
 export const authRoutes = Router();
 authRoutes.post("/register", asyncHandler(auth.register));
@@ -14,3 +14,6 @@ authRoutes.post("/guest", guestRateLimit(), asyncHandler(auth.guest)); // 17.6: 
 authRoutes.post("/email", emailRateLimit(), requireUser, asyncHandler(auth.setEmailHandler));
 authRoutes.post("/email/resend-verification", emailRateLimit(), requireUser, asyncHandler(auth.resendVerificationHandler));
 authRoutes.post("/verify-email", verifyEmailRateLimit(), asyncHandler(auth.verifyEmailHandler));
+// [REVISI] langkah 8: lupa dan reset password (publik, pembatas per IP)
+authRoutes.post("/forgot-password", forgotPasswordRateLimit(), asyncHandler(auth.forgotPasswordHandler));
+authRoutes.post("/reset-password", resetPasswordRateLimit(), asyncHandler(auth.resetPasswordHandler));

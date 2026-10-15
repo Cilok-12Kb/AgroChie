@@ -66,6 +66,26 @@ export function verifyEmailRateLimit() {
   });
 }
 
+/** [REVISI] Lupa password: 5 per 15 menit per IP. */
+export function forgotPasswordRateLimit() {
+  return rateLimit({
+    windowMs: 15 * 60_000,
+    max: 5,
+    keyFn: byIp,
+    message: "Terlalu banyak permintaan reset kata sandi. Coba lagi nanti.",
+  });
+}
+
+/** [REVISI] Reset password: 10 per 15 menit per IP. */
+export function resetPasswordRateLimit() {
+  return rateLimit({
+    windowMs: 15 * 60_000,
+    max: 10,
+    keyFn: byIp,
+    message: "Terlalu banyak percobaan reset kata sandi. Coba lagi nanti.",
+  });
+}
+
 /** Login: 10 percobaan per 10 menit per IP. */
 export function loginRateLimit() {
   return rateLimit({
