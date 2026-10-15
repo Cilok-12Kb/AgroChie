@@ -214,15 +214,67 @@ describe("auth tambah dan verifikasi email (butuh database uji)", { skip }, () =
     assert.equal(sent.length, 0);
   });
 
-  test("pengiriman gagal -> 502 dan perubahan dibatalkan (email lama tetap)", async () => {
+  test("pengiriman gagal -> 502; email baru tetap tersimpan (belum terverifikasi); token baru tidak bisa dipakai", async () => {
     const u = await newUser();
     const first = mail();
     await post("/auth/email", { email: first }, u.cookie);
-    useMail(baseCfg, { sendMail: async () => { throw new Error("smtp down"); } });
-    const res = await post("/auth/email", { email: mail() }, u.cookie);
+    const firstToken = lastToken();
+    const second = mail();
+    let leaked;
+    useMail(baseCfg, {
+      sendMail: async (m) => {
+        leaked = m.text.match(/token=([A-Za-z0-9_-]+)/)[1];
+        throw new Error("smtp down");
+      },
+    });
+    const res = await post("/auth/email", { email: second }, u.cookie);
     assert.equal(res.status, 502);
-    assert.equal((await me(u.cookie)).email, first);
-    assert.equal(await prisma.emailVerification.count({ where: { userId: u.id } }), 1);
+    const state = await me(u.cookie);
+    assert.equal(state.email, second);
+    assert.equal(state.emailVerified, false);
+    const rows = await prisma.emailVerification.findMany({ where: { userId: u.id } });
+    assert.equal(rows.length, 2); // kuota tetap menghitung token yang gagal terkirim
+    assert.ok(rows.every((r) => r.usedAt)); // token lama dan token baru sama-sama mati
+    assert.equal((await post("/auth/verify-email", { token: leaked })).status, 400);
+    assert.equal((await post("/auth/verify-email", { token: firstToken })).status, 400);
+    assert.equal((await me(u.cookie)).emailVerified, false);
+  });
+
+  test("pengiriman gagal pada resend -> 502, token baru mati, kuota terhitung, resend berikutnya jalan", async () => {
+    const u = await newUser();
+    await post("/auth/email", { email: mail() }, u.cookie); // token 1
+    let leaked;
+    useMail(baseCfg, {
+      sendMail: async (m) => {
+        leaked = m.text.match(/token=([A-Za-z0-9_-]+)/)[1];
+        throw new Error("smtp down");
+      },
+    });
+    assert.equal((await post("/auth/email/resend-verification", {}, u.cookie)).status, 502); // token 2
+    assert.equal((await post("/auth/verify-email", { token: leaked })).status, 400);
+    useMail();
+    assert.equal((await post("/auth/email/resend-verification", {}, u.cookie)).status, 202); // token 3
+    assert.equal((await post("/auth/verify-email", { token: lastToken() })).status, 200);
+    assert.equal(await prisma.emailVerification.count({ where: { userId: u.id } }), 3);
+  });
+
+  test("email dikirim SETELAH transaksi commit: saat sendMail dipanggil, token sudah terlihat dari koneksi lain", async () => {
+    const u = await newUser();
+    let visibleDuringSend = null;
+    useMail(baseCfg, {
+      sendMail: async (m) => {
+        const raw = m.text.match(/token=([A-Za-z0-9_-]+)/)[1];
+        const { hashToken } = await import("../src/utils/token.js");
+        // prisma biasa (bukan tx): hanya melihat baris bila transaksi sudah commit.
+        visibleDuringSend = await prisma.emailVerification.findUnique({ where: { tokenHash: hashToken(raw) } });
+        return capture.sendMail(m);
+      },
+    });
+    const email = mail();
+    assert.equal((await post("/auth/email", { email }, u.cookie)).status, 200);
+    assert.ok(visibleDuringSend, "token harus sudah ter-commit sebelum email dikirim");
+    assert.equal(visibleDuringSend.usedAt, null);
+    assert.equal((await prisma.user.findUnique({ where: { id: u.id } })).email, email);
   });
 
   test("resend: 400 tanpa email; batas 3 token per jam -> 429; token lama dimatikan; 202", async () => {

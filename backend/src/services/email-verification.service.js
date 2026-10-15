@@ -46,28 +46,45 @@ async function assertResendQuota(userId) {
 }
 
 /**
- * Di dalam transaksi: matikan SEMUA token verifikasi dan reset yang belum terpakai milik user
- * (tabel PasswordReset tidak menyimpan alamat email), buat token baru, lalu kirim email.
- * Bila pengiriman gagal, transaksi dibatalkan sehingga tidak ada perubahan yang tersimpan.
+ * [REVISI] Dipanggil DI DALAM transaksi: matikan SEMUA token verifikasi dan reset yang belum terpakai
+ * milik user (tabel PasswordReset tidak menyimpan alamat email) lalu buat token baru.
+ * Tidak mengirim email; pengiriman dilakukan setelah transaksi commit (lihat sendOrRevoke).
  */
-async function issueAndSend(tx, user, email, lang, { cfg, mailer }) {
+async function issueToken(tx, user, email, { cfg }) {
   const now = new Date();
   await tx.emailVerification.updateMany({ where: { userId: user.id, usedAt: null }, data: { usedAt: now } });
   await tx.passwordReset.updateMany({ where: { userId: user.id, usedAt: null }, data: { usedAt: now } });
   const { token, tokenHash } = createTokenPair();
-  await tx.emailVerification.create({
+  const row = await tx.emailVerification.create({
     data: {
       userId: user.id,
       email,
       tokenHash,
       expiresAt: new Date(now.getTime() + cfg.emailVerifyTtlHours * HOUR_MS),
     },
+    select: { id: true },
   });
+  return { token, tokenId: row.id };
+}
+
+/**
+ * [REVISI] Dipanggil SETELAH transaksi selesai. Bila pengiriman gagal, token baru ditandai terpakai
+ * agar tidak bisa dipakai, galat dicatat tanpa detail, lalu dibalas 502. Token tetap dihitung pada kuota.
+ */
+async function sendOrRevoke(user, email, lang, issued, { mailer }) {
   try {
-    await mailer.sendVerificationEmail({ to: email, name: user.name, token, lang });
+    await mailer.sendVerificationEmail({ to: email, name: user.name, token: issued.token, lang });
   } catch (err) {
     // Hanya jenis galat yang dicatat; isi pesan bisa memuat detail server surat.
     console.error("[mail] gagal mengirim email verifikasi:", err?.code ?? err?.name ?? "error");
+    try {
+      await prisma.emailVerification.updateMany({
+        where: { id: issued.tokenId, usedAt: null },
+        data: { usedAt: new Date() },
+      });
+    } catch (e2) {
+      console.error("[mail] gagal mencabut token yang tidak terkirim:", e2?.code ?? e2?.name ?? "error");
+    }
     throw new HttpError(502, "Gagal mengirim email verifikasi. Coba lagi nanti.");
   }
 }
@@ -87,15 +104,18 @@ export async function setEmail(userId, { email, lang }) {
   const taken = await prisma.user.findFirst({ where: { email, id: { not: userId } }, select: { id: true } });
   if (taken) throw new HttpError(409, "Email tidak dapat digunakan");
 
+  let issued;
   try {
-    await prisma.$transaction(async (tx) => {
+    // [REVISI] transaksi hanya untuk DB; email dikirim setelah commit.
+    issued = await prisma.$transaction(async (tx) => {
       await tx.user.update({ where: { id: userId }, data: { email, emailVerifiedAt: null } });
-      await issueAndSend(tx, user, email, lang, deps);
+      return issueToken(tx, user, email, deps);
     }, TX_OPTIONS);
   } catch (err) {
     if (err.code === "P2002") throw new HttpError(409, "Email tidak dapat digunakan");
     throw err;
   }
+  await sendOrRevoke(user, email, lang, issued, deps);
   return getMe(userId);
 }
 
@@ -107,7 +127,8 @@ export async function resendVerification(userId, { lang }) {
   if (user.emailVerifiedAt) throw new HttpError(400, "Email sudah terverifikasi");
   ensureMail(deps.cfg);
   await assertResendQuota(userId);
-  await prisma.$transaction((tx) => issueAndSend(tx, user, user.email, lang, deps), TX_OPTIONS);
+  const issued = await prisma.$transaction((tx) => issueToken(tx, user, user.email, deps), TX_OPTIONS);
+  await sendOrRevoke(user, user.email, lang, issued, deps);
   return { ok: true };
 }
 
