@@ -167,4 +167,42 @@ describe("auth (butuh database uji)", { skip }, () => {
   test("logout tanpa sesi tetap 204", async () => {
     assert.equal((await post("/auth/logout", {})).status, 204);
   });
+
+  // ---- [REVISI] auth email/Google: bentuk respons GET /auth/me ----
+  test("me: akun HP biasa -> email null, hasPassword true, belum punya lahan -> needsProfileCompletion", async () => {
+    const cookie = cookieOf(await post("/auth/login", { phone, password }));
+    const body = await (await fetch(base + "/auth/me", { headers: { cookie } })).json();
+    assert.equal(body.phone, phone);
+    assert.equal(body.email, null);
+    assert.equal(body.emailVerified, false);
+    assert.equal(body.hasPassword, true);
+    assert.equal(body.hasGoogle, false);
+    assert.equal(body.needsProfileCompletion, true);
+    for (const k of ["passwordHash", "googleId", "sessionVersion", "emailVerifiedAt"]) assert.ok(!(k in body), k);
+  });
+
+  test("me: email terverifikasi, Google tertaut, tanpa sandi; nilai mentah tidak bocor; punya lahan -> profil lengkap", async () => {
+    const p = rand();
+    made.push(p);
+    const reg = await post("/auth/register", { name: "Sari", phone: p, password });
+    const cookie = cookieOf(reg);
+    const { id } = await reg.json();
+    const gid = `uji-google-${id}`;
+    await prisma.user.update({
+      where: { id },
+      data: { email: `sari-${id}@uji.test`, emailVerifiedAt: new Date(), googleId: gid, passwordHash: null },
+    });
+    await prisma.farm.create({ data: { userId: id, name: "Lahan uji", areaHa: "0.5" } });
+    const res = await fetch(base + "/auth/me", { headers: { cookie } });
+    assert.equal(res.status, 200);
+    const text = await res.text();
+    const body = JSON.parse(text);
+    assert.equal(body.email, `sari-${id}@uji.test`);
+    assert.equal(body.emailVerified, true);
+    assert.equal(body.hasPassword, false);
+    assert.equal(body.hasGoogle, true);
+    assert.equal(body.needsProfileCompletion, false);
+    assert.ok(!text.includes(gid) && !text.includes("argon2"));
+  });
+
 });

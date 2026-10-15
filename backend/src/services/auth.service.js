@@ -54,8 +54,40 @@ export async function deleteGuest(userId) {
   return r.count;
 }
 
+// [REVISI] auth email/Google: kolom yang dibaca untuk membentuk respons /auth/me.
+// passwordHash, googleId, dan sessionVersion hanya dibaca di server untuk menurunkan flag; TIDAK dikirim ke klien.
+const ME_SELECT = {
+  ...PUBLIC,
+  email: true,
+  emailVerifiedAt: true,
+  passwordHash: true,
+  googleId: true,
+  _count: { select: { farms: true } },
+};
+
+/**
+ * [REVISI] Bentuk respons publik dari baris User (fungsi murni, diuji tanpa DB).
+ * needsProfileCompletion (D8) diturunkan, tanpa kolom baru: akun bukan tamu yang belum punya
+ * nomor HP atau belum punya lahan. Tamu tidak diminta melengkapi profil.
+ */
+export function toPublicUser(row) {
+  const needsProfileCompletion = !row.isGuest && (!row.phone || (row._count?.farms ?? 0) === 0);
+  return {
+    id: row.id,
+    name: row.name,
+    phone: row.phone ?? null,
+    email: row.email ?? null,
+    emailVerified: Boolean(row.emailVerifiedAt),
+    hasPassword: Boolean(row.passwordHash),
+    hasGoogle: Boolean(row.googleId),
+    role: row.role,
+    isGuest: row.isGuest,
+    needsProfileCompletion,
+  };
+}
+
 export async function getMe(userId) {
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: PUBLIC });
-  if (!user) throw new HttpError(401, "Belum masuk");
-  return user;
+  const row = await prisma.user.findUnique({ where: { id: userId }, select: ME_SELECT });
+  if (!row) throw new HttpError(401, "Belum masuk");
+  return toPublicUser(row);
 }
