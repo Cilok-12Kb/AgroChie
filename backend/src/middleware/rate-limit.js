@@ -7,8 +7,17 @@ import { HttpError } from "../utils/http-error.js";
 const DEFAULT_MESSAGE = "Terlalu banyak pertanyaan. Coba lagi beberapa menit lagi.";
 const byUser = (req) => req.userId;
 
+// [REVISI] Daftar semua Map hitungan, hanya agar _resetForTests() bisa mengosongkannya. Tidak dibaca di runtime.
+const allHits = new Set();
+
+/** Hanya untuk tes: kosongkan hitungan semua pembatas. Tidak dipanggil kode produksi. */
+export function _resetForTests() {
+  for (const m of allHits) m.clear();
+}
+
 export function rateLimit({ windowMs = 10 * 60_000, max = 20, keyFn = byUser, message = DEFAULT_MESSAGE } = {}) {
   const hits = new Map();
+  allHits.add(hits);
   return (req, _res, next) => {
     const key = keyFn(req);
     const now = Date.now();

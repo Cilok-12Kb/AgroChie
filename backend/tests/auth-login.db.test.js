@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { describe, test, before, after } from "node:test";
+import { describe, test, before, after, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import argon2 from "argon2";
 import { assertTestDatabase } from "./helpers/test-db.js";
@@ -44,6 +44,11 @@ describe("auth login HP atau email (butuh database uji)", { skip }, () => {
     base = `http://127.0.0.1:${server.address().port}/api`;
     await mkUser({ phone, passwordHash: await argon2.hash(password) });
   });
+
+  // [REVISI] reset hitungan pembatas antar tes (tidak lagi bergantung pada batas 9 login per file)
+  const resetLimits = async () => (await import("../src/middleware/rate-limit.js"))._resetForTests();
+  beforeEach(resetLimits);
+  afterEach(resetLimits);
 
   after(async () => {
     if (prisma) {

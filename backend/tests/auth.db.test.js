@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { describe, test, before, after } from "node:test";
+import { describe, test, before, after, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { assertTestDatabase } from "./helpers/test-db.js";
 
@@ -35,6 +35,11 @@ describe("auth (butuh database uji)", { skip }, () => {
     base = `http://127.0.0.1:${server.address().port}/api`;
     made.push(phone);
   });
+
+  // [REVISI] reset hitungan pembatas (login/tamu) antar tes agar tidak bergantung pada pemecahan file
+  const resetLimits = async () => (await import("../src/middleware/rate-limit.js"))._resetForTests();
+  beforeEach(resetLimits);
+  afterEach(resetLimits);
 
   after(async () => {
     if (prisma) {
