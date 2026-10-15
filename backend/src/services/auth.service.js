@@ -10,10 +10,12 @@ const PUBLIC = { id: true, name: true, phone: true, role: true, isGuest: true };
 // role selalu PETANI dan hasilnya memuat role/isGuest untuk membuat sesi.
 export async function registerUser({ name, phone, password }) {
   try {
-    return await prisma.user.create({
+    // [REVISI] D3: respons register memakai bentuk publik yang sama dengan /auth/me (hanya menambah field).
+    const row = await prisma.user.create({
       data: { name, phone, passwordHash: await argon2.hash(password), role: "PETANI", isGuest: false },
-      select: PUBLIC,
+      select: ME_SELECT,
     });
+    return toPublicUser(row);
   } catch (err) {
     if (err.code === "P2002") throw new HttpError(409, "Nomor HP sudah terdaftar");
     throw err;
@@ -27,15 +29,17 @@ async function getDummyHash() {
   return dummyHash;
 }
 
-const LOGIN_FAILED = "Nomor HP atau kata sandi salah";
+// [REVISI] D3: pesan umum untuk HP maupun email (tidak membedakan akun tak ada / sandi salah / akun Google-only).
+const LOGIN_FAILED = "Nomor HP/email atau kata sandi salah";
 
-export async function loginUser({ phone, password }) {
-  const row = await prisma.user.findUnique({ where: { phone }, select: { ...PUBLIC, passwordHash: true } });
-  // verify selalu dijalankan, ke hash asli atau hash tiruan.
+// [REVISI] D3: cari lewat email (bila ada) atau HP; kembalikan bentuk publik yang sama dengan /auth/me.
+export async function loginUser({ phone, email, password }) {
+  const where = email ? { email } : { phone };
+  const row = await prisma.user.findUnique({ where, select: ME_SELECT });
+  // verify selalu dijalankan, ke hash asli atau hash tiruan (akun tak ada / tanpa passwordHash).
   const ok = await argon2.verify(row?.passwordHash ?? (await getDummyHash()), password);
-  if (!row || !ok) throw new HttpError(401, LOGIN_FAILED);
-  const { passwordHash: _omit, ...user } = row;
-  return user;
+  if (!row || !row.passwordHash || !ok) throw new HttpError(401, LOGIN_FAILED);
+  return toPublicUser(row);
 }
 
 // bagian 17.6: mode tamu. Kata sandi acak kuat hanya di-hash, tidak disimpan/dikembalikan/dicatat,
