@@ -6,6 +6,8 @@ import { setEmail, resendVerification, verifyEmail } from "../services/email-ver
 import { pickLang } from "../services/email-templates.js";
 import { parseForgotPassword, parseResetPassword, parseGoogle, parseGoogleLink } from "../validators/auth-email.validator.js";
 import { assertGoogleReady, loginWithGoogle, linkGoogle } from "../services/google-auth.service.js";
+import { parsePhoneChange, parseReauth } from "../validators/auth-account.validator.js"; // [REVISI] B7
+import { setPhone, removeEmail, unlinkGoogle } from "../services/account-security.service.js"; // [REVISI] B7
 import { assertMailReady, startForgotJob, resetPassword, FORGOT_MESSAGE } from "../services/password-reset.service.js";
 
 // [REVISI] bagian 17.4: register memvalidasi dengan zod dan langsung membuat sesi; tambah login, me, logout.
@@ -70,6 +72,33 @@ export async function googleLoginHandler(req, res) {
 export async function googleLinkHandler(req, res) {
   const { idToken, password, lang } = parseGoogleLink(req.body);
   res.json(await linkGoogle(req.user.id, { idToken, password, lang: pickLang(lang, req.headers["accept-language"]) }));
+}
+
+// [REVISI] B7: ganti/tambah HP, hapus email, lepas Google. Respons 200 = public user datar.
+// Bila sessionVersion naik, cookie baru dipasang PALING AKHIR (menimpa cookie hasil refreshSession).
+async function respondAccountChange(res, { user, sessionVersion }) {
+  if (sessionVersion !== null && sessionVersion !== undefined) {
+    await (await getSessionTools()).setSessionCookie(res, { ...user, sessionVersion });
+  }
+  res.json(user);
+}
+
+export async function setPhoneHandler(req, res) {
+  const { phone, password, idToken, lang } = parsePhoneChange(req.body);
+  const result = await setPhone(req.user.id, { phone, password, idToken, lang: pickLang(lang, req.headers["accept-language"]) });
+  await respondAccountChange(res, result);
+}
+
+export async function removeEmailHandler(req, res) {
+  const { password, idToken, lang } = parseReauth(req.body);
+  const result = await removeEmail(req.user.id, { password, idToken, lang: pickLang(lang, req.headers["accept-language"]) });
+  await respondAccountChange(res, result);
+}
+
+export async function unlinkGoogleHandler(req, res) {
+  const { password, idToken, lang } = parseReauth(req.body);
+  const result = await unlinkGoogle(req.user.id, { password, idToken, lang: pickLang(lang, req.headers["accept-language"]) });
+  await respondAccountChange(res, result);
 }
 
 // [REVISI] langkah 8: lupa dan reset password.

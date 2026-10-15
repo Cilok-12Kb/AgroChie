@@ -167,6 +167,66 @@ export function googleLinkedTemplate({ lang = "id", name, masked, when = new Dat
   return { subject: t.subject, text, html };
 }
 
+// [REVISI] B7: pemberitahuan email dihapus, Google dilepas, nomor HP diganti. Tanpa tautan.
+const ACCOUNT_NOTICE = {
+  id: {
+    greeting: GOOGLE_LINKED.id.greeting,
+    emailRemoved: {
+      subject: "Email dihapus dari akun AgroChie kamu",
+      body: (v) => `Email ${v.masked} dihapus dari akunmu pada ${v.when}. Email ini tidak lagi dipakai untuk masuk atau mengatur ulang kata sandi. Perangkat lain sudah dikeluarkan.`,
+      warn: 'Jika bukan kamu, masuk dengan metode lain lalu tambahkan email kembali. Atur ulang kata sandi lewat "Lupa kata sandi" dan periksa metode masuk di halaman Profil.',
+    },
+    googleUnlinked: {
+      subject: "Akun Google dilepas dari akun AgroChie kamu",
+      body: (v) => `Penautan akun Google dilepas dari akun AgroChie kamu pada ${v.when}. Perangkat lain sudah dikeluarkan.`,
+      warn: 'Jika bukan kamu, atur ulang kata sandi lewat "Lupa kata sandi" dan periksa metode masuk di halaman Profil.',
+    },
+    phoneChanged: {
+      subject: "Nomor HP akun AgroChie kamu diganti",
+      body: (v) => `Nomor HP akunmu diganti dari ${v.oldMasked} ke ${v.newMasked} pada ${v.when}. Perangkat lain sudah dikeluarkan.`,
+      warn: 'Jika bukan kamu, atur ulang kata sandi lewat "Lupa kata sandi" dan periksa metode masuk di halaman Profil.',
+    },
+  },
+  en: {
+    greeting: GOOGLE_LINKED.en.greeting,
+    emailRemoved: {
+      subject: "An email address was removed from your AgroChie account",
+      body: (v) => `The email ${v.masked} was removed from your account on ${v.when}. It is no longer used to sign in or reset your password. Other devices were signed out.`,
+      warn: 'If this was not you, sign in with another method and add your email again. Reset your password using "Forgot password" and check your sign-in methods on the Profile page.',
+    },
+    googleUnlinked: {
+      subject: "A Google account was unlinked from your AgroChie account",
+      body: (v) => `A Google account was unlinked from your AgroChie account on ${v.when}. Other devices were signed out.`,
+      warn: 'If this was not you, reset your password using "Forgot password" and check your sign-in methods on the Profile page.',
+    },
+    phoneChanged: {
+      subject: "The phone number on your AgroChie account was changed",
+      body: (v) => `The phone number on your account was changed from ${v.oldMasked} to ${v.newMasked} on ${v.when}. Other devices were signed out.`,
+      warn: 'If this was not you, reset your password using "Forgot password" and check your sign-in methods on the Profile page.',
+    },
+  },
+};
+
+function renderNotice(kind, { lang = "id", name, when = new Date(), ...vars } = {}) {
+  const l = SUPPORTED_LANGS.includes(lang) ? lang : "id";
+  const t = ACCOUNT_NOTICE[l][kind];
+  const greeting = ACCOUNT_NOTICE[l].greeting(name);
+  const body = t.body({ ...vars, when: formatWhen(when, l) });
+  const text = [greeting, "", body, t.warn, "", "AgroChie"].join("\n");
+  const html =
+    `<!doctype html><html><body style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;line-height:1.5">` +
+    `<p>${escapeHtml(greeting)}</p><p>${escapeHtml(body)}</p>` +
+    `<p style="font-size:13px;color:#475569">${escapeHtml(t.warn)}</p><p>AgroChie</p></body></html>`;
+  return { subject: t.subject, text, html };
+}
+
+/** Pemberitahuan email dihapus (dikirim ke email LAMA). masked = email tersamar. */
+export const emailRemovedTemplate = (o) => renderNotice("emailRemoved", o);
+/** Pemberitahuan Google dilepas. */
+export const googleUnlinkedTemplate = (o) => renderNotice("googleUnlinked", o);
+/** Pemberitahuan nomor HP diganti. oldMasked dan newMasked sudah tersamar. */
+export const phoneChangedTemplate = (o) => renderNotice("phoneChanged", o);
+
 /** Email reset password. url = tautan lengkap; minutes = masa berlaku (menit). */
 export function resetPasswordTemplate({ lang = "id", name, url, minutes }) {
   return render("reset", { lang, name, url, minutes });

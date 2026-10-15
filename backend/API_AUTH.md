@@ -28,7 +28,7 @@ Sumber kebenaran: KODE di `backend/src` (routes, controllers, services, validato
 
 ## 2. Objek user publik
 
-Dipakai oleh `register`, `login`, `GET /auth/me`, `POST /auth/google`, `POST /auth/google/link`, dan `POST /auth/email`. (`guest` hanya mengembalikan `{ "user": { id, name, role, isGuest } }`.)
+Dipakai oleh `register`, `login`, `GET /auth/me`, `POST /auth/google`, `POST /auth/google/link`, `POST /auth/email`, `POST /auth/phone`, `POST /auth/email/remove`, dan `POST /auth/google/unlink`. (`guest` hanya mengembalikan `{ "user": { id, name, role, isGuest } }`.)
 
 ```json
 {
@@ -243,6 +243,94 @@ Aturan akun: (a) `googleId` sudah dikenal → login; (b) email cocok dan terveri
 
 Token Google baru diperiksa setelah kata sandi benar. Bila akun belum punya email, email Google dipakai dan otomatis terverifikasi; bila akun sudah punya email lain, email akun TIDAK diubah.
 
+Jatah 5 kata sandi salah per 15 menit per user dipakai BERSAMA dengan endpoint 3.13–3.15 (satu user, satu jatah tebakan).
+
+### Aturan bersama 3.13–3.15 (ubah metode login)
+
+Ketiga endpoint di bawah mengubah cara pengguna masuk. Aturannya sama:
+
+- **Wajib login** (cookie sesi). Urutan di server: pembatas IP → cek sesi → validasi body (400) → muat user (tamu 403) → prasyarat dan kebijakan (400/403/409/no-op) → blokir per user (429) → re-autentikasi → transaksi (kebijakan dicek ulang, data diubah, `sessionVersion` naik) → cookie baru → email pemberitahuan di luar transaksi.
+- **Respons sukses**: `200` + objek user publik datar (bagian 2), BUKAN `{ "user": ... }`, dibaca ulang dari DB setelah transaksi.
+- **Body umum**: `password?: string` (1-1024, tidak di-trim), `idToken?: string` (1-4096), `lang?: "id" | "en"`.
+- **Re-autentikasi** (jenis ditentukan SERVER dari akun, bukan dari pilihan klien):
+  - Akun BER-password: `password` wajib, diperiksa dengan argon2. `idToken` diabaikan. Tanpa `password` → 400 `Kata sandi wajib diisi`.
+  - Akun TANPA password (hanya Google): `idToken` wajib → 400 `idToken wajib diisi` bila kosong. Token diperiksa penuh (tanda tangan, `aud`, `iss`, `email_verified`, `sub`, `email`) dan `sub` HARUS sama dengan Google yang tertaut di akun ini. SEMUA kegagalan (token rusak, `aud`/`iss` salah, email belum terverifikasi, `sub` akun Google lain) dijawab sama: `401 Token Google tidak valid`.
+  - Akun tanpa password dan tanpa Google: re-auth mustahil → `403 Tidak diizinkan` (tidak bisa terbentuk lewat alur normal).
+- **Pembatas IP**: `accountChangeRateLimit`, 10 per 15 menit per IP, dihitung terpisah per route: `Terlalu banyak percobaan perubahan akun dari alamat ini. Coba lagi nanti.`
+- **Pembatas re-auth gagal per user**: 5 per 15 menit, dibagi dengan `POST /auth/google/link`. Kata sandi salah, token Google tidak valid, dan `sub` tidak cocok semuanya dihitung. Dicek sebelum verifikasi, jadi setelah terblokir kredensial yang benar pun tetap `429 Terlalu banyak percobaan verifikasi gagal. Coba lagi nanti.` Dikosongkan saat re-auth sukses.
+- **`sessionVersion` dan cookie**: aksi yang mengganti atau menghapus metode login menaikkan `sessionVersion` dalam transaksi yang sama, lalu server memasang cookie `agro_session` baru (klaim `sv` baru, selalu `Set-Cookie` TERAKHIR pada respons). Perangkat ini tetap masuk, perangkat lain keluar (401 `Belum masuk` pada request berikutnya). Aksi yang TIDAK menaikkan versi: tambah HP dari kosong, no-op, dan semua kegagalan.
+- **Email pemberitahuan**: dikirim SETELAH transaksi selesai, hanya bila layanan email dikonfigurasi. Kegagalan kirim hanya dicatat (jenis galat saja, tanpa alamat email) dan tidak mengubah respons. Isi tanpa tautan, alamat email dan nomor HP disamarkan; anjurannya: atur ulang kata sandi lewat "Lupa kata sandi" dan periksa metode masuk di Profil.
+- Tidak ada perubahan skema database. Nomor HP tidak diverifikasi (tanpa SMS).
+
+### 3.13 `POST /auth/phone` (tambah atau ganti nomor HP)
+| | |
+|---|---|
+| Login | Ya |
+| Body | `{ "phone": string (8-15 digit setelah non-angka dibuang), "password"?: string, "idToken"?: string, "lang"?: "id" \| "en" }` |
+| Sukses | `200` + objek user publik |
+| Rate limit | 10 per 15 menit per IP (aturan bersama). Khusus endpoint ini: 5 konflik nomor (409) per 15 menit per user: `Terlalu banyak percobaan nomor HP. Coba lagi nanti.` |
+
+Perilaku:
+- **Menambah** (akun belum punya HP): TANPA re-auth, `sessionVersion` tidak naik, tidak ada email pemberitahuan.
+- **Mengganti** (akun sudah punya HP): re-auth wajib, `sessionVersion` naik, cookie baru. Email pemberitahuan ke email akun BILA terverifikasi, berisi nomor lama dan baru yang disamarkan (`***` + 3 digit terakhir).
+- **Nomor sama dengan nomor sekarang**: `200` tanpa perubahan, tanpa re-auth, tanpa kenaikan versi, tanpa email.
+- Nomor sudah dipakai akun lain dijawab SAMA untuk setiap nomor yang dipakai (tidak membedakan sebab), dan dibatasi 5 kali per 15 menit per user agar nomor milik orang lain tidak bisa dicari-cari. Tabrakan saat commit (kolom `phone` unik) juga dijawab 409 yang sama dan tidak mengubah apa pun.
+
+| Status | Pesan |
+|---|---|
+| 400 | `Nomor HP wajib diisi` / `Nomor HP harus 8 sampai 15 digit` / `Kata sandi wajib diisi` / `Kata sandi terlalu panjang` / `idToken wajib diisi` / `idToken tidak valid` |
+| 401 | `Belum masuk` / `Kata sandi salah` / `Token Google tidak valid` |
+| 403 | `Akun tamu tidak dapat mengubah data akun` / `Tidak diizinkan` |
+| 409 | `Nomor HP tidak dapat digunakan.` / `Akun sedang diproses. Coba lagi.` |
+| 429 | `Terlalu banyak percobaan perubahan akun dari alamat ini. Coba lagi nanti.` / `Terlalu banyak percobaan verifikasi gagal. Coba lagi nanti.` / `Terlalu banyak percobaan nomor HP. Coba lagi nanti.` |
+| 503 | `Login Google belum dikonfigurasi` (hanya bila re-auth Google dibutuhkan) |
+
+### 3.14 `POST /auth/email/remove` (hapus email)
+| | |
+|---|---|
+| Login | Ya |
+| Body | `{ "password"?: string, "idToken"?: string, "lang"?: "id" \| "en" }` |
+| Sukses | `200` + objek user publik (`email: null`, `emailVerified: false`) |
+| Rate limit | 10 per 15 menit per IP dan pembatas re-auth per user (aturan bersama) |
+
+Perilaku:
+- Re-auth SELALU wajib. `email` dan `emailVerifiedAt` dikosongkan; token `EmailVerification` dan `PasswordReset` milik user yang belum terpakai ditandai terpakai (dicabut) dalam transaksi yang sama. Token yang sudah terpakai dan milik user lain tidak disentuh.
+- `sessionVersion` selalu naik, cookie baru dipasang.
+- Email pemberitahuan dikirim ke email LAMA hanya bila sebelumnya terverifikasi. Email lama yang belum terverifikasi tidak dikirimi apa pun.
+- Ditolak `409 Tidak bisa menghapus metode masuk terakhir.` bila setelah penghapusan akun tidak punya metode login sama sekali (aturan di `src/utils/login-methods.js`; dicek lagi di dalam transaksi). Akun ber-password tanpa nomor HP yang masih tertaut Google boleh menghapus email; password-nya baru bisa dipakai masuk setelah nomor HP ditambahkan (UI sebaiknya memberi peringatan).
+
+| Status | Pesan |
+|---|---|
+| 400 | `Belum ada email di akun ini` / `Kata sandi wajib diisi` / `Kata sandi terlalu panjang` / `idToken wajib diisi` / `idToken tidak valid` |
+| 401 | `Belum masuk` / `Kata sandi salah` / `Token Google tidak valid` |
+| 403 | `Akun tamu tidak dapat mengubah data akun` / `Tidak diizinkan` |
+| 409 | `Tidak bisa menghapus metode masuk terakhir.` / `Akun sedang diproses. Coba lagi.` |
+| 429 | `Terlalu banyak percobaan perubahan akun dari alamat ini. Coba lagi nanti.` / `Terlalu banyak percobaan verifikasi gagal. Coba lagi nanti.` |
+| 503 | `Login Google belum dikonfigurasi` (hanya bila re-auth Google dibutuhkan) |
+
+### 3.15 `POST /auth/google/unlink` (lepas Google)
+| | |
+|---|---|
+| Login | Ya |
+| Body | `{ "password"?: string, "idToken"?: string, "lang"?: "id" \| "en" }` |
+| Sukses | `200` + objek user publik (`hasGoogle: false`; email tidak berubah) |
+| Rate limit | 10 per 15 menit per IP dan pembatas re-auth per user (aturan bersama) |
+
+Perilaku:
+- Re-auth SELALU wajib. `googleId` dikosongkan, email tidak diubah. `sessionVersion` selalu naik, cookie baru dipasang.
+- Email pemberitahuan ke email akun bila terverifikasi.
+- Ditolak `409 Tidak bisa menghapus metode masuk terakhir.` bila setelah dilepas akun tidak punya metode login lagi (mis. akun Google tanpa password, atau tanpa nomor HP/email terverifikasi yang bisa dipakai). Pengguna perlu lebih dulu membuat password lewat "Lupa kata sandi" (butuh email terverifikasi).
+- **Login Google berikutnya dengan Gmail yang sama menautkan KEMBALI akun ini** lewat aturan (b) di 3.11 (email cocok dan terverifikasi → tautkan otomatis). Ini disengaja: melepas Google menghapus penautan, bukan memblokir Google untuk email itu. Agar Google tidak bisa dipakai masuk lagi, ganti atau hapus juga email akun (3.14).
+
+| Status | Pesan |
+|---|---|
+| 400 | `Akun ini belum tertaut ke Google` / `Kata sandi wajib diisi` / `Kata sandi terlalu panjang` / `idToken wajib diisi` / `idToken tidak valid` |
+| 401 | `Belum masuk` / `Kata sandi salah` / `Token Google tidak valid` |
+| 403 | `Akun tamu tidak dapat mengubah data akun` / `Tidak diizinkan` |
+| 409 | `Tidak bisa menghapus metode masuk terakhir.` / `Akun sedang diproses. Coba lagi.` |
+| 429 | `Terlalu banyak percobaan perubahan akun dari alamat ini. Coba lagi nanti.` / `Terlalu banyak percobaan verifikasi gagal. Coba lagi nanti.` |
+| 503 | `Login Google belum dikonfigurasi` (hanya bila re-auth Google dibutuhkan) |
+
 ---
 
 ## 4. Alur per halaman frontend
@@ -289,7 +377,7 @@ Tampilkan hanya untuk `isGuest === false`:
 1. Setelah login/register/Google (dan di guard layout), arahkan ke halaman lengkapi profil.
 2. Isi yang kurang: nomor HP bila `phone === null`, dan lahan pertama bila belum ada (memakai endpoint lahan yang sudah ada). Isian yang tidak diketahui dibiarkan kosong.
 3. Setelah selesai panggil `GET /auth/me` sampai `needsProfileCompletion === false`.
-4. Belum ada endpoint auth untuk mengisi nomor HP akun Google; koordinasikan dengan backend (lihat bagian 9).
+4. Nomor HP akun Google diisi lewat `POST /auth/phone` (3.13): menambah nomor tidak butuh re-autentikasi.
 
 ### 4.8 Tombol "Tautkan Google" di profil
 1. Tampilkan hanya bila `isGuest === false`, `hasGoogle === false`, dan `hasPassword === true` (bila `hasPassword === false`, server membalas 400 `Akun ini tidak memiliki kata sandi`).
@@ -301,7 +389,8 @@ Tampilkan hanya untuk `isGuest === false`:
 
 ## 5. Aturan global frontend
 
-- **401 pada request terautentikasi** (kecuali `login`, `register`, `google`, dan `google/link` dengan `Kata sandi salah`) berarti sesi berakhir atau dicabut (mis. setelah reset password): bersihkan state user, arahkan ke `/login`.
+- **Bahasa email**: field `lang` hanya `"id"` atau `"en"`. Bila bahasa antarmuka `zh`, frontend mengirim `"en"` (email pemberitahuan tidak tersedia dalam bahasa Mandarin).
+- **401 pada request terautentikasi** (kecuali `login`, `register`, `google`, `google/link`, `phone`, `email/remove`, dan `google/unlink` dengan pesan `Kata sandi salah` / `Token Google tidak valid`, lihat tabel pengecualian) berarti sesi berakhir atau dicabut (mis. setelah reset password): bersihkan state user, arahkan ke `/login`.
 - **Jangan memanggil `verify-email` dua kali.** Di React strict mode (dev) `useEffect` berjalan dua kali dan panggilan kedua mendapat 400 karena token sekali pakai. Pakai `useRef` sebagai penjaga, atau panggil lewat tombol.
 - **Jangan menyimpan kata sandi di state yang menetap** (context, store global, localStorage). Pakai state lokal komponen dan kosongkan setelah submit, berhasil atau gagal.
 - Jangan menyimpan atau mencatat `idToken`, token reset, atau token verifikasi; jangan kirim ke log/analytics. Hapus `?token=` dari URL setelah dibaca (`router.replace`).
@@ -383,7 +472,11 @@ Daftar lengkap ada di `backend/.env.example`.
 - **Verifikasi ID token Google**: `validateGooglePayload` di `google-auth.service.js` memeriksa `aud`, `iss`, `email_verified === true`, `sub`, `email`; tanda tangan dan kedaluwarsa oleh `google-auth-library`. Detail galat Google tidak diteruskan.
 - **Penautan otomatis hanya untuk email terverifikasi**: `applyRules` (`google-auth.service.js`); email belum terverifikasi → 409 tanpa menyentuh akun.
 - **Re-autentikasi password untuk menautkan Google**: `linkGoogle` memeriksa kata sandi sebelum token Google.
-- **Email pemberitahuan** saat password diganti dan Google ditautkan: `src/services/email-templates.js` (waktu WIB untuk bahasa Indonesia).
+- **Re-autentikasi untuk mengubah metode login** (ganti HP, hapus email, lepas Google): `src/services/account-security.service.js`. Akun ber-password memakai password (argon2), akun Google-only memakai ID token yang `sub`-nya HARUS sama dengan Google tertaut (`verifyGoogleToken`, `google-auth.service.js`). Semua kegagalan token dijawab seragam `Token Google tidak valid`.
+- **Aturan "minimal satu metode login"** kini dipakai: `planAccountChange` (memakai `src/utils/login-methods.js`) dicek sebelum dan sesudah di dalam transaksi.
+- **Pencabutan sesi perangkat lain** saat metode login berubah: `bumpSessionVersion` dalam transaksi yang sama, lalu cookie baru untuk perangkat ini (`respondAccountChange`, `controllers/auth.controller.js`).
+- **Pembatas re-auth gagal dibagi** (`passwordFailures`, 5 per 15 menit per user) antara `google/link`, `phone`, `email/remove`, dan `google/unlink`; pembatas IP `accountChangeRateLimit`; pembatas konflik nomor HP (5 per 15 menit per user) agar nomor orang lain tidak bisa dicari-cari, dan jawaban konflik seragam.
+- **Email pemberitahuan** saat password diganti, Google ditautkan atau dilepas, nomor HP diganti, dan email dihapus: `src/services/email-templates.js` (waktu WIB untuk bahasa Indonesia). Tanpa tautan, alamat dan nomor disamarkan, dikirim setelah commit, kegagalan kirim dicatat tanpa alamat email.
 - **Cookie httpOnly, sameSite=lax**: `src/utils/session.js`; CORS satu origin dengan credentials dan helmet di `src/middleware/security.js`.
 - **Email dikirim di luar transaksi DB**: `sendOrRevoke` (`email-verification.service.js`) mencabut token bila pengiriman gagal.
 
@@ -392,8 +485,9 @@ Daftar lengkap ada di `backend/.env.example`.
 - Rate limit di memori proses: tidak dibagi antar instance dan hilang saat restart. Banyak instance butuh penyimpanan bersama (mis. Redis).
 - Cookie `sameSite=lax` bermasalah bila frontend dan backend di domain/situs berbeda. Solusi: satu situs atau proxy Next.js (seperti `next.config.ts` sekarang).
 - Aplikasi Google berstatus Testing: hanya test user yang bisa masuk sampai dipublikasikan.
-- Belum ada endpoint unlink Google atau hapus email; helper `src/utils/login-methods.js` (aturan "minimal satu metode login") sudah ada tetapi belum dipakai endpoint.
-- Belum ada endpoint untuk mengisi nomor HP akun Google-only.
+- Setelah `POST /auth/google/unlink`, login Google dengan Gmail yang sama menautkan KEMBALI ke akun itu (aturan b, selama email akun terverifikasi). Disengaja dan sudah dicatat di 3.15.
+- Nomor HP tidak diverifikasi (tidak ada SMS). Mitigasi: format dan keunikan, pembatas, email pemberitahuan.
+- Menghapus email dari akun ber-password tanpa nomor HP yang masih tertaut Google diizinkan; password-nya tidak bisa dipakai masuk sampai nomor HP ditambahkan.
 - Email lama yang belum terverifikasi dapat membuat login Google dengan email itu ditolak 409 sampai email diverifikasi.
 - Satu tes cuaca ("musim lama (BAWANG 10 minggu)") gagal sejak sebelum branch ini; tidak terkait auth.
 - Hasil `npm audit` dari langkah sebelumnya: kerentanan pada dependensi `prisma` 7.10.0 tidak diubah di branch ini.
@@ -449,12 +543,11 @@ Secara umum 401 pada request terautentikasi mengarahkan ke `/masuk` (bagian 5). 
 | `POST /auth/login`, `POST /auth/register` | 401/kredensial salah bukan tanda sesi habis. |
 | `POST /auth/google` | 401 `Token Google tidak valid` ditampilkan sebagai galat login. |
 | `POST /auth/google/link` | Hanya untuk 401 `Kata sandi salah` dan `Token Google tidak valid`, yang ditampilkan di modal. 401 `Belum masuk` tetap redirect. |
+| `POST /auth/phone`, `POST /auth/email/remove`, `POST /auth/google/unlink` | Hanya untuk 401 `Kata sandi salah` dan `Token Google tidak valid` (re-autentikasi), yang ditampilkan di modal. 401 `Belum masuk` pada path yang sama tetap redirect. |
 | `POST /auth/email` dari alur daftar saja | Akun baru sudah dibuat; 401 diperlakukan sebagai "email belum tersimpan" agar pengguna tidak terlempar. Panggilan dari kartu Profil TIDAK dikecualikan. |
 | Semua request saat berada di halaman publik auth | Mencegah putaran redirect. |
 
 ### Endpoint backend yang belum ada
 
-- Mengisi nomor HP untuk akun Google-only.
-- Menghapus email.
-- Melepas (unlink) Google.
+Tidak ada. Mengisi nomor HP (3.13), menghapus email (3.14), dan melepas Google (3.15) sudah tersedia di backend. Dokumen ini tidak menyatakan status antarmuka frontend-nya. Saat membuatnya, peringatkan pengguna bahwa login Google dengan Gmail yang sama akan menautkan ulang akun (lihat 3.15).
 

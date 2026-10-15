@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { asyncHandler } from "../utils/async-handler.js";
 import { requireUser, optionalUser } from "../middleware/auth.js";
-import { loginRateLimit, guestRateLimit, emailRateLimit, verifyEmailRateLimit, forgotPasswordRateLimit, resetPasswordRateLimit, googleRateLimit, googleLinkRateLimit } from "../middleware/rate-limit.js";
+import { loginRateLimit, guestRateLimit, emailRateLimit, verifyEmailRateLimit, forgotPasswordRateLimit, resetPasswordRateLimit, googleRateLimit, googleLinkRateLimit, accountChangeRateLimit } from "../middleware/rate-limit.js";
 import * as auth from "../controllers/auth.controller.js";
 export const authRoutes = Router();
 authRoutes.post("/register", asyncHandler(auth.register));
@@ -21,3 +21,7 @@ authRoutes.post("/reset-password", resetPasswordRateLimit(), asyncHandler(auth.r
 authRoutes.post("/google", googleRateLimit(), asyncHandler(auth.googleLoginHandler));
 // [REVISI] langkah 10: tautkan Google ke akun yang sedang login (pembatas IP, lalu wajib login)
 authRoutes.post("/google/link", googleLinkRateLimit(), requireUser, asyncHandler(auth.googleLinkHandler));
+// [REVISI] B7: ganti/tambah HP, hapus email, lepas Google (pembatas IP, lalu wajib login; pembatas dipanggil terpisah per route)
+authRoutes.post("/phone", accountChangeRateLimit(), requireUser, asyncHandler(auth.setPhoneHandler));
+authRoutes.post("/email/remove", accountChangeRateLimit(), requireUser, asyncHandler(auth.removeEmailHandler));
+authRoutes.post("/google/unlink", accountChangeRateLimit(), requireUser, asyncHandler(auth.unlinkGoogleHandler));

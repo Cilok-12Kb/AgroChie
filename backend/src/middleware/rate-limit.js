@@ -106,6 +106,16 @@ export function googleLinkRateLimit() {
   });
 }
 
+/** [REVISI] B7: ganti HP / hapus email / lepas Google: 10 per 15 menit per IP (dipanggil terpisah per route). */
+export function accountChangeRateLimit() {
+  return rateLimit({
+    windowMs: 15 * 60_000,
+    max: 10,
+    keyFn: byIp,
+    message: "Terlalu banyak percobaan perubahan akun dari alamat ini. Coba lagi nanti.",
+  });
+}
+
 /**
  * [REVISI] Pembatas khusus KEGAGALAN (mis. password salah), per kunci (user). Berbeda dari rateLimit(),
  * hitungan hanya bertambah lewat recordFailure(). Memori proses, mengikuti pola rateLimit().

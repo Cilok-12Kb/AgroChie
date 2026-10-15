@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { registerEmailFailure, isOptionalEmailValid, safeNext, postLoginPath, isAuthPagePath, checkNewPassword, isApiMessage, isStatus, looksLikeEmail, googleLoginOutcome, googleButtonWidth, shouldRedirectOn401, loginRedirectUrl, shouldShowEmailBanner, emailErrorOutcome, canLinkGoogle, linkErrorOutcome, trapFocusIndex, bannerDismissKey, readBannerDismissed, writeBannerDismissed } from './logic.ts';
 import { SERVER_MSG } from './serverMessages.ts';
+import { apiLang, loginMethodCount, canRemoveEmail, canUnlinkGoogle, reauthKind, phoneProblem, accountActionOutcome } from './logic.ts';
 
 test('safeNext: path internal biasa diterima', () => {
   assert.equal(safeNext('/profil'), '/profil');
@@ -238,3 +239,114 @@ test('isOptionalEmailValid: kosong valid, terisi harus berformat email', () => {
   assert.equal(isOptionalEmailValid('budi@contoh.id'), true);
   assert.equal(isOptionalEmailValid('budi@'), false);
 });
+
+
+// [REVISI] B7-4: perubahan akun. Fixture = tabel keputusan docs/rencana-kelompok-b.md §2 (sama dengan tes backend).
+const A = (o) => ({ isGuest: false, phone: null, email: null, hasPassword: false, hasGoogle: false, ...o });
+const ROWS = [
+  // [baris, akun, metode, hapusEmail, lepasGoogle, reauth]
+  [1, A({ hasPassword: true, phone: '0811' }), 1, false, false, 'password'],
+  [2, A({ hasPassword: true, phone: '0811', email: 'a@b.id' }), 1, true, false, 'password'],
+  [3, A({ hasPassword: true, phone: '0811', email: 'a@b.id' }), 1, true, false, 'password'],
+  [4, A({ hasPassword: true, phone: '0811', email: 'a@b.id', hasGoogle: true }), 2, true, true, 'password'],
+  [5, A({ hasPassword: true, phone: '0811', hasGoogle: true }), 2, false, true, 'password'],
+  [6, A({ email: 'a@b.id', hasGoogle: true }), 1, true, false, 'google'],
+  [7, A({ phone: '0811', email: 'a@b.id', hasGoogle: true }), 1, true, false, 'google'],
+  [8, A({ hasPassword: true, email: 'a@b.id', hasGoogle: true }), 2, true, true, 'password'],
+  [9, A({ hasPassword: true, email: 'a@b.id' }), 1, false, false, 'password'],
+  [10, A({ hasPassword: true, hasGoogle: true }), 1, false, false, 'password'],
+  [11, A({ hasGoogle: true }), 1, false, false, 'google'],
+];
+
+test('tabel keputusan §2: loginMethodCount, canRemoveEmail, canUnlinkGoogle, reauthKind', () => {
+  for (const [row, acc, count, rm, un, kind] of ROWS) {
+    assert.equal(loginMethodCount(acc), count, `baris ${row} jumlah metode`);
+    assert.equal(canRemoveEmail(acc), rm, `baris ${row} hapus email`);
+    assert.equal(canUnlinkGoogle(acc), un, `baris ${row} lepas Google`);
+    assert.equal(reauthKind(acc), kind, `baris ${row} re-auth`);
+  }
+});
+
+test('tabel keputusan §2: tamu dan akun kosong tidak bisa hapus email/lepas Google', () => {
+  const guest = { isGuest: true };
+  assert.equal(canRemoveEmail(guest), false);
+  assert.equal(canUnlinkGoogle(guest), false);
+  assert.equal(canRemoveEmail(null), false);
+  assert.equal(canUnlinkGoogle(undefined), false);
+  assert.equal(loginMethodCount(A({})), 0); // baris 13
+  assert.equal(canRemoveEmail(A({ email: 'a@b.id' })), false);
+});
+
+const REAUTH = ['/auth/phone', '/auth/email/remove', '/auth/google/unlink'];
+const base401 = { status: 401, currentPath: '/profil', redirecting: false, wrongPassword: SERVER_MSG.wrongPassword, googleTokenInvalid: SERVER_MSG.googleTokenInvalid };
+
+test('shouldRedirectOn401: tiga path baru tidak redirect untuk Kata sandi salah / Token Google tidak valid', () => {
+  for (const requestPath of REAUTH) {
+    for (const message of [SERVER_MSG.wrongPassword, SERVER_MSG.googleTokenInvalid]) {
+      assert.equal(shouldRedirectOn401({ ...base401, requestPath, message }), false, `${requestPath} ${message}`);
+      assert.equal(shouldRedirectOn401({ ...base401, requestPath: `${requestPath}?x=1`, message }), false);
+    }
+  }
+});
+
+test('shouldRedirectOn401: Belum masuk dan pesan lain pada tiga path baru tetap redirect', () => {
+  for (const requestPath of REAUTH) {
+    assert.equal(shouldRedirectOn401({ ...base401, requestPath, message: 'Belum masuk' }), true);
+    assert.equal(shouldRedirectOn401({ ...base401, requestPath, message: 'Lainnya' }), true);
+  }
+});
+
+test('shouldRedirectOn401: pesan re-auth pada path lain tetap redirect; aturan lama tidak berubah', () => {
+  for (const requestPath of ['/lahan', '/auth/email', '/auth/phone/x', '/auth/email/remove/x']) {
+    assert.equal(shouldRedirectOn401({ ...base401, requestPath, message: SERVER_MSG.wrongPassword }), true, requestPath);
+  }
+  assert.equal(shouldRedirectOn401({ ...base401, requestPath: '/auth/google/link', message: SERVER_MSG.wrongPassword }), false);
+  assert.equal(shouldRedirectOn401({ ...base401, requestPath: '/auth/google/link', message: 'Belum masuk' }), true);
+});
+
+
+test('phoneProblem: kosong, terlalu pendek/panjang, format spasi/strip, sama dengan nomor sekarang', () => {
+  assert.equal(phoneProblem(''), 'required');
+  assert.equal(phoneProblem('   '), 'required');
+  assert.equal(phoneProblem('1234567'), 'invalid');
+  assert.equal(phoneProblem('abc'), 'invalid');
+  assert.equal(phoneProblem('1'.repeat(16)), 'invalid');
+  assert.equal(phoneProblem('12345678'), null);
+  assert.equal(phoneProblem('1'.repeat(15)), null);
+  assert.equal(phoneProblem('0812-3456 789'), null);
+  assert.equal(phoneProblem('0812-3456 789', '08123456789'), 'same');
+  assert.equal(phoneProblem('0812-3456 788', '08123456789'), null);
+  assert.equal(phoneProblem('08123456789', null), null);
+});
+
+test('accountActionOutcome: peta status dan pesan ke tindakan UI', () => {
+  const m = { wrongPassword: SERVER_MSG.wrongPassword, googleTokenInvalid: SERVER_MSG.googleTokenInvalid, lastLoginMethod: SERVER_MSG.lastLoginMethod, phoneUnavailable: SERVER_MSG.phoneUnavailable, accountBusy: SERVER_MSG.accountBusy };
+  const o = (status, message = '') => accountActionOutcome({ status, message }, m);
+  assert.equal(o(401, SERVER_MSG.wrongPassword), 'wrongPassword');
+  assert.equal(o(401, SERVER_MSG.googleTokenInvalid), 'wrongGoogle');
+  assert.equal(o(401, 'Belum masuk'), 'other');
+  assert.equal(o(429, 'apa saja'), 'closeCooldown');
+  assert.equal(o(409, SERVER_MSG.lastLoginMethod), 'lastMethod');
+  assert.equal(o(409, SERVER_MSG.phoneUnavailable), 'phoneTaken');
+  assert.equal(o(409, SERVER_MSG.accountBusy), 'busy');
+  assert.equal(o(409, 'lain'), 'stale');
+  assert.equal(o(400, 'Belum ada email di akun ini'), 'stale');
+  assert.equal(o(403, 'Tidak diizinkan'), 'hide');
+  assert.equal(o(503, 'Login Google belum dikonfigurasi'), 'unavailable');
+  assert.equal(o(500, 'x'), 'other');
+  assert.equal(accountActionOutcome(new TypeError('network'), m), 'other');
+});
+
+test('apiLang: zh dikirim sebagai en; id tetap id', () => {
+  assert.equal(apiLang('id'), 'id');
+  assert.equal(apiLang('en'), 'en');
+  assert.equal(apiLang('zh'), 'en');
+  assert.equal(apiLang(undefined), 'en');
+});
+
+test('SERVER_MSG B7 persis sama dengan API_AUTH.md', () => {
+  assert.equal(SERVER_MSG.lastLoginMethod, 'Tidak bisa menghapus metode masuk terakhir.');
+  assert.equal(SERVER_MSG.phoneUnavailable, 'Nomor HP tidak dapat digunakan.');
+  assert.equal(SERVER_MSG.accountBusy, 'Akun sedang diproses. Coba lagi.');
+});
+
