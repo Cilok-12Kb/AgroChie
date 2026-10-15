@@ -1,3 +1,4 @@
+import { currentLang } from '../auth/copy'; // [REVISI] bahasa untuk field `lang` endpoint email
 /** One network boundary for the frontend. Cookies remain httpOnly on the Express server. */
 export class ApiError extends Error {
   constructor(public status: number, message: string) { super(message); this.name = 'ApiError'; }
@@ -28,7 +29,11 @@ export type Crop = 'CABAI' | 'BAWANG' | 'TOMAT';
 export type SeasonStatus = 'DRAFT' | 'PEMBIAYAAN' | 'TANAM' | 'PANEN' | 'SELESAI';
 export type Level = 'RENDAH' | 'SEDANG' | 'TINGGI';
 export type ExpenseCategory = 'BENIH' | 'PUPUK' | 'OBAT' | 'TENAGA_KERJA' | 'LAIN';
-export interface Account { id: string; name: string; phone?: string; isGuest?: boolean; role: string }
+// [REVISI] Field auth baru (API_AUTH.md bagian 2). Opsional karena akun tamu hanya punya id, name, role, isGuest.
+export interface Account {
+  id: string; name: string; phone?: string | null; isGuest?: boolean; role: string;
+  email?: string | null; emailVerified?: boolean; hasPassword?: boolean; hasGoogle?: boolean; needsProfileCompletion?: boolean;
+}
 export interface Farm {
   id: string; name: string; areaHa: string; userId: string;
   village?: string | null; subdistrict?: string | null; farmerGroup?: string | null;
@@ -102,10 +107,18 @@ export interface DetectionPage { data: Detection[]; page: number; limit: number;
 export const api = {
   auth: {
     me: () => request<Account>('/auth/me'),
-    login: (phone: string, password: string) => post<Account>('/auth/login', { phone, password }),
+    login: (identifier: string, password: string) => post<Account>('/auth/login', { identifier, password }), // [REVISI] identifier = HP atau email
     register: (name: string, phone: string, password: string) => post<Account>('/auth/register', { name, phone, password }),
     guest: async () => (await post<{ user: Account }>('/auth/guest', {})).user,
     logout: () => request<void>('/auth/logout', { method: 'POST' }),
+    // [REVISI] Endpoint auth tambahan. Nilai sensitif (password, idToken, token) hanya dilewatkan, tidak disimpan/dicatat.
+    google: (idToken: string) => post<Account>('/auth/google', { idToken }),
+    googleLink: (idToken: string, password: string) => post<Account>('/auth/google/link', { idToken, password, lang: currentLang() }),
+    setEmail: (email: string) => post<Account>('/auth/email', { email, lang: currentLang() }),
+    resendVerification: () => post<{ ok: boolean }>('/auth/email/resend-verification', { lang: currentLang() }),
+    verifyEmail: (token: string) => post<{ ok: boolean }>('/auth/verify-email', { token }),
+    forgotPassword: (email: string) => post<{ ok: boolean; message: string }>('/auth/forgot-password', { email, lang: currentLang() }),
+    resetPassword: (token: string, passwordBaru: string) => post<{ ok: boolean }>('/auth/reset-password', { token, passwordBaru, lang: currentLang() }),
   },
   farms: {
     list: () => request<Farm[]>('/farms'),
