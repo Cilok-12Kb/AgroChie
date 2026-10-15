@@ -9,15 +9,15 @@ import { useDialogA11y } from './useDialogA11y';
 import { useTranslation } from '../../i18n';
 
 type Action = 'phone' | 'email' | 'google';
-type Props = { action: Action; account: Account; phone?: string; onClose: () => void; onSuccess: (user: Account) => void; onHide: () => void; onNote: (text: string, ok?: boolean) => void; returnFocus?: RefObject<HTMLElement | null> };
+type Props = { action: Action; account: Account; phone?: string; onClose: () => void; onSuccess: (user: Account) => void; onHide: () => void; onNote: (text: string, ok?: boolean) => void; onRefresh: () => void; fallbackFocus?: RefObject<HTMLElement | null> };
 
 /** Modal konfirmasi dan re-autentikasi lokal; password/idToken tidak disimpan atau dicatat. */
-export function ReauthModal({ action, account, phone, onClose, onSuccess, onHide, onNote, returnFocus }: Props) {
+export function ReauthModal({ action, account, phone, onClose, onSuccess, onHide, onNote, onRefresh, fallbackFocus }: Props) {
   const { t } = useTranslation(); const a = t.accountActions;
   const [password, setPassword] = useState(''); const [busy, setBusy] = useState(false); const [error, setError] = useState<unknown>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
   const kind = reauthKind(account); const initial = kind === 'password' ? passwordRef : null;
-  const dialogRef = useDialogA11y(true, initial, onClose, returnFocus);
+  const dialogRef = useDialogA11y(true, initial, onClose, fallbackFocus);
   const title = action === 'phone' ? a.modalPhoneTitle : action === 'email' ? a.modalEmailTitle : a.modalGoogleTitle;
   const body = action === 'phone' ? a.modalPhoneBody : action === 'email' ? a.modalEmailBody : a.modalGoogleBody;
   const confirm = action === 'phone' ? a.confirmPhone : action === 'email' ? a.confirmEmail : a.confirmGoogle;
@@ -30,9 +30,9 @@ export function ReauthModal({ action, account, phone, onClose, onSuccess, onHide
       if (outcome === 'wrongPassword') { setPassword(''); setError(new Error(a.wrongPassword)); requestAnimationFrame(() => passwordRef.current?.focus()); }
       else if (outcome === 'wrongGoogle') setError(new Error(a.wrongGoogle));
       else if (outcome === 'closeCooldown') { onClose(); onNote(a.tooMany); }
-      else if (outcome === 'lastMethod') { onClose(); onNote(a.lastMethod); }
-      else if (outcome === 'busy') { onClose(); onNote(a.busy); }
-      else if (outcome === 'stale') { onClose(); onNote(a.stale); }
+      else if (outcome === 'lastMethod') { onClose(); onNote(a.lastMethod); onRefresh(); }
+      else if (outcome === 'busy') { onClose(); onNote(a.busy); onRefresh(); }
+      else if (outcome === 'stale') { onClose(); onNote(a.stale); onRefresh(); }
       else if (outcome === 'hide') { onClose(); onHide(); }
       else if (outcome === 'unavailable') setError(new Error(a.googleUnavailable));
       else setError(err instanceof ApiError ? err : new Error('Network error'));
