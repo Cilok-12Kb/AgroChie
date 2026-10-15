@@ -210,6 +210,52 @@ export interface Translations {
     examples: string[];
     weatherNote: string;
   };
+  // ── Perubahan akun (B7) ───────────────────────────────────────
+  accountActions: {
+    phoneTitle: string;
+    phoneNone: string;
+    phoneHelp: string;
+    phoneLabelAdd: string;
+    phoneLabelChange: string;
+    phonePlaceholder: string;
+    phoneSaveAdd: string;
+    phoneSaveChange: string;
+    phoneInvalid: string;
+    phoneSame: string;
+    phoneSavedAdd: string;
+    phoneSavedChange: string;
+    phoneTaken: string;
+    emailRemove: string;
+    emailRemoved: string;
+    emailLastHint: string;
+    googleUnlink: string;
+    googleUnlinked: string;
+    googleLastHint: string;
+    modalPhoneTitle: string;
+    modalEmailTitle: string;
+    modalGoogleTitle: string;
+    modalPhoneBody: string;
+    modalEmailBody: string;
+    modalEmailBodyNoPhone: string;
+    modalGoogleBody: string;
+    modalGoogleBodyRelink: string;
+    reauthPasswordIntro: string;
+    reauthGoogleIntro: string;
+    passwordLabel: string;
+    confirmPhone: string;
+    confirmEmail: string;
+    confirmGoogle: string;
+    cancel: string;
+    working: string;
+    wrongPassword: string;
+    wrongGoogle: string;
+    tooMany: string;
+    googleUnavailable: string;
+    lastMethod: string;
+    busy: string;
+    stale: string;
+  };
+
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -409,6 +455,52 @@ const id: Translations = {
     examples: ['Bagaimana cuaca hari ini?', 'Besok hujan tidak?', 'Berapa biaya musim saya?', 'Apa yang paling memengaruhi biaya tani?', 'Apa langkah setelah memulai pembiayaan?', 'Bagaimana memahami pH tanah?'],
     weatherNote: 'Pertanyaan cuaca memakai koordinat lahan aktif (data Open-Meteo). Jika layanan AI atau cuaca tidak tersedia, pesan kesalahan ditampilkan tanpa jawaban simulasi.',
   },
+  // ── Perubahan akun (B7) ───────────────────────────────────────
+  accountActions: {
+    phoneTitle: 'Nomor HP',
+    phoneNone: 'Belum ada nomor HP.',
+    phoneHelp: 'Nomor ini dipakai untuk masuk. Kami tidak mengirim kode SMS, jadi pastikan nomornya benar.',
+    phoneLabelAdd: 'Tambah nomor HP',
+    phoneLabelChange: 'Nomor HP baru',
+    phonePlaceholder: '08123456789',
+    phoneSaveAdd: 'Simpan nomor HP',
+    phoneSaveChange: 'Ganti nomor HP',
+    phoneInvalid: 'Nomor HP harus 8 sampai 15 digit.',
+    phoneSame: 'Ini sudah menjadi nomor HP akunmu.',
+    phoneSavedAdd: 'Nomor HP tersimpan.',
+    phoneSavedChange: 'Nomor HP diganti. Perangkat lain sudah dikeluarkan.',
+    phoneTaken: 'Nomor HP tidak dapat digunakan.',
+    emailRemove: 'Hapus email',
+    emailRemoved: 'Email dihapus. Perangkat lain sudah dikeluarkan.',
+    emailLastHint: 'Email ini belum bisa dihapus karena menjadi satu-satunya cara masuk.',
+    googleUnlink: 'Lepas Google',
+    googleUnlinked: 'Google dilepas. Perangkat lain sudah dikeluarkan.',
+    googleLastHint: 'Google belum bisa dilepas karena menjadi satu-satunya cara masuk. Atur kata sandi lewat "Lupa kata sandi" lebih dulu.',
+    modalPhoneTitle: 'Ganti nomor HP?',
+    modalEmailTitle: 'Hapus email?',
+    modalGoogleTitle: 'Lepas akun Google?',
+    modalPhoneBody: 'Nomor baru dipakai untuk masuk. Perangkat lain akan keluar dari akunmu.',
+    modalEmailBody: 'Email tidak lagi dipakai untuk masuk atau mengatur ulang kata sandi. Perangkat lain akan keluar.',
+    modalEmailBodyNoPhone: 'Tanpa nomor HP, kata sandimu tidak bisa dipakai masuk sampai kamu menambah nomor HP.',
+    modalGoogleBody: 'Kamu tidak bisa lagi masuk dengan Google. Perangkat lain akan keluar.',
+    modalGoogleBodyRelink: 'Jika email akunmu sama dengan Gmail yang tertaut, masuk dengan Google akan menautkannya kembali. Jika Gmail itu tidak aman, ganti atau hapus juga email akunmu.',
+    reauthPasswordIntro: 'Masukkan kata sandimu untuk melanjutkan.',
+    reauthGoogleIntro: 'Akunmu tidak memakai kata sandi. Masuk dengan akun Google yang tertaut untuk melanjutkan.',
+    passwordLabel: 'Kata sandi',
+    confirmPhone: 'Ya, ganti nomor',
+    confirmEmail: 'Ya, hapus email',
+    confirmGoogle: 'Ya, lepas Google',
+    cancel: 'Batal',
+    working: 'Memproses…',
+    wrongPassword: 'Kata sandi salah. Coba lagi.',
+    wrongGoogle: 'Akun Google tidak cocok dengan akun ini. Pilih akun Google yang tertaut.',
+    tooMany: 'Terlalu banyak percobaan. Coba lagi nanti.',
+    googleUnavailable: 'Verifikasi Google belum tersedia.',
+    lastMethod: 'Tidak bisa menghapus metode masuk terakhir.',
+    busy: 'Akun sedang diproses. Coba lagi.',
+    stale: 'Data akun sudah berubah. Muat ulang halaman.',
+  },
+
 };
 
 // ════════════════════════════════════════════════════════════════
@@ -608,6 +700,52 @@ const en: Translations = {
     examples: ['What is the weather today?', 'Will it rain tomorrow?', 'How much will my season cost?', 'What affects farming costs the most?', 'What should I do after starting financing?', 'How should I interpret soil pH?'],
     weatherNote: 'Weather questions use the active farm coordinates (Open-Meteo data). If the AI or weather service is unavailable, an error is shown without a simulated answer.',
   },
+  // ── Account changes (B7) ──────────────────────────────────────
+  accountActions: {
+    phoneTitle: 'Phone number',
+    phoneNone: 'No phone number yet.',
+    phoneHelp: 'This number is used to sign in. We do not send an SMS code, so make sure it is correct.',
+    phoneLabelAdd: 'Add phone number',
+    phoneLabelChange: 'New phone number',
+    phonePlaceholder: '08123456789',
+    phoneSaveAdd: 'Save phone number',
+    phoneSaveChange: 'Change phone number',
+    phoneInvalid: 'Phone number must be 8 to 15 digits.',
+    phoneSame: 'This is already your phone number.',
+    phoneSavedAdd: 'Phone number saved.',
+    phoneSavedChange: 'Phone number changed. Other devices were signed out.',
+    phoneTaken: 'This phone number cannot be used.',
+    emailRemove: 'Remove email',
+    emailRemoved: 'Email removed. Other devices were signed out.',
+    emailLastHint: 'This email cannot be removed yet because it is your only way to sign in.',
+    googleUnlink: 'Unlink Google',
+    googleUnlinked: 'Google unlinked. Other devices were signed out.',
+    googleLastHint: 'Google cannot be unlinked yet because it is your only way to sign in. Set a password with "Forgot password" first.',
+    modalPhoneTitle: 'Change phone number?',
+    modalEmailTitle: 'Remove email?',
+    modalGoogleTitle: 'Unlink Google account?',
+    modalPhoneBody: 'The new number will be used to sign in. Other devices will be signed out.',
+    modalEmailBody: 'This email will no longer be used to sign in or reset your password. Other devices will be signed out.',
+    modalEmailBodyNoPhone: 'Without a phone number, your password cannot be used to sign in until you add one.',
+    modalGoogleBody: 'You will no longer be able to sign in with Google. Other devices will be signed out.',
+    modalGoogleBodyRelink: 'If your account email is the same as the linked Gmail, signing in with Google will link it again. If that Gmail is not secure, also change or remove your account email.',
+    reauthPasswordIntro: 'Enter your password to continue.',
+    reauthGoogleIntro: 'Your account has no password. Sign in with the linked Google account to continue.',
+    passwordLabel: 'Password',
+    confirmPhone: 'Yes, change number',
+    confirmEmail: 'Yes, remove email',
+    confirmGoogle: 'Yes, unlink Google',
+    cancel: 'Cancel',
+    working: 'Working…',
+    wrongPassword: 'Wrong password. Try again.',
+    wrongGoogle: 'This Google account does not match your account. Choose the linked one.',
+    tooMany: 'Too many attempts. Try again later.',
+    googleUnavailable: 'Google verification is not available yet.',
+    lastMethod: 'You cannot remove your last sign-in method.',
+    busy: 'Your account is being updated. Try again.',
+    stale: 'Your account data changed. Reload the page.',
+  },
+
 };
 
 // ════════════════════════════════════════════════════════════════
@@ -807,6 +945,52 @@ const zh: Translations = {
     examples: ['今天天气怎么样？', '明天会下雨吗？', '这个种植季需要多少成本？', '哪些因素最影响种植成本？', '开始融资后下一步该做什么？', '如何理解土壤酸碱度？'],
     weatherNote: '天气问题会使用当前农田的坐标（Open-Meteo 数据）。如果 AI 或天气服务不可用，系统会显示错误，不会生成模拟答案。',
   },
+  // ── Perubahan akun (B7) ───────────────────────────────────────
+  accountActions: {
+    phoneTitle: '手机号码',
+    phoneNone: '尚未添加手机号码。',
+    phoneHelp: '此号码用于登录。我们不会发送短信验证码，请确认号码无误。',
+    phoneLabelAdd: '添加手机号码',
+    phoneLabelChange: '新手机号码',
+    phonePlaceholder: '08123456789',
+    phoneSaveAdd: '保存手机号码',
+    phoneSaveChange: '更换手机号码',
+    phoneInvalid: '手机号码必须为8到15位数字。',
+    phoneSame: '这已经是你当前的手机号码。',
+    phoneSavedAdd: '手机号码已保存。',
+    phoneSavedChange: '手机号码已更换，其他设备已退出登录。',
+    phoneTaken: '无法使用此手机号码。',
+    emailRemove: '删除邮箱',
+    emailRemoved: '邮箱已删除，其他设备已退出登录。',
+    emailLastHint: '暂时无法删除此邮箱，因为它是你唯一的登录方式。',
+    googleUnlink: '解除 Google 绑定',
+    googleUnlinked: '已解除 Google 绑定，其他设备已退出登录。',
+    googleLastHint: '暂时无法解除 Google 绑定，因为它是你唯一的登录方式。请先通过“忘记密码”设置密码。',
+    modalPhoneTitle: '更换手机号码？',
+    modalEmailTitle: '删除邮箱？',
+    modalGoogleTitle: '解除 Google 账号绑定？',
+    modalPhoneBody: '新号码将用于登录，其他设备将退出登录。',
+    modalEmailBody: '此邮箱将不再用于登录或重置密码，其他设备将退出登录。',
+    modalEmailBodyNoPhone: '没有手机号码时，你的密码将无法用于登录，直到你添加号码。',
+    modalGoogleBody: '你将无法再使用 Google 登录，其他设备将退出登录。',
+    modalGoogleBodyRelink: '如果你的账号邮箱与已绑定的 Gmail 相同，使用 Google 登录会重新绑定该账号。如果该 Gmail 不安全，请同时更换或删除账号邮箱。',
+    reauthPasswordIntro: '请输入密码以继续。',
+    reauthGoogleIntro: '你的账号没有密码。请使用已绑定的 Google 账号验证以继续。',
+    passwordLabel: '密码',
+    confirmPhone: '是，更换号码',
+    confirmEmail: '是，删除邮箱',
+    confirmGoogle: '是，解除绑定',
+    cancel: '取消',
+    working: '处理中…',
+    wrongPassword: '密码错误，请重试。',
+    wrongGoogle: 'Google 账号与此账号不匹配，请选择已绑定的账号。',
+    tooMany: '尝试次数过多，请稍后再试。',
+    googleUnavailable: 'Google 验证暂不可用。',
+    lastMethod: '无法删除最后一种登录方式。',
+    busy: '账号正在处理，请重试。',
+    stale: '账号数据已变化，请刷新页面。',
+  },
+
 };
 
 // ════════════════════════════════════════════════════════════════
