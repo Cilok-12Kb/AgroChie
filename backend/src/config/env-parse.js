@@ -105,5 +105,39 @@ export function buildEnv(src) {
     cookieName: src.COOKIE_NAME ?? "agro_session",
     frontendOrigin,
     trustProxy: parseTrustProxy(src.TRUST_PROXY),
+
+    // [REVISI] auth email + Google: semua opsional (lazy). Server tetap menyala tanpa SMTP/Google;
+    // fitur terkait memeriksa kelengkapan lewat mailConfigured / googleConfigured saat dipakai.
+    smtpHost: (src.SMTP_HOST ?? "").trim(),
+    smtpPort: (() => {
+      const n = Number(src.SMTP_PORT || 587);
+      if (!Number.isInteger(n) || n < 1 || n > 65535) throw new Error("SMTP_PORT harus bilangan bulat 1 sampai 65535.");
+      return n;
+    })(),
+    smtpSecure: (() => {
+      const v = (src.SMTP_SECURE ?? "").trim().toLowerCase();
+      if (v === "" || v === "false") return false;
+      if (v === "true") return true;
+      throw new Error("SMTP_SECURE harus kosong, true, atau false.");
+    })(),
+    smtpUser: (src.SMTP_USER ?? "").trim(),
+    smtpPass: src.SMTP_PASS ?? "",
+    mailFrom: (src.MAIL_FROM ?? "").trim(),
+    appBaseUrl: (() => {
+      const raw = (src.APP_BASE_URL || frontendOrigin).replace(/\/+$/, "");
+      try {
+        const u = new URL(raw);
+        if (!["http:", "https:"].includes(u.protocol)) throw new Error("protokol");
+        return raw;
+      } catch {
+        throw new Error("APP_BASE_URL harus berupa alamat http(s) seperti http://localhost:3001.");
+      }
+    })(),
+    googleClientId: (src.GOOGLE_CLIENT_ID ?? "").trim(),
+    passwordResetTtlMinutes: positive("PASSWORD_RESET_TTL_MINUTES", 30),
+    emailVerifyTtlHours: positive("EMAIL_VERIFY_TTL_HOURS", 24),
+    // SMTP dianggap siap bila host, pengirim (MAIL_FROM) terisi; user/pass boleh kosong (mis. relay lokal)
+    mailConfigured: Boolean((src.SMTP_HOST ?? "").trim() && (src.MAIL_FROM ?? "").trim()),
+    googleConfigured: Boolean((src.GOOGLE_CLIENT_ID ?? "").trim()),
   };
 }
