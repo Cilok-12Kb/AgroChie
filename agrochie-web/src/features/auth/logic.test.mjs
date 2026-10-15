@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { safeNext, postLoginPath, isAuthPagePath, checkNewPassword, isApiMessage, isStatus, looksLikeEmail } from './logic.ts';
+import { safeNext, postLoginPath, isAuthPagePath, checkNewPassword, isApiMessage, isStatus, looksLikeEmail, googleLoginOutcome, googleButtonWidth } from './logic.ts';
 import { SERVER_MSG } from './serverMessages.ts';
 
 test('safeNext: path internal biasa diterima', () => {
@@ -54,6 +54,24 @@ test('isStatus: hanya cocok bila status sama', () => {
   assert.equal(isStatus({ status: 401 }, 429), false);
   assert.equal(isStatus(null, 429), false);
   assert.equal(isStatus(new Error('x'), 429), false);
+});
+
+test('googleLoginOutcome: peta status ke tindakan', () => {
+  assert.equal(googleLoginOutcome({ status: 401 }), 'failed');
+  assert.equal(googleLoginOutcome({ status: 409 }), 'server');
+  assert.equal(googleLoginOutcome({ status: 429 }), 'cooldown');
+  assert.equal(googleLoginOutcome({ status: 503 }), 'hide');
+  assert.equal(googleLoginOutcome({ status: 500 }), 'other');
+  assert.equal(googleLoginOutcome(new Error('x')), 'other');
+  assert.equal(googleLoginOutcome(null), 'other');
+});
+
+test('googleButtonWidth: dijepit 200..400', () => {
+  assert.equal(googleButtonWidth(290.7), 290);
+  assert.equal(googleButtonWidth(120), 200);
+  assert.equal(googleButtonWidth(900), 400);
+  assert.equal(googleButtonWidth(0), 280);
+  assert.equal(googleButtonWidth(NaN), 280);
 });
 
 test('looksLikeEmail', () => {

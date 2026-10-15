@@ -7,6 +7,7 @@ import { Button, ErrorLine, Field, inputClass } from './ui';
 import { copy } from '../auth/copy'; // [REVISI] teks baru lewat copy.ts
 import { useCooldown } from '../auth/useCooldown'; // [REVISI]
 import { isStatus, postLoginPath } from '../auth/logic'; // [REVISI]
+import { GoogleLogin } from '../auth/GoogleLogin'; // [REVISI]
 
 export function AuthForm({ type }: { type: 'login' | 'register' }) {
   const [name,setName]=useState(''); const [phone,setPhone]=useState(''); const [password,setPassword]=useState('');
@@ -27,6 +28,8 @@ export function AuthForm({ type }: { type: 'login' | 'register' }) {
       {type==='login'&&<div className="text-right -mt-1"><Link href="/lupa-password" className="inline-block py-2 text-sm text-emerald-700 font-black">{copy.login.forgotLink}</Link></div>}
       <ErrorLine error={error}/>{cooldown.left>0&&<p role="status" className="text-sm text-amber-700 font-bold">{copy.common.cooldownNote} {copy.common.cooldownWait(cooldown.left)}</p>}<div className="pt-2"><Button type="submit" icon={ArrowRight} busy={loading} disabled={cooldown.left>0}>{type==='login'?'Masuk':'Daftar & lanjutkan'}</Button></div>
     </form>
+    {/* [REVISI] tombol Google di /masuk dan /daftar */}
+    <GoogleLogin mode={type} busy={loading} locked={cooldown.left>0} onCooldown={cooldown.start}/>
     {type==='login'&&<div className="mt-6 border-t border-slate-100 pt-5"><button disabled={loading} className="w-full rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 py-3 text-sm font-extrabold flex justify-center items-center gap-2 hover:bg-emerald-100" onClick={guest}><User size={16}/> Masuk sebagai tamu sementara</button><p className="text-xs text-slate-500 text-center mt-2">Data tamu tersimpan di server dan dihapus saat logout.</p></div>}
     <p className="text-sm text-center text-slate-500 mt-7">{type==='login'?<>Belum punya akun? <Link href="/daftar" className="text-emerald-700 font-black">Daftar sekarang</Link></>:<>Sudah memiliki akun? <Link href="/masuk" className="text-emerald-700 font-black">Masuk</Link></>}</p>
   </div>;

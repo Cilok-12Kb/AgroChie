@@ -58,6 +58,27 @@ export function isStatus(error: unknown, status: number): boolean {
   return typeof error === 'object' && error !== null && (error as { status?: unknown }).status === status;
 }
 
+export type GoogleLoginOutcome = 'failed' | 'server' | 'cooldown' | 'hide' | 'other';
+
+/**
+ * Peta galat POST /auth/google ke tindakan UI:
+ * 401 -> pesan "login Google gagal", 409 -> tampilkan pesan server, 429 -> cooldown,
+ * 503 -> sembunyikan tombol Google, selain itu -> galat umum.
+ */
+export function googleLoginOutcome(error: unknown): GoogleLoginOutcome {
+  if (isStatus(error, 401)) return 'failed';
+  if (isStatus(error, 409)) return 'server';
+  if (isStatus(error, 429)) return 'cooldown';
+  if (isStatus(error, 503)) return 'hide';
+  return 'other';
+}
+
+/** Lebar tombol Google (px): mengikuti kontainer, minimal 200 (batas Google), maksimal 400. */
+export function googleButtonWidth(containerWidth: number): number {
+  if (!Number.isFinite(containerWidth) || containerWidth <= 0) return 280;
+  return Math.max(200, Math.min(400, Math.floor(containerWidth)));
+}
+
 /** Email longgar untuk validasi awal di klien; keputusan akhir tetap di server. */
 export function looksLikeEmail(value: string): boolean {
   const v = value.trim();

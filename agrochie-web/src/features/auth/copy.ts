@@ -61,6 +61,11 @@ export const copy = {
     identifierPlaceholder: 'Contoh: 081234567890 atau nama@email.com',
     forgotLink: 'Lupa kata sandi?',
   },
+  google: {
+    divider: 'atau',
+    failed: 'Login Google gagal, coba lagi.',
+    signingIn: 'Memproses login Google…',
+  },
   common: {
     cooldownNote: 'Terlalu banyak percobaan. Tunggu sebentar sebelum mencoba lagi.',
     cooldownWait: (seconds: number) => `Coba lagi dalam ${seconds} detik`,
