@@ -54,7 +54,78 @@ export function shouldRedirectOn401(input: {
   if (p === '/auth/me' || p === '/auth/logout') return false;
   if (p === '/auth/login' || p === '/auth/register' || p === '/auth/google') return false;
   if (p === '/auth/google/link' && (input.message === input.wrongPassword || input.message === input.googleTokenInvalid)) return false;
+  // [REVISI] B7: re-autentikasi di tiga path perubahan akun; hanya dua pesan ini, path persis.
+  if (REAUTH_PATHS.includes(p) && (input.message === input.wrongPassword || input.message === input.googleTokenInvalid)) return false;
   return true;
+}
+
+// [REVISI] B7: path perubahan akun yang memakai re-autentikasi (API_AUTH.md 3.13-3.15).
+const REAUTH_PATHS = ['/auth/phone', '/auth/email/remove', '/auth/google/unlink'];
+
+/** Bahasa untuk field `lang` backend: hanya id/en; zh dikirim sebagai en (API_AUTH.md bagian 5). */
+export function apiLang(lang: string | null | undefined): 'id' | 'en' {
+  return lang === 'id' ? 'id' : 'en';
+}
+
+type AccountLike = {
+  isGuest?: boolean; phone?: string | null; email?: string | null; hasPassword?: boolean; hasGoogle?: boolean;
+} | null | undefined;
+
+const filled = (v: unknown) => v !== null && v !== undefined && v !== '';
+
+/** Cermin backend countLoginMethods: password dihitung bila ada DAN (HP atau email); Google bila tertaut. */
+export function loginMethodCount(account: AccountLike, change: { phone?: string | null; email?: string | null; hasGoogle?: boolean } = {}): number {
+  const a = { ...(account ?? {}), ...change };
+  const password = a.hasPassword === true && (filled(a.phone) || filled(a.email));
+  const google = a.hasGoogle === true;
+  return Number(password) + Number(google);
+}
+
+/** Hapus email: bukan tamu, email ada, dan sesudahnya masih ada minimal satu metode login. */
+export function canRemoveEmail(account: AccountLike): boolean {
+  return !!account && account.isGuest !== true && filled(account.email) && loginMethodCount(account, { email: null }) >= 1;
+}
+
+/** Lepas Google: bukan tamu, Google tertaut, dan sesudahnya masih ada minimal satu metode login. */
+export function canUnlinkGoogle(account: AccountLike): boolean {
+  return !!account && account.isGuest !== true && account.hasGoogle === true && loginMethodCount(account, { hasGoogle: false }) >= 1;
+}
+
+/** Jenis re-autentikasi ditentukan akun: ber-password -> kata sandi, selain itu token Google. */
+export function reauthKind(account: AccountLike): 'password' | 'google' {
+  return account?.hasPassword === true ? 'password' : 'google';
+}
+
+export type PhoneProblem = 'required' | 'invalid' | 'same';
+
+/** Validasi nomor HP di klien: 8-15 digit setelah non-angka dibuang; sama dengan nomor sekarang ditolak. */
+export function phoneProblem(value: string, current?: string | null): PhoneProblem | null {
+  const digits = value.replace(/\D/g, '');
+  if (value.trim() === '') return 'required';
+  if (digits.length < 8 || digits.length > 15) return 'invalid';
+  if (filled(current) && String(current).replace(/\D/g, '') === digits) return 'same';
+  return null;
+}
+
+export type AccountActionOutcome =
+  | 'wrongPassword' | 'wrongGoogle' | 'closeCooldown' | 'lastMethod' | 'phoneTaken'
+  | 'busy' | 'stale' | 'hide' | 'unavailable' | 'other';
+
+/** Peta galat POST /auth/phone, /auth/email/remove, /auth/google/unlink ke tindakan UI (API_AUTH.md 3.13-3.15). */
+export function accountActionOutcome(
+  error: unknown,
+  msg: { wrongPassword: string; googleTokenInvalid: string; lastLoginMethod: string; phoneUnavailable: string; accountBusy: string },
+): AccountActionOutcome {
+  if (isApiMessage(error, 401, msg.wrongPassword)) return 'wrongPassword';
+  if (isApiMessage(error, 401, msg.googleTokenInvalid)) return 'wrongGoogle';
+  if (isStatus(error, 429)) return 'closeCooldown';
+  if (isApiMessage(error, 409, msg.lastLoginMethod)) return 'lastMethod';
+  if (isApiMessage(error, 409, msg.phoneUnavailable)) return 'phoneTaken';
+  if (isApiMessage(error, 409, msg.accountBusy)) return 'busy';
+  if (isStatus(error, 409) || isStatus(error, 400)) return 'stale';
+  if (isStatus(error, 403)) return 'hide';
+  if (isStatus(error, 503)) return 'unavailable';
+  return 'other';
 }
 
 /** Tujuan redirect 401: /masuk dengan ?next= aman (halaman auth/aneh -> tanpa next). */

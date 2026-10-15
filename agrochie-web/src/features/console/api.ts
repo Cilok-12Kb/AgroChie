@@ -1,5 +1,5 @@
 import { currentLang } from '../auth/copy'; // [REVISI] bahasa untuk field `lang` endpoint email
-import { loginRedirectUrl, shouldRedirectOn401 } from '../auth/logic'; // [REVISI] 401 global
+import { apiLang, loginRedirectUrl, shouldRedirectOn401 } from '../auth/logic'; // [REVISI] 401 global, B7 apiLang
 import { SERVER_MSG } from '../auth/serverMessages'; // [REVISI]
 
 // [REVISI] 401 global: QueryProvider mendaftarkan fungsi pembersih cache akun; flag mencegah redirect ganda.
@@ -52,6 +52,8 @@ export interface Account {
   id: string; name: string; phone?: string | null; isGuest?: boolean; role: string;
   email?: string | null; emailVerified?: boolean; hasPassword?: boolean; hasGoogle?: boolean; needsProfileCompletion?: boolean;
 }
+// [REVISI] B7: kredensial re-autentikasi (kata sandi ATAU idToken Google), tidak pernah disimpan/dicatat.
+export type ReauthCredential = { password?: string; idToken?: string };
 export interface Farm {
   id: string; name: string; areaHa: string; userId: string;
   village?: string | null; subdistrict?: string | null; farmerGroup?: string | null;
@@ -135,6 +137,10 @@ export const api = {
     setEmail: (email: string) => post<Account>('/auth/email', { email, lang: currentLang() }),
     // [REVISI] khusus alur daftar: 401 diperlakukan sebagai email gagal, bukan redirect global.
     setEmailAfterRegister: (email: string) => request<Account>('/auth/email', { method: 'POST', body: JSON.stringify({ email, lang: currentLang() }) }, { skipGlobal401: true }),
+    // [REVISI] B7: perubahan akun. Kredensial re-auth hanya dilewatkan; lang zh dikirim sebagai en.
+    setPhone: (phone: string, reauth: ReauthCredential = {}) => post<Account>('/auth/phone', { phone, ...reauth, lang: apiLang(currentLang()) }),
+    removeEmail: (reauth: ReauthCredential) => post<Account>('/auth/email/remove', { ...reauth, lang: apiLang(currentLang()) }),
+    unlinkGoogle: (reauth: ReauthCredential) => post<Account>('/auth/google/unlink', { ...reauth, lang: apiLang(currentLang()) }),
     resendVerification: () => post<{ ok: boolean }>('/auth/email/resend-verification', { lang: currentLang() }),
     verifyEmail: (token: string) => post<{ ok: boolean }>('/auth/verify-email', { token }),
     forgotPassword: (email: string) => post<{ ok: boolean; message: string }>('/auth/forgot-password', { email, lang: currentLang() }),
