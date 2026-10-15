@@ -8,11 +8,14 @@ import { useWorkspace } from '@/features/console/hooks';
 import { WorkspaceContext } from '@/features/console/context';
 import { Busy, ErrorLine } from '@/features/console/ui';
 import { EmailBanner } from '@/features/auth/EmailBanner'; // [REVISI]
+import { LanguageSwitcher } from '@/i18n/LanguageSwitcher';
+import { useTranslation } from '@/i18n/LanguageContext';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const path = usePathname();
   const w = useWorkspace();
+  const { t } = useTranslation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
@@ -35,10 +38,33 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     finally { window.location.href = '/masuk'; }
   }, []);
 
+  // Peta terjemahan label per href
+  const navLabelMap: Record<string, string> = {
+    '/beranda':         t.nav.beranda,
+    '/musim-tanam':     t.nav.musimTanam,
+    '/cuaca-lahan':     t.nav.cuacaLahan,
+    '/deteksi-tanaman': t.nav.deteksiTanaman,
+    '/prediksi':        t.nav.prediksiMusim,
+    '/rencana-biaya':   t.nav.rencanaBiaya,
+    '/kalender-uang':   t.nav.kalenderUang,
+    '/catatan':         t.nav.catatan,
+    '/riwayat-musim':   t.nav.riwayatMusim,
+    '/risiko-kredit':   t.nav.risikoKredit,
+    '/pengingat':       t.nav.cekLahan,
+    '/asisten':         t.nav.asisten,
+    '/profil':          t.nav.profil,
+  };
+
+  // Gabungkan icon dari NAV_ITEMS dengan label terjemahan
+  const translatedNavItems = NAV_ITEMS.map(item => ({
+    ...item,
+    label: navLabelMap[item.href] ?? item.label,
+  }));
+
   const groups = [
-    { title: 'MENU UTAMA',  items: NAV_ITEMS.filter(i => ['/beranda', '/musim-tanam', '/cuaca-lahan', '/deteksi-tanaman', '/prediksi'].includes(i.href)) },
-    { title: 'OPERASIONAL', items: NAV_ITEMS.filter(i => ['/rencana-biaya', '/kalender-uang', '/catatan', '/riwayat-musim', '/risiko-kredit'].includes(i.href)) },
-    { title: 'PENDUKUNG',   items: NAV_ITEMS.filter(i => ['/pengingat', '/asisten', '/profil'].includes(i.href)) },
+    { title: t.navGroup.menuUtama,   items: translatedNavItems.filter(i => ['/beranda', '/musim-tanam', '/cuaca-lahan', '/deteksi-tanaman', '/prediksi'].includes(i.href)) },
+    { title: t.navGroup.operasional, items: translatedNavItems.filter(i => ['/rencana-biaya', '/kalender-uang', '/catatan', '/riwayat-musim', '/risiko-kredit'].includes(i.href)) },
+    { title: t.navGroup.pendukung,   items: translatedNavItems.filter(i => ['/pengingat', '/asisten', '/profil'].includes(i.href)) },
   ];
 
   const SidebarContent = () => (
@@ -50,7 +76,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <span className="font-black tracking-tight text-[21px] block leading-none text-slate-900">
             Agro<span className="text-emerald-700">Chie</span>
           </span>
-          <span className="text-[10px] tracking-wide font-bold text-slate-500 block mt-1">Smart farming workspace</span>
+          <span className="text-[10px] tracking-wide font-bold text-slate-500 block mt-1">{t.shell.tagline}</span>
         </span>
       </Link>
 
@@ -58,9 +84,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="rounded-2xl bg-emerald-50/75 border border-emerald-100 p-4 mx-1 mb-8">
         <span className="flex gap-2 items-center text-emerald-800 font-bold text-xs">
           <span className="w-2 h-2 rounded-full bg-emerald-500" />
-          {w.season ? 'Musim sedang berjalan' : 'Siap untuk mulai'}
+          {w.season ? t.shell.seasonRunning : t.shell.seasonReady}
         </span>
-        <p className="text-[11px] text-emerald-800/70 mt-2">Rencanakan, pantau, dan catat setiap musim.</p>
+        <p className="text-[11px] text-emerald-800/70 mt-2">{t.shell.seasonDescription}</p>
       </div>
 
       {/* Navigation */}
@@ -99,9 +125,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-xs font-extrabold text-slate-900 truncate">{w.account.data?.name ?? 'Petani'}</p>
-            <p className="text-[11px] text-slate-500">{w.account.data?.isGuest ? 'Sesi tamu' : 'Akun petani'}</p>
+            <p className="text-[11px] text-slate-500">{w.account.data?.isGuest ? t.shell.guestSession : t.shell.farmerAccount}</p>
           </div>
-          <button title="Keluar" aria-label="Keluar" onClick={logout} className="text-slate-500 hover:text-red-600 p-1">
+          <button title={t.shell.logoutLabel} aria-label={t.shell.logoutLabel} onClick={logout} className="text-slate-500 hover:text-red-600 p-1">
             <LogOut size={18} />
           </button>
         </div>
@@ -130,12 +156,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {/* ── Mobile sidebar drawer ────────────────────────────────────── */}
         <aside
           className={`console-sidebar-mobile lg:hidden ${sidebarOpen ? 'console-sidebar-mobile-open' : ''}`}
-          aria-label="Menu navigasi"
+          aria-label={t.shell.openMenu}
         >
           {/* Close button */}
           <button
             className="absolute top-4 right-4 p-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors"
-            aria-label="Tutup menu"
+            aria-label={t.shell.closeMenu}
             onClick={() => setSidebarOpen(false)}
           >
             <X size={20} />
@@ -150,7 +176,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               {/* Hamburger (mobile only) */}
               <button
                 className="lg:hidden p-2 -ml-1 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors"
-                aria-label="Buka menu navigasi"
+                aria-label={t.shell.openMenu}
                 aria-expanded={sidebarOpen}
                 onClick={() => setSidebarOpen(v => !v)}
               >
@@ -158,12 +184,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </button>
 
               {/* Brand icon (mobile, visible when sidebar closed) */}
-              <Link href="/beranda" className="lg:hidden console-brand-icon" aria-label="Beranda">
+              <Link href="/beranda" className="lg:hidden console-brand-icon" aria-label={t.shell.homeLabel}>
                 <Leaf size={20} />
               </Link>
 
               <span className="hidden sm:inline-flex text-xs text-slate-400 font-semibold">
-                AgroChie <span className="mx-2">/</span> {NAV_ITEMS.find(x => x.href === path)?.label ?? 'Workspace'}
+                AgroChie <span className="mx-2">/</span> {translatedNavItems.find(x => x.href === path)?.label ?? t.shell.workspace}
               </span>
               <span className="hidden lg:inline h-4 w-px bg-slate-200" />
 
@@ -171,7 +197,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <div className="flex items-center gap-2">
                 <MapPin size={15} className="text-emerald-700 shrink-0" />
                 <select
-                  aria-label="Pilih lahan aktif"
+                  aria-label={t.shell.farmSelectorLabel}
                   className="console-farm-select"
                   value={w.farm?.id ?? ''}
                   onChange={e => w.selectFarm(e.target.value)}
@@ -179,7 +205,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 >
                   {w.farms.data?.length
                     ? w.farms.data.map(f => <option value={f.id} key={f.id}>{f.name}</option>)
-                    : <option value="">Belum ada lahan</option>}
+                    : <option value="">{t.shell.noFarm}</option>}
                 </select>
                 <ChevronDown size={14} className="text-slate-400 hidden sm:block" />
               </div>
@@ -187,12 +213,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
             <div className="flex items-center gap-3">
               <span className="hidden md:inline-flex items-center gap-2 text-[11px] text-emerald-700 font-bold rounded-full bg-emerald-50 px-3 py-1.5">
-                <Server size={13} /> Express API
+                <Server size={13} /> {t.shell.apiBadge}
               </span>
-              <Link href="/pengingat" aria-label="Pengingat" title="Pengingat" className="console-circle-icon">
+              {/* Language Switcher */}
+              <LanguageSwitcher />
+              <Link href="/pengingat" aria-label={t.shell.reminderLabel} title={t.shell.reminderLabel} className="console-circle-icon">
                 <Bell size={18} />
               </Link>
-              <Link href="/profil" title="Profil" className="h-9 w-9 rounded-full bg-emerald-700 text-white inline-flex items-center justify-center font-extrabold text-sm">
+              <Link href="/profil" title={t.shell.profileLabel} className="h-9 w-9 rounded-full bg-emerald-700 text-white inline-flex items-center justify-center font-extrabold text-sm">
                 {w.account.data?.name?.[0]?.toUpperCase() ?? 'P'}
               </Link>
             </div>
@@ -203,7 +231,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           <main id="main-content" className="console-content">
             {w.loading ? <Busy /> : w.unauthorized ? <Busy /> : w.error && !w.account.data
-              ? <div className="max-w-xl mx-auto mt-10"><ErrorLine error={w.error} /><p className="text-sm text-slate-600 mt-2">Pastikan Express dan PostgreSQL berjalan. Refresh setelah server siap.</p></div>
+              ? <div className="max-w-xl mx-auto mt-10"><ErrorLine error={w.error} /><p className="text-sm text-slate-600 mt-2">{t.common.serverError}</p></div>
               : children}
           </main>
         </div>

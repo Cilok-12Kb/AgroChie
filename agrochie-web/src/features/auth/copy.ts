@@ -2,11 +2,20 @@
  * Semua teks BARU untuk fitur auth dikumpulkan di sini (satu tempat untuk diterjemahkan).
  * Komponen auth mengimpor `copy`; jangan menulis teks tampilan langsung di komponen.
  * Pesan galat dari server ditampilkan apa adanya (bukan di sini).
+ *
+ * [REVISI] Lang kini mencakup 'zh' (Mandarin). currentLang() membaca dari localStorage
+ * agar sinkron dengan LanguageContext. Gunakan useTranslation() untuk teks yang lebih
+ * lengkap; copy.ts tetap tersedia sebagai fallback statis.
  */
 
-/** Bahasa untuk field `lang` di API ("id" | "en"). Ganti isi fungsi ini saat sistem terjemahan siap. */
-export type Lang = 'id' | 'en';
+/** Bahasa yang didukung: Bahasa Indonesia, English, Mandarin (中文). */
+export type Lang = 'id' | 'en' | 'zh';
+
+/** Membaca bahasa aktif dari localStorage (sinkron dengan LanguageContext). */
 export function currentLang(): Lang {
+  if (typeof window === 'undefined') return 'id';
+  const stored = localStorage.getItem('agrochie_lang') as Lang | null;
+  if (stored === 'id' || stored === 'en' || stored === 'zh') return stored;
   return 'id';
 }
 

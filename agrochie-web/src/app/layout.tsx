@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Plus_Jakarta_Sans } from 'next/font/google';
 import { QueryProvider } from '@/providers/QueryProvider';
+import { LanguageProvider } from '@/i18n';
 import './globals.css';
 
 const jakarta = Plus_Jakarta_Sans({
@@ -20,7 +21,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="id" className={jakarta.variable}>
       <body style={{ fontFamily: 'var(--font-jakarta), ui-sans-serif, system-ui, sans-serif' }}>
-        <QueryProvider>{children}</QueryProvider>
+        <LanguageProvider>
+          <QueryProvider>{children}</QueryProvider>
+        </LanguageProvider>
       </body>
     </html>
   );

@@ -60,6 +60,13 @@ test("kategori bahan memakai enum ExpenseCategory", () => {
   for (const n of ["Fungisida", "Pupuk", "Bibit", "Upah tenaga", "Sarung"]) assert.ok(EXPENSE_ENUM.includes(categoryForItem(n)));
 });
 
+test("kategori bahan tetap dikenali saat jawaban AI berbahasa Inggris atau Mandarin", () => {
+  assert.equal(categoryForItem("copper fungicide"), "OBAT");
+  assert.equal(categoryForItem("organic fertilizer"), "PUPUK");
+  assert.equal(categoryForItem("人工工资"), "TENAGA_KERJA");
+  assert.equal(categoryForItem("番茄种苗"), "BENIH");
+});
+
 test("kategori Expense total ditentukan nilai tengah rentang terbesar", () => {
   const r = expenseCategoryFor([
     { nama: "Fungisida tembaga", estimasi_biaya_min: 100000, estimasi_biaya_max: 200000 }, // tengah 150000

@@ -50,6 +50,12 @@ test("prompt memuat aturan, dokumen, dan data petani tanpa data pribadi", () => 
   assert.match(buildSystemPrompt({ farmerText: "x" }), /tidak ada dokumen yang relevan/);
 });
 
+test("prompt asisten mengikuti bahasa yang dipilih", () => {
+  assert.match(buildSystemPrompt({ farmerText: "x", lang: "en" }), /ALWAYS reply in simple, concise English/);
+  assert.match(buildSystemPrompt({ farmerText: "x", lang: "zh" }), /始终用简体中文回答/);
+  assert.match(buildSystemPrompt({ farmerText: "x", lang: "tidak-valid" }), /Bahasa Indonesia/);
+});
+
 test("rate limit menolak setelah batas dan tidak mencampur pengguna", () => {
   const mw = rateLimit({ windowMs: 1000, max: 2 });
   const run = (userId) => { let err; mw({ userId }, {}, (e) => (err = e)); return err; };

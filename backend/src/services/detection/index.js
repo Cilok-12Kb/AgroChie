@@ -32,6 +32,17 @@ export const UNSURE_MESSAGE =
   "Kami belum yakin dengan hasil deteksinya. Unggah foto yang lebih jelas: ambil di tempat terang, satu bagian tanaman (daun/buah) terlihat fokus dan dekat, tanpa bayangan tangan.";
 export const NOT_PLANT_MESSAGE =
   "Foto ini tampaknya bukan tanaman atau tidak dapat dinilai. Unggah foto tanaman yang jelas, di tempat terang, dengan daun/buah terlihat fokus.";
+const STATUS_MESSAGE = {
+  id: { unsure: UNSURE_MESSAGE, notPlant: NOT_PLANT_MESSAGE },
+  en: {
+    unsure: "We are not confident in this detection. Upload a clearer photo in good light, showing one plant part (leaf or fruit) sharply and up close, without hand shadows.",
+    notPlant: "This photo does not appear to show a plant or cannot be assessed. Upload a clear plant photo in good light, with the leaf or fruit in focus.",
+  },
+  zh: {
+    unsure: "我们无法确认检测结果。请在光线良好的地方重新上传清晰照片，近距离对焦一个植物部位（叶片或果实），并避免手部阴影。",
+    notPlant: "这张照片似乎不是植物或无法评估。请上传光线充足、叶片或果实清晰对焦的植物照片。",
+  },
+};
 
 /**
  * Bentuk keluaran detect():
@@ -61,12 +72,13 @@ export function createDetectionService({ provider, fallbackProvider, minConfiden
       fallback: viaFallback,
     };
     const base = { provider: p.name, hasil, sumber };
+    const statusMessage = STATUS_MESSAGE[context?.lang] ?? STATUS_MESSAGE.id;
     if (hasil.tanaman_terlihat === false) {
-      return { status: "TIDAK_YAKIN", ...base, alasan: "bukan_tanaman", pesan: NOT_PLANT_MESSAGE };
+      return { status: "TIDAK_YAKIN", ...base, alasan: "bukan_tanaman", pesan: statusMessage.notPlant };
     }
     // Skor di bawah ambang, atau selisih skor tertinggi dan kedua terlalu tipis (hanya bila provider melaporkannya).
     if (hasil.skor_kepercayaan < min || meta?.margin_tipis === true) {
-      return { status: "TIDAK_YAKIN", ...base, alasan: "keyakinan_rendah", pesan: UNSURE_MESSAGE };
+      return { status: "TIDAK_YAKIN", ...base, alasan: "keyakinan_rendah", pesan: statusMessage.unsure };
     }
     return { status: "SELESAI", ...base, alasan: null, pesan: null };
   }

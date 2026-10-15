@@ -44,6 +44,7 @@ export const detectionCreateSchema = z.object({
     .max(64, "lahan_id tidak valid")
     .regex(/^[A-Za-z0-9_-]+$/, "lahan_id tidak valid"),
   catatan: z.string({ error: "catatan harus teks" }).optional(),
+  lang: z.enum(["id", "en", "zh"]).optional().default("id"),
 });
 
 export function parseDetectionCreate(body) {
@@ -53,7 +54,7 @@ export function parseDetectionCreate(body) {
   if (raw.length > MAX_NOTE * 2) throw new HttpError(400, `Catatan maksimal ${MAX_NOTE} karakter`);
   const catatan = sanitizeNote(raw);
   if (catatan.length > MAX_NOTE) throw new HttpError(400, `Catatan maksimal ${MAX_NOTE} karakter`);
-  return { lahanId: r.data.lahan_id, catatan: catatan || null };
+  return { lahanId: r.data.lahan_id, catatan: catatan || null, lang: r.data.lang };
 }
 
 // [REVISI] sub-langkah 3: query riwayat. lahan_id wajib; page >= 1 (bawaan 1); limit 1..50 (bawaan 10).

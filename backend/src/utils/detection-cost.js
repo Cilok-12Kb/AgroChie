@@ -52,10 +52,10 @@ export function recalculateCost(bahan, claimedTotal) {
 
 // Urutan penting: yang lebih spesifik dulu.
 const CATEGORY_RULES = [
-  ["BENIH", /\b(benih|bibit|semai)/],
-  ["TENAGA_KERJA", /\b(tenaga|upah|buruh|jasa|ongkos kerja|hok)\b/],
-  ["PUPUK", /(pupuk|npk|urea|\bza\b|\bsp-?36\b|kcl|kompos|kandang|dolomit|kapur|kalsium|kalium|nitrogen|fosfat|magnesium|boron|zpt|pelet organik|pembenah tanah)/],
-  ["OBAT", /(fungisida|insektisida|akarisida|bakterisida|nematisida|moluskisida|pestisida|herbisida|obat|pengendali|perangkap|perekat|surfaktan|sabun|nabati|agens hayati|trichoderma|bakteri antagonis|semprot)/],
+  ["BENIH", /\b(benih|bibit|semai|seed|seeds|seedling|seedlings|nursery)\b|种子|种苗|幼苗/],
+  ["TENAGA_KERJA", /\b(tenaga|upah|buruh|jasa|ongkos kerja|hok|labor|labour|worker|workers|wage|wages)\b|人工|工钱|工资/],
+  ["PUPUK", /(pupuk|npk|urea|\bza\b|\bsp-?36\b|kcl|kompos|kandang|dolomit|kapur|kalsium|kalium|nitrogen|fosfat|magnesium|boron|zpt|pelet organik|pembenah tanah|fertili[sz]er|compost|manure|lime|calcium|potassium|phosphate|soil amendment|肥料|堆肥|粪肥|石灰|钙|钾|磷肥|土壤改良剂)/],
+  ["OBAT", /(fungisida|insektisida|akarisida|bakterisida|nematisida|moluskisida|pestisida|herbisida|obat|pengendali|perangkap|perekat|surfaktan|sabun|nabati|agens hayati|trichoderma|bakteri antagonis|semprot|fungicide|insecticide|acaricide|bactericide|nematicide|molluscicide|pesticide|herbicide|biocontrol|trap|spray|杀菌剂|杀虫剂|杀螨剂|杀线虫剂|农药|除草剂|生物防治|诱捕器|喷雾)/],
 ];
 
 /** Kategori Expense (enum ExpenseCategory) untuk satu bahan, dari namanya. Tidak cocok -> LAIN. */

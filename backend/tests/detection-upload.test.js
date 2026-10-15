@@ -56,8 +56,10 @@ test("catatan: karakter kontrol dan tanda < > dibuang, spasi dirapikan", () => {
 });
 
 test("parseDetectionCreate: lahan_id wajib dan aman, catatan opsional", () => {
-  assert.deepEqual(parseDetectionCreate({ lahan_id: "abc123" }), { lahanId: "abc123", catatan: null });
+  assert.deepEqual(parseDetectionCreate({ lahan_id: "abc123" }), { lahanId: "abc123", catatan: null, lang: "id" });
   assert.equal(parseDetectionCreate({ lahan_id: "abc", catatan: " bercak  coklat " }).catatan, "bercak coklat");
+  assert.equal(parseDetectionCreate({ lahan_id: "abc", lang: "zh" }).lang, "zh");
+  assert.throws(() => parseDetectionCreate({ lahan_id: "abc", lang: "fr" }), (e) => e.status === 400);
   assert.throws(() => parseDetectionCreate({}), (e) => e.status === 400);
   assert.throws(() => parseDetectionCreate({ lahan_id: "../etc" }), (e) => e.status === 400);
   assert.throws(() => parseDetectionCreate({ lahan_id: "a", catatan: "x".repeat(MAX_NOTE + 1) }), (e) => e.status === 400);

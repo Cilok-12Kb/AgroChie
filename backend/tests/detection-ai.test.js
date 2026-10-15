@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { parseJsonText, generateValidated } from "../src/services/ai-json.js";
 import { generateStructured, classifyLlmError, LlmError } from "../src/services/llm.service.js";
-import { createGeminiProvider, buildDetectionPrompt } from "../src/services/detection/gemini-provider.js";
+import { createGeminiProvider, buildDetectionPrompt, buildDetectionSystem } from "../src/services/detection/gemini-provider.js";
 import { solutionSchema } from "../src/services/solution.service.js";
 
 const silent = () => { const o = console.error; console.error = () => {}; return () => { console.error = o; }; };
@@ -65,6 +65,11 @@ test("prompt deteksi memakai komoditas dari data lahan, tidak hardcode", () => {
   assert.match(buildDetectionPrompt({ komoditas: "bawang" }), /bawang/);
   assert.doesNotMatch(buildDetectionPrompt({ komoditas: "bawang" }), /cabai/);
   assert.match(buildDetectionPrompt({}), /tidak diketahui/);
+});
+
+test("prompt sistem deteksi mengikuti bahasa yang dipilih", () => {
+  assert.match(buildDetectionSystem("en"), /simple English/);
+  assert.match(buildDetectionSystem("zh"), /简体中文/);
 });
 
 test("galat Gemini dibedakan: kuota, timeout, lain, kosong", async () => {

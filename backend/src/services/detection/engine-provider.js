@@ -25,8 +25,52 @@ export class UnknownLeafClassError extends HttpError {
 
 const pct = (x) => `${Math.round(x * 100)}%`;
 
+const COPY = {
+  id: {
+    estimated: SEVERITY_ESTIMATED,
+    symptom: GEJALA_NETRAL,
+    sick: (label) => `Model AgroChie mengenali: ${label}. Tingkat keparahan tidak dapat dipastikan dari model; "${SEVERITY_ESTIMATED}" hanya perkiraan.`,
+    healthy: (label) => `Model AgroChie mengenali: ${label}. Tidak ada masalah yang terdeteksi oleh model.`,
+  },
+  en: {
+    estimated: "sedang",
+    symptom: "Detected by the leaf classification model; the model does not describe symptoms in detail.",
+    sick: (label) => `The AgroChie model identified: ${label}. The model cannot determine severity; the medium severity level is only an estimate.`,
+    healthy: (label) => `The AgroChie model identified: ${label}. The model detected no problems.`,
+  },
+  zh: {
+    estimated: "sedang",
+    symptom: "由叶片分类模型检测；该模型无法详细描述症状。",
+    sick: (label) => `AgroChie 模型识别为：${label}。模型无法确定严重程度；中等严重程度仅为估计。`,
+    healthy: (label) => `AgroChie 模型识别为：${label}。模型未检测到问题。`,
+  },
+};
+const PROBLEM_NAME = {
+  en: {
+    "Bercak daun Cercospora": "Cercospora leaf spot",
+    "Keriting daun (kompleks murda: tungau dan thrips)": "Leaf curl (mite and thrips complex)",
+    "Gangguan hara (nutrisi)": "Nutrient deficiency",
+    "Embun tepung": "Powdery mildew",
+    "Bercak bakteri": "Bacterial spot",
+    "Jamur hitam": "Black mold",
+    "Bercak abu-abu": "Gray leaf spot",
+    "Hawar daun (late blight)": "Late blight",
+  },
+  zh: {
+    "Bercak daun Cercospora": "尾孢叶斑病",
+    "Keriting daun (kompleks murda: tungau dan thrips)": "卷叶（螨虫和蓟马复合危害）",
+    "Gangguan hara (nutrisi)": "营养缺乏",
+    "Embun tepung": "白粉病",
+    "Bercak bakteri": "细菌性斑点病",
+    "Jamur hitam": "黑霉病",
+    "Bercak abu-abu": "灰斑病",
+    "Hawar daun (late blight)": "晚疫病",
+  },
+};
+const problemName = (name, lang) => PROBLEM_NAME[lang]?.[name] ?? name;
+
 /** Ubah keluaran engine (/predict/leaf) menjadi bentuk detectionService + _meta. Melempar UnknownLeafClassError bila kelas tak dikenal. */
-export function mapLeafResult(r, { classMap = LEAF_CLASS_MAP, minMargin = env.detectionMinMargin } = {}) {
+export function mapLeafResult(r, { classMap = LEAF_CLASS_MAP, minMargin = env.detectionMinMargin, lang = "id" } = {}) {
   const entry = Object.hasOwn(classMap, r?.label) ? classMap[r.label] : null;
   if (!entry) throw new UnknownLeafClassError(r?.label);
 
@@ -36,12 +80,13 @@ export function mapLeafResult(r, { classMap = LEAF_CLASS_MAP, minMargin = env.de
   const margin = Number.isFinite(second) && Number.isFinite(skor) ? Math.round((skor - second) * 10000) / 10000 : null;
 
   const label = r.label_id ?? r.label;
+  const copy = COPY[lang] ?? COPY.id;
   const masalah = entry.masalah
-    ? [{ nama: entry.masalah.nama, jenis: entry.masalah.jenis, tingkat_keparahan: SEVERITY_ESTIMATED, gejala_terlihat: GEJALA_NETRAL }]
+    ? [{ nama: problemName(entry.masalah.nama, lang), jenis: entry.masalah.jenis, tingkat_keparahan: copy.estimated, gejala_terlihat: copy.symptom }]
     : [];
   const kondisi = entry.masalah
-    ? `Model AgroChie mengenali: ${label}. Tingkat keparahan tidak dapat dipastikan dari model; "${SEVERITY_ESTIMATED}" hanya perkiraan.`
-    : `Model AgroChie mengenali: ${label}. Tidak ada masalah yang terdeteksi oleh model.`;
+    ? copy.sick(label)
+    : copy.healthy(label);
 
   return {
     tanaman_terlihat: true, // CNN tidak punya kelas "bukan tanaman"; pemeriksa bukan-tanaman = fallback Gemini (bila diaktifkan)
@@ -65,7 +110,7 @@ export function mapLeafResult(r, { classMap = LEAF_CLASS_MAP, minMargin = env.de
 export function createEngineProvider({ leaf = engineLeaf, classMap = LEAF_CLASS_MAP, minMargin = env.detectionMinMargin } = {}) {
   return {
     name: "engine",
-    async detect(imageBuffer) {
+    async detect(imageBuffer, _mimeType, context = {}) {
       let result;
       try {
         result = await leaf(Buffer.from(imageBuffer).toString("base64"));
@@ -79,7 +124,7 @@ export function createEngineProvider({ leaf = engineLeaf, classMap = LEAF_CLASS_
         }
         throw e;
       }
-      return mapLeafResult(result, { classMap, minMargin });
+      return mapLeafResult(result, { classMap, minMargin, lang: context.lang });
     },
   };
 }

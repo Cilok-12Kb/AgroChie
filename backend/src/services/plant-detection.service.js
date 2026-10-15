@@ -98,8 +98,8 @@ export function createPlantDetectionService({ db = prisma, detector = detectionS
   }
 
   return {
-    /** input: { userId, file (hasil multer), lahanId, catatan } */
-    async create({ userId, file, lahanId, catatan }) {
+    /** input: { userId, file (hasil multer), lahanId, catatan, lang } */
+    async create({ userId, file, lahanId, catatan, lang = "id" }) {
       const { mime, ext } = validateImageFile(file, config.detectionMaxBytes);
       const farm = await ownedFarm(userId, lahanId); // cek kepemilikan sebelum apa pun disimpan atau dikirim ke AI
       const season = await activeSeason(db, farm.id);
@@ -107,7 +107,7 @@ export function createPlantDetectionService({ db = prisma, detector = detectionS
 
       const photoKey = await storage.save(file.buffer, ext);
       try {
-        const det = await detector.detect(file.buffer, mime, { komoditas: land.komoditas });
+        const det = await detector.detect(file.buffer, mime, { komoditas: land.komoditas, lang });
         // [REVISI] sumber = { provider, model_versi, kelas, ... } disimpan di JSON yang sudah ada (tanpa kolom baru)
         const detection = { hasil: det.hasil, alasan: det.alasan, pesan: det.pesan, sumber: det.sumber ?? { provider: det.provider } };
         const base = { userId, farmId: farm.id, photoKey, photoMime: mime, note: catatan ?? null, provider: det.provider, detection };
@@ -119,7 +119,7 @@ export function createPlantDetectionService({ db = prisma, detector = detectionS
         }
 
         const coords = farm.latitude != null && farm.longitude != null ? { lat: farm.latitude, lon: farm.longitude } : undefined;
-        const solusi = await solver.generate({ detection: det.hasil, land, coords, catatan, sumber: det.sumber });
+        const solusi = await solver.generate({ detection: det.hasil, land, coords, catatan, sumber: det.sumber, lang });
         const row = await db.plantDetection.create({
           data: {
             ...base,

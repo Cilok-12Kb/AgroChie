@@ -27,7 +27,9 @@ async function farmerContext(userId, seasonId, farmId) {
   return { farm, season: null, plan: null };
 }
 
-export async function chat(userId, { sessionId, seasonId, farmId, message } = {}) {
+export async function chat(userId, { sessionId, seasonId, farmId, message, lang } = {}) {
+  // Validasi lang: hanya 'id', 'en', 'zh'. Default: 'id'.
+  const safeLang = ["id", "en", "zh"].includes(lang) ? lang : "id";
   const text = String(message ?? "").trim();
   if (!text) throw new HttpError(400, "Pertanyaan kosong");
   if (text.length > MAX_CHARS) throw new HttpError(400, `Pertanyaan terlalu panjang (maksimal ${MAX_CHARS} karakter)`);
@@ -49,7 +51,7 @@ export async function chat(userId, { sessionId, seasonId, farmId, message } = {}
   const lastUser = [...history].reverse().find((m) => m.role === "USER");
   const chunks = await retrieve([lastUser?.content, text].filter(Boolean).join("\n"));
 
-  const system = buildSystemPrompt({ chunks, farmerText: describeFarmer(ctx), farmId: ctx.farm?.id }); // [REVISI] lahan_id untuk alat cuaca
+  const system = buildSystemPrompt({ chunks, farmerText: describeFarmer(ctx), farmId: ctx.farm?.id, lang: safeLang }); // [REVISI] lahan_id untuk alat cuaca + lang
   const answer = await generateAnswer({ system, history, userText: text, tools: ctx.farm ? buildTools(userId) : undefined });
 
 

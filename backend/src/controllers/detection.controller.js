@@ -3,8 +3,8 @@ import { parseDetectionCreate, parseDetectionList } from "../validators/detectio
 
 // [REVISI] Deteksi kualitas tanaman (sub-langkah 3). Controller tipis: validasi -> service. Tanpa query DB.
 export async function create(req, res) {
-  const { lahanId, catatan } = parseDetectionCreate(req.body);
-  const result = await svc.create({ userId: req.userId, file: req.file, lahanId, catatan });
+  const { lahanId, catatan, lang } = parseDetectionCreate(req.body);
+  const result = await svc.create({ userId: req.userId, file: req.file, lahanId, catatan, lang });
   res.status(result.status === "TIDAK_YAKIN" ? 200 : 201).json(result);
 }
 

@@ -61,6 +61,14 @@ describe("pemetaan kelas", () => {
     assert.equal(ok.hasil.kategori_kualitas, "baik");
     assert.deepEqual(ok.hasil.masalah_terdeteksi, []);
   });
+
+  test("teks hasil engine mengikuti bahasa aktif tanpa mengubah enum", async () => {
+    const provider = engine(async () => leafOut("cabai__cercospora", 0.9));
+    const en = await svc(provider).detect(IMG, "image/jpeg", { lang: "en" });
+    assert.match(en.hasil.kondisi, /identified/);
+    assert.equal(en.hasil.masalah_terdeteksi[0].nama, "Cercospora leaf spot");
+    assert.equal(en.hasil.masalah_terdeteksi[0].tingkat_keparahan, "sedang");
+  });
 });
 
 describe("ambang keyakinan dan margin", () => {
