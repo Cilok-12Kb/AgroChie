@@ -111,6 +111,27 @@ export function shouldShowEmailBanner(
   return !account.email || account.emailVerified !== true;
 }
 
+// [REVISI] A5: status banner email "ditutup" disimpan per sesi tab (sessionStorage), kunci per id akun, nilainya hanya "1".
+type StorageLike = { getItem(k: string): string | null; setItem(k: string, v: string): void };
+
+export function bannerDismissKey(accountId: string | null | undefined): string | null {
+  return typeof accountId === 'string' && accountId.length > 0 ? `agrochie:email-banner-dismissed:${accountId}` : null;
+}
+
+/** Baca status ditutup. Storage tidak ada/diblokir/melempar galat -> false (banner tetap tampil). */
+export function readBannerDismissed(storage: StorageLike | null | undefined, accountId: string | null | undefined): boolean {
+  const key = bannerDismissKey(accountId);
+  if (!key || !storage) return false;
+  try { return storage.getItem(key) === '1'; } catch { return false; }
+}
+
+/** Simpan status ditutup. Gagal menulis diabaikan (penutupan tetap berlaku di memori). */
+export function writeBannerDismissed(storage: StorageLike | null | undefined, accountId: string | null | undefined): void {
+  const key = bannerDismissKey(accountId);
+  if (!key || !storage) return;
+  try { storage.setItem(key, '1'); } catch { /* storage diblokir atau penuh */ }
+}
+
 export type EmailOutcome = 'refresh' | 'hide' | 'conflict' | 'cooldown' | 'sendFailed' | 'unavailable' | 'server';
 
 /** Peta galat POST /auth/email dan /auth/email/resend-verification ke tindakan UI (API_AUTH.md 3.6, 3.7, 4.6). */
