@@ -70,10 +70,15 @@ model User {
   name         String
   phone        String?   @unique
   email        String?   @unique
-  passwordHash String
+  passwordHash String?   // [REVISI] opsional: akun Google-only belum punya sandi
+  emailVerifiedAt DateTime? // [REVISI] email baru boleh dipakai reset sandi setelah terverifikasi
+  googleId     String?   @unique // [REVISI] klaim sub dari Google
+  sessionVersion Int     @default(0) // [REVISI] dinaikkan saat reset sandi untuk mencabut sesi lama (klaim sv di JWT)
   role         Role      @default(PETANI)
   isGuest      Boolean   @default(false) // [REVISI] bagian 17: akun tamu sementara, dihapus saat logout
   createdAt    DateTime  @default(now())
+  emailVerifications EmailVerification[]
+  passwordResets     PasswordReset[]
   farms        Farm[]
   reminder     Reminder?
   chatSessions ChatSession[]
@@ -426,4 +431,32 @@ model ChatMessage {
 
   @@index([sessionId, createdAt])
   @@map("chat_messages")
+}
+// [REVISI] token verifikasi email: hanya hash yang disimpan
+model EmailVerification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  email     String // email yang diverifikasi saat token dibuat
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, createdAt])
+  @@map("email_verifications")
+}
+
+// [REVISI] token reset sandi: hanya hash yang disimpan; juga dasar batas per akun
+model PasswordReset {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, createdAt])
+  @@map("password_resets")
 }
