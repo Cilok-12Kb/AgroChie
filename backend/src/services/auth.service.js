@@ -80,7 +80,8 @@ export async function deleteGuest(userId) {
 
 // [REVISI] auth email/Google: kolom yang dibaca untuk membentuk respons /auth/me.
 // passwordHash, googleId, dan sessionVersion hanya dibaca di server untuk menurunkan flag; TIDAK dikirim ke klien.
-const ME_SELECT = {
+// [REVISI] langkah 9: diekspor agar google-auth.service.js memakai bentuk baris yang sama.
+export const ME_SELECT = {
   ...PUBLIC,
   email: true,
   emailVerifiedAt: true,

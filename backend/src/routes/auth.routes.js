@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { asyncHandler } from "../utils/async-handler.js";
 import { requireUser, optionalUser } from "../middleware/auth.js";
-import { loginRateLimit, guestRateLimit, emailRateLimit, verifyEmailRateLimit, forgotPasswordRateLimit, resetPasswordRateLimit } from "../middleware/rate-limit.js";
+import { loginRateLimit, guestRateLimit, emailRateLimit, verifyEmailRateLimit, forgotPasswordRateLimit, resetPasswordRateLimit, googleRateLimit } from "../middleware/rate-limit.js";
 import * as auth from "../controllers/auth.controller.js";
 export const authRoutes = Router();
 authRoutes.post("/register", asyncHandler(auth.register));
@@ -17,3 +17,5 @@ authRoutes.post("/verify-email", verifyEmailRateLimit(), asyncHandler(auth.verif
 // [REVISI] langkah 8: lupa dan reset password (publik, pembatas per IP)
 authRoutes.post("/forgot-password", forgotPasswordRateLimit(), asyncHandler(auth.forgotPasswordHandler));
 authRoutes.post("/reset-password", resetPasswordRateLimit(), asyncHandler(auth.resetPasswordHandler));
+// [REVISI] langkah 9: login dengan Google (publik, pembatas per IP)
+authRoutes.post("/google", googleRateLimit(), asyncHandler(auth.googleLoginHandler));

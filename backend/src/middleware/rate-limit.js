@@ -86,6 +86,16 @@ export function resetPasswordRateLimit() {
   });
 }
 
+/** [REVISI] Login Google: 20 per 15 menit per IP. */
+export function googleRateLimit() {
+  return rateLimit({
+    windowMs: 15 * 60_000,
+    max: 20,
+    keyFn: byIp,
+    message: "Terlalu banyak percobaan masuk dengan Google. Coba lagi nanti.",
+  });
+}
+
 /** Login: 10 percobaan per 10 menit per IP. */
 export function loginRateLimit() {
   return rateLimit({

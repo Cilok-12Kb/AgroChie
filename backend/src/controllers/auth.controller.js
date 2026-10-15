@@ -4,7 +4,8 @@ import { getSessionTools } from "../utils/session.js";
 import { parseSetEmail, parseVerifyEmail } from "../validators/auth-email.validator.js";
 import { setEmail, resendVerification, verifyEmail } from "../services/email-verification.service.js";
 import { pickLang } from "../services/email-templates.js";
-import { parseForgotPassword, parseResetPassword } from "../validators/auth-email.validator.js";
+import { parseForgotPassword, parseResetPassword, parseGoogle } from "../validators/auth-email.validator.js";
+import { assertGoogleReady, loginWithGoogle } from "../services/google-auth.service.js";
 import { assertMailReady, startForgotJob, resetPassword, FORGOT_MESSAGE } from "../services/password-reset.service.js";
 
 // [REVISI] bagian 17.4: register memvalidasi dengan zod dan langsung membuat sesi; tambah login, me, logout.
@@ -53,6 +54,16 @@ export async function resendVerificationHandler(req, res) {
 
 export async function verifyEmailHandler(req, res) {
   res.json(await verifyEmail(parseVerifyEmail(req.body)));
+}
+
+// [REVISI] langkah 9: login Google. Urutan: validasi body (400) -> 503 -> verifikasi (401) -> aturan akun.
+// Cookie sesi baru menggantikan sesi sebelumnya (termasuk tamu). Respons = bentuk public user seperti login.
+export async function googleLoginHandler(req, res) {
+  const { idToken } = parseGoogle(req.body);
+  await assertGoogleReady();
+  const { user, sessionVersion, created } = await loginWithGoogle({ idToken });
+  await (await getSessionTools()).setSessionCookie(res, { ...user, sessionVersion });
+  res.status(created ? 201 : 200).json(user);
 }
 
 // [REVISI] langkah 8: lupa dan reset password.
