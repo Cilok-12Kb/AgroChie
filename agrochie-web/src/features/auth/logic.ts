@@ -100,6 +100,28 @@ export function googleLoginOutcome(error: unknown): GoogleLoginOutcome {
   return 'other';
 }
 
+/** Banner email: hanya untuk akun bukan tamu yang emailnya kosong/belum terverifikasi, dan belum ditutup. */
+export function shouldShowEmailBanner(
+  account: { isGuest?: boolean; email?: string | null; emailVerified?: boolean } | null | undefined,
+  dismissed: boolean,
+): boolean {
+  if (!account || dismissed || account.isGuest !== false) return false;
+  return !account.email || account.emailVerified !== true;
+}
+
+export type EmailOutcome = 'refresh' | 'hide' | 'conflict' | 'cooldown' | 'sendFailed' | 'unavailable' | 'server';
+
+/** Peta galat POST /auth/email dan /auth/email/resend-verification ke tindakan UI (API_AUTH.md 3.6, 3.7, 4.6). */
+export function emailErrorOutcome(error: unknown, alreadyVerifiedText: string): EmailOutcome {
+  if (isApiMessage(error, 400, alreadyVerifiedText)) return 'refresh';
+  if (isStatus(error, 403)) return 'hide';
+  if (isStatus(error, 409)) return 'conflict';
+  if (isStatus(error, 429)) return 'cooldown';
+  if (isStatus(error, 502)) return 'sendFailed';
+  if (isStatus(error, 503)) return 'unavailable';
+  return 'server';
+}
+
 /** Lebar tombol Google (px): mengikuti kontainer, minimal 200 (batas Google), maksimal 400. */
 export function googleButtonWidth(containerWidth: number): number {
   if (!Number.isFinite(containerWidth) || containerWidth <= 0) return 280;

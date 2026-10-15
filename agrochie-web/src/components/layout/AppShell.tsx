@@ -7,6 +7,7 @@ import { NAV_ITEMS } from '@/config/navigation';
 import { useWorkspace } from '@/features/console/hooks';
 import { WorkspaceContext } from '@/features/console/context';
 import { Busy, ErrorLine } from '@/features/console/ui';
+import { EmailBanner } from '@/features/auth/EmailBanner'; // [REVISI]
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -196,6 +197,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </Link>
             </div>
           </header>
+
+          {/* [REVISI] banner email (bisa ditutup per sesi) */}
+          <EmailBanner account={w.account.data} />
 
           <main id="main-content" className="console-content">
             {w.loading ? <Busy /> : w.unauthorized ? <Busy /> : w.error && !w.account.data

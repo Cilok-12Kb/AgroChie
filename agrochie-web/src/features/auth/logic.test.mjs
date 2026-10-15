@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { safeNext, postLoginPath, isAuthPagePath, checkNewPassword, isApiMessage, isStatus, looksLikeEmail, googleLoginOutcome, googleButtonWidth, shouldRedirectOn401, loginRedirectUrl } from './logic.ts';
+import { safeNext, postLoginPath, isAuthPagePath, checkNewPassword, isApiMessage, isStatus, looksLikeEmail, googleLoginOutcome, googleButtonWidth, shouldRedirectOn401, loginRedirectUrl, shouldShowEmailBanner, emailErrorOutcome } from './logic.ts';
 import { SERVER_MSG } from './serverMessages.ts';
 
 test('safeNext: path internal biasa diterima', () => {
@@ -107,6 +107,28 @@ test('loginRedirectUrl: next aman atau tanpa next', () => {
   assert.equal(loginRedirectUrl('/catatan', '?a=1'), '/masuk?next=%2Fcatatan%3Fa%3D1');
   assert.equal(loginRedirectUrl('//evil.com'), '/masuk');
   assert.equal(loginRedirectUrl('/verify-email'), '/masuk');
+});
+
+test('shouldShowEmailBanner: aturan tampil dan ditutup', () => {
+  assert.equal(shouldShowEmailBanner({ isGuest: false, email: null }, false), true);
+  assert.equal(shouldShowEmailBanner({ isGuest: false, email: 'a@b.id', emailVerified: false }, false), true);
+  assert.equal(shouldShowEmailBanner({ isGuest: false, email: 'a@b.id', emailVerified: true }, false), false);
+  assert.equal(shouldShowEmailBanner({ isGuest: true, email: null }, false), false);
+  assert.equal(shouldShowEmailBanner({ isGuest: false, email: null }, true), false);
+  assert.equal(shouldShowEmailBanner({ email: null }, false), false);
+  assert.equal(shouldShowEmailBanner(null, false), false);
+});
+
+test('emailErrorOutcome: peta status', () => {
+  const v = SERVER_MSG.emailAlreadyVerified;
+  assert.equal(emailErrorOutcome({ status: 400, message: v }, v), 'refresh');
+  assert.equal(emailErrorOutcome({ status: 400, message: 'Format email tidak valid' }, v), 'server');
+  assert.equal(emailErrorOutcome({ status: 403 }, v), 'hide');
+  assert.equal(emailErrorOutcome({ status: 409 }, v), 'conflict');
+  assert.equal(emailErrorOutcome({ status: 429 }, v), 'cooldown');
+  assert.equal(emailErrorOutcome({ status: 502 }, v), 'sendFailed');
+  assert.equal(emailErrorOutcome({ status: 503 }, v), 'unavailable');
+  assert.equal(emailErrorOutcome(new Error('x'), v), 'server');
 });
 
 test('looksLikeEmail', () => {
