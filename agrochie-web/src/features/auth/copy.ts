@@ -11,6 +11,12 @@ export function currentLang(): Lang {
 }
 
 export const copy = {
+  login: {
+    identifierLabel: 'Nomor HP atau email',
+    identifierHint: 'Masukkan nomor HP atau email yang Anda daftarkan.',
+    identifierPlaceholder: 'Contoh: 081234567890 atau nama@email.com',
+    forgotLink: 'Lupa kata sandi?',
+  },
   common: {
     cooldownNote: 'Terlalu banyak percobaan. Tunggu sebentar sebelum mencoba lagi.',
     cooldownWait: (seconds: number) => `Coba lagi dalam ${seconds} detik`,

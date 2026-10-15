@@ -53,6 +53,11 @@ export function isApiMessage(error: unknown, status: number, text: string): bool
   return e.status === status && e.message === text;
 }
 
+/** True bila galat membawa status HTTP tertentu (mis. 429 untuk cooldown). */
+export function isStatus(error: unknown, status: number): boolean {
+  return typeof error === 'object' && error !== null && (error as { status?: unknown }).status === status;
+}
+
 /** Email longgar untuk validasi awal di klien; keputusan akhir tetap di server. */
 export function looksLikeEmail(value: string): boolean {
   const v = value.trim();

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { safeNext, postLoginPath, isAuthPagePath, checkNewPassword, isApiMessage, looksLikeEmail } from './logic.ts';
+import { safeNext, postLoginPath, isAuthPagePath, checkNewPassword, isApiMessage, isStatus, looksLikeEmail } from './logic.ts';
 import { SERVER_MSG } from './serverMessages.ts';
 
 test('safeNext: path internal biasa diterima', () => {
@@ -47,6 +47,13 @@ test('isApiMessage: cocok hanya bila status DAN teks sama', () => {
   assert.equal(isApiMessage(err, 401, SERVER_MSG.googleTokenInvalid), false);
   assert.equal(isApiMessage(null, 401, 'x'), false);
   assert.equal(isApiMessage('teks', 401, 'x'), false);
+});
+
+test('isStatus: hanya cocok bila status sama', () => {
+  assert.equal(isStatus({ status: 429 }, 429), true);
+  assert.equal(isStatus({ status: 401 }, 429), false);
+  assert.equal(isStatus(null, 429), false);
+  assert.equal(isStatus(new Error('x'), 429), false);
 });
 
 test('looksLikeEmail', () => {
