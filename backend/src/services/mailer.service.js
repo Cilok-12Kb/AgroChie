@@ -1,6 +1,6 @@
 import nodemailer from "nodemailer";
 import { HttpError } from "../utils/http-error.js";
-import { buildLink, googleLinkedTemplate, passwordChangedTemplate, resetPasswordTemplate, verifyEmailTemplate } from "./email-templates.js";
+import { buildLink, emailRemovedTemplate, googleUnlinkedTemplate, phoneChangedTemplate, googleLinkedTemplate, passwordChangedTemplate, resetPasswordTemplate, verifyEmailTemplate } from "./email-templates.js";
 
 // Mailer berbasis Nodemailer. Konfigurasi dan transport diinjeksi agar tes memakai
 // jsonTransport (tanpa SMTP sungguhan). Rahasia (SMTP_PASS) tidak pernah dicatat.
@@ -44,6 +44,16 @@ export function createMailer(cfg, transport) {
     // [REVISI] langkah 10: pemberitahuan Google ditautkan (alamat Google sudah tersamar)
     async sendGoogleLinkedEmail({ to, name, masked, when, lang }) {
       return deliver(to, googleLinkedTemplate({ lang, name, masked, when }));
+    },
+    // [REVISI] B7: pemberitahuan perubahan akun (tanpa tautan)
+    async sendEmailRemovedEmail({ to, name, masked, when, lang }) {
+      return deliver(to, emailRemovedTemplate({ lang, name, masked, when }));
+    },
+    async sendGoogleUnlinkedEmail({ to, name, when, lang }) {
+      return deliver(to, googleUnlinkedTemplate({ lang, name, when }));
+    },
+    async sendPhoneChangedEmail({ to, name, oldMasked, newMasked, when, lang }) {
+      return deliver(to, phoneChangedTemplate({ lang, name, oldMasked, newMasked, when }));
     },
   };
 }

@@ -12,6 +12,9 @@ const phone = z
   .transform(normalizePhone)
   .refine((v) => v.length >= 8 && v.length <= 15, "Nomor HP harus 8 sampai 15 digit");
 
+// [REVISI] B7: skema nomor HP dipakai ulang oleh validator ganti nomor HP (normalisasi dan pesan sama dengan register).
+export { phone as phoneSchema };
+
 // z.object membuang kunci yang tidak dikenal, jadi `role` dari body otomatis diabaikan.
 export const registerSchema = z.object({
   name: z.string({ error: "Nama wajib diisi" }).trim().min(1, "Nama wajib diisi").max(100, "Nama terlalu panjang"),
