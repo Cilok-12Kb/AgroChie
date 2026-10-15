@@ -45,6 +45,27 @@ export function guestRateLimit() {
   });
 }
 
+
+/** [REVISI] Tambah/kirim ulang email: 10 per 15 menit per IP. */
+export function emailRateLimit() {
+  return rateLimit({
+    windowMs: 15 * 60_000,
+    max: 10,
+    keyFn: byIp,
+    message: "Terlalu banyak permintaan email dari alamat ini. Coba lagi nanti.",
+  });
+}
+
+/** [REVISI] Verifikasi email: 20 per 15 menit per IP. */
+export function verifyEmailRateLimit() {
+  return rateLimit({
+    windowMs: 15 * 60_000,
+    max: 20,
+    keyFn: byIp,
+    message: "Terlalu banyak percobaan verifikasi. Coba lagi nanti.",
+  });
+}
+
 /** Login: 10 percobaan per 10 menit per IP. */
 export function loginRateLimit() {
   return rateLimit({

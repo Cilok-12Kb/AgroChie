@@ -1,6 +1,9 @@
 import { registerUser, loginUser, getMe, createGuest, deleteGuest } from "../services/auth.service.js";
 import { parseRegister, parseLogin } from "../validators/auth.validator.js";
 import { getSessionTools } from "../utils/session.js";
+import { parseSetEmail, parseVerifyEmail } from "../validators/auth-email.validator.js";
+import { setEmail, resendVerification, verifyEmail } from "../services/email-verification.service.js";
+import { pickLang } from "../services/email-templates.js";
 
 // [REVISI] bagian 17.4: register memvalidasi dengan zod dan langsung membuat sesi; tambah login, me, logout.
 export async function register(req, res) {
@@ -31,4 +34,20 @@ export async function guest(_req, res) {
   const user = await createGuest();
   await (await getSessionTools()).setSessionCookie(res, user);
   res.status(201).json({ user });
+}
+
+// [REVISI] langkah 6: tambah dan verifikasi email. Bahasa email: body.lang, lalu Accept-Language, bawaan "id".
+export async function setEmailHandler(req, res) {
+  const { email, lang } = parseSetEmail(req.body);
+  res.json(await setEmail(req.user.id, { email, lang: pickLang(lang, req.headers["accept-language"]) }));
+}
+
+export async function resendVerificationHandler(req, res) {
+  const lang = pickLang(req.body?.lang, req.headers["accept-language"]);
+  await resendVerification(req.user.id, { lang });
+  res.status(202).json({ ok: true });
+}
+
+export async function verifyEmailHandler(req, res) {
+  res.json(await verifyEmail(parseVerifyEmail(req.body)));
 }
