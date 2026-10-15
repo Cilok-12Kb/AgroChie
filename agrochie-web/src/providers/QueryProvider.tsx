@@ -1,7 +1,8 @@
 'use client';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { setSessionExpiredHandler } from '@/features/console/api'; // [REVISI]
 
 export function QueryProvider({ children }: { children: React.ReactNode }) {
   const [client] = useState(
@@ -16,6 +17,12 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
         },
       })
   );
+
+  // [REVISI] 401 global: api.ts memanggil ini sebelum redirect ke /masuk.
+  useEffect(() => {
+    setSessionExpiredHandler(() => client.removeQueries({ queryKey: ['console', 'account'] }));
+    return () => setSessionExpiredHandler(null);
+  }, [client]);
 
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 }

@@ -1,4 +1,11 @@
 import { currentLang } from '../auth/copy'; // [REVISI] bahasa untuk field `lang` endpoint email
+import { loginRedirectUrl, shouldRedirectOn401 } from '../auth/logic'; // [REVISI] 401 global
+import { SERVER_MSG } from '../auth/serverMessages'; // [REVISI]
+
+// [REVISI] 401 global: QueryProvider mendaftarkan fungsi pembersih cache akun; flag mencegah redirect ganda.
+let onSessionExpired: (() => void) | null = null;
+let redirectingToLogin = false;
+export function setSessionExpiredHandler(fn: (() => void) | null) { onSessionExpired = fn; }
 /** One network boundary for the frontend. Cookies remain httpOnly on the Express server. */
 export class ApiError extends Error {
   constructor(public status: number, message: string) { super(message); this.name = 'ApiError'; }
@@ -15,7 +22,17 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
   if (!response.ok) {
     let detail: { message?: string; error?: string } = {};
     try { detail = await response.json(); } catch { /* non-JSON 5xx */ }
-    throw new ApiError(response.status, detail.message ?? detail.error ?? `Permintaan gagal (${response.status})`);
+    const message = detail.message ?? detail.error ?? `Permintaan gagal (${response.status})`;
+    // [REVISI] sesi berakhir/dicabut: bersihkan cache akun lalu ke /masuk?next=... (sekali saja).
+    if (typeof window !== 'undefined' && shouldRedirectOn401({
+      status: response.status, message, requestPath: path, currentPath: window.location.pathname,
+      redirecting: redirectingToLogin, wrongPassword: SERVER_MSG.wrongPassword, googleTokenInvalid: SERVER_MSG.googleTokenInvalid,
+    })) {
+      redirectingToLogin = true;
+      onSessionExpired?.();
+      window.location.href = loginRedirectUrl(window.location.pathname, window.location.search);
+    }
+    throw new ApiError(response.status, message);
   }
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;

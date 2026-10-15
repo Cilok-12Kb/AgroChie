@@ -35,6 +35,33 @@ export function postLoginPath(user: { needsProfileCompletion?: boolean } | null 
   return safeNext(next);
 }
 
+/**
+ * Keputusan 401 global: apakah klien harus dilempar ke /masuk?
+ * Tidak redirect bila: bukan 401; sudah ada redirect berjalan; halaman sekarang publik auth;
+ * endpoint /auth/me (ditangani AppShell), /auth/logout; /auth/login, /auth/register, /auth/google
+ * (401 = kredensial salah, bukan sesi habis); /auth/google/link hanya bila pesannya
+ * `wrongPassword` atau `googleTokenInvalid` (dioper dari serverMessages.ts).
+ */
+export function shouldRedirectOn401(input: {
+  status: number; message: string; requestPath: string; currentPath: string; redirecting: boolean;
+  wrongPassword: string; googleTokenInvalid: string;
+}): boolean {
+  if (input.status !== 401 || input.redirecting) return false;
+  if (isAuthPagePath(input.currentPath)) return false;
+  const p = input.requestPath.split(/[?#]/)[0];
+  if (p === '/auth/me' || p === '/auth/logout') return false;
+  if (p === '/auth/login' || p === '/auth/register' || p === '/auth/google') return false;
+  if (p === '/auth/google/link' && (input.message === input.wrongPassword || input.message === input.googleTokenInvalid)) return false;
+  return true;
+}
+
+/** Tujuan redirect 401: /masuk dengan ?next= aman (halaman auth/aneh -> tanpa next). */
+export function loginRedirectUrl(currentPath: string, search = ''): string {
+  const full = `${currentPath}${search}`;
+  const next = safeNext(full, '');
+  return next ? `/masuk?next=${encodeURIComponent(next)}` : '/masuk';
+}
+
 export type PasswordProblem = 'required' | 'tooShort' | 'tooLong' | 'mismatch';
 
 /** Validasi kata sandi baru + konfirmasi (8-128 karakter, harus sama). null = valid. */

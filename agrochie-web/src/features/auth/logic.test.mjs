@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { safeNext, postLoginPath, isAuthPagePath, checkNewPassword, isApiMessage, isStatus, looksLikeEmail, googleLoginOutcome, googleButtonWidth } from './logic.ts';
+import { safeNext, postLoginPath, isAuthPagePath, checkNewPassword, isApiMessage, isStatus, looksLikeEmail, googleLoginOutcome, googleButtonWidth, shouldRedirectOn401, loginRedirectUrl } from './logic.ts';
 import { SERVER_MSG } from './serverMessages.ts';
 
 test('safeNext: path internal biasa diterima', () => {
@@ -72,6 +72,41 @@ test('googleButtonWidth: dijepit 200..400', () => {
   assert.equal(googleButtonWidth(900), 400);
   assert.equal(googleButtonWidth(0), 280);
   assert.equal(googleButtonWidth(NaN), 280);
+});
+
+const base = { status: 401, message: 'Belum masuk', requestPath: '/farms', currentPath: '/profil', redirecting: false,
+  wrongPassword: SERVER_MSG.wrongPassword, googleTokenInvalid: SERVER_MSG.googleTokenInvalid };
+
+test('shouldRedirectOn401: 401 biasa di halaman terlindungi -> redirect', () => {
+  assert.equal(shouldRedirectOn401(base), true);
+});
+
+test('shouldRedirectOn401: bukan 401, redirect berjalan, atau halaman publik -> tidak', () => {
+  assert.equal(shouldRedirectOn401({ ...base, status: 403 }), false);
+  assert.equal(shouldRedirectOn401({ ...base, redirecting: true }), false);
+  for (const p of ['/masuk', '/daftar', '/lupa-password', '/reset-password', '/verify-email']) {
+    assert.equal(shouldRedirectOn401({ ...base, currentPath: p }), false, p);
+  }
+});
+
+test('shouldRedirectOn401: pengecualian endpoint auth', () => {
+  for (const p of ['/auth/me', '/auth/logout', '/auth/login', '/auth/register', '/auth/google']) {
+    assert.equal(shouldRedirectOn401({ ...base, requestPath: p }), false, p);
+  }
+});
+
+test('shouldRedirectOn401: google/link hanya dikecualikan untuk dua pesan', () => {
+  const link = { ...base, requestPath: '/auth/google/link' };
+  assert.equal(shouldRedirectOn401({ ...link, message: SERVER_MSG.wrongPassword }), false);
+  assert.equal(shouldRedirectOn401({ ...link, message: SERVER_MSG.googleTokenInvalid }), false);
+  assert.equal(shouldRedirectOn401({ ...link, message: 'Belum masuk' }), true);
+});
+
+test('loginRedirectUrl: next aman atau tanpa next', () => {
+  assert.equal(loginRedirectUrl('/profil'), '/masuk?next=%2Fprofil');
+  assert.equal(loginRedirectUrl('/catatan', '?a=1'), '/masuk?next=%2Fcatatan%3Fa%3D1');
+  assert.equal(loginRedirectUrl('//evil.com'), '/masuk');
+  assert.equal(loginRedirectUrl('/verify-email'), '/masuk');
 });
 
 test('looksLikeEmail', () => {
