@@ -45,10 +45,12 @@ export function postLoginPath(user: { needsProfileCompletion?: boolean } | null 
 export function shouldRedirectOn401(input: {
   status: number; message: string; requestPath: string; currentPath: string; redirecting: boolean;
   wrongPassword: string; googleTokenInvalid: string;
+  skipGlobal401?: boolean; // pengecualian sempit: hanya berlaku untuk /auth/email (alur daftar)
 }): boolean {
   if (input.status !== 401 || input.redirecting) return false;
   if (isAuthPagePath(input.currentPath)) return false;
   const p = input.requestPath.split(/[?#]/)[0];
+  if (input.skipGlobal401 === true && p === '/auth/email') return false;
   if (p === '/auth/me' || p === '/auth/logout') return false;
   if (p === '/auth/login' || p === '/auth/register' || p === '/auth/google') return false;
   if (p === '/auth/google/link' && (input.message === input.wrongPassword || input.message === input.googleTokenInvalid)) return false;
@@ -146,6 +148,22 @@ export function linkErrorOutcome(error: unknown, wrongPassword: string, googleTo
 export function googleButtonWidth(containerWidth: number): number {
   if (!Number.isFinite(containerWidth) || containerWidth <= 0) return 280;
   return Math.max(200, Math.min(400, Math.floor(containerWidth)));
+}
+
+export type RegisterEmailFailure = 'conflict' | 'tooMany' | 'sendFailed' | 'unavailable' | 'other';
+
+/** Alasan email gagal tersimpan setelah register berhasil (POST /auth/email di alur daftar). */
+export function registerEmailFailure(error: unknown): RegisterEmailFailure {
+  if (isStatus(error, 409)) return 'conflict';
+  if (isStatus(error, 429)) return 'tooMany';
+  if (isStatus(error, 502)) return 'sendFailed';
+  if (isStatus(error, 503)) return 'unavailable';
+  return 'other';
+}
+
+/** Email opsional: kosong = valid; terisi harus lolos looksLikeEmail. */
+export function isOptionalEmailValid(value: string): boolean {
+  return value.trim() === '' || looksLikeEmail(value);
 }
 
 /** Email longgar untuk validasi awal di klien; keputusan akhir tetap di server. */

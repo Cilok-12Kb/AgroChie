@@ -11,7 +11,7 @@ export class ApiError extends Error {
   constructor(public status: number, message: string) { super(message); this.name = 'ApiError'; }
 }
 
-export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+export async function request<T>(path: string, init: RequestInit = {}, opts: { skipGlobal401?: boolean } = {}): Promise<T> { // [REVISI] opts.skipGlobal401
   const response = await fetch(`/api${path}`, {
     ...init,
     credentials: 'include',
@@ -27,6 +27,7 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
     if (typeof window !== 'undefined' && shouldRedirectOn401({
       status: response.status, message, requestPath: path, currentPath: window.location.pathname,
       redirecting: redirectingToLogin, wrongPassword: SERVER_MSG.wrongPassword, googleTokenInvalid: SERVER_MSG.googleTokenInvalid,
+      skipGlobal401: opts.skipGlobal401,
     })) {
       redirectingToLogin = true;
       onSessionExpired?.();
@@ -132,6 +133,8 @@ export const api = {
     google: (idToken: string) => post<Account>('/auth/google', { idToken }),
     googleLink: (idToken: string, password: string) => post<Account>('/auth/google/link', { idToken, password, lang: currentLang() }),
     setEmail: (email: string) => post<Account>('/auth/email', { email, lang: currentLang() }),
+    // [REVISI] khusus alur daftar: 401 diperlakukan sebagai email gagal, bukan redirect global.
+    setEmailAfterRegister: (email: string) => request<Account>('/auth/email', { method: 'POST', body: JSON.stringify({ email, lang: currentLang() }) }, { skipGlobal401: true }),
     resendVerification: () => post<{ ok: boolean }>('/auth/email/resend-verification', { lang: currentLang() }),
     verifyEmail: (token: string) => post<{ ok: boolean }>('/auth/verify-email', { token }),
     forgotPassword: (email: string) => post<{ ok: boolean; message: string }>('/auth/forgot-password', { email, lang: currentLang() }),

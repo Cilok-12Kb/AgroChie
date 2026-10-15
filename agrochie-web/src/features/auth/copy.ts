@@ -61,6 +61,21 @@ export const copy = {
     identifierPlaceholder: 'Contoh: 081234567890 atau nama@email.com',
     forgotLink: 'Lupa kata sandi?',
   },
+  register: {
+    emailLabel: 'Email (opsional)',
+    emailHint: 'Disarankan, agar kamu bisa memulihkan kata sandi jika lupa.',
+    emailPlaceholder: 'nama@email.com',
+    emailInvalid: 'Format email tidak valid.',
+    emailFailed: (reason: string) => `Akun berhasil dibuat, tetapi email belum tersimpan: ${reason}. Kamu bisa menambahkannya nanti di halaman Profil.`,
+    reason: {
+      conflict: 'email tidak dapat digunakan',
+      tooMany: 'terlalu banyak permintaan',
+      sendFailed: 'gagal mengirim email verifikasi',
+      unavailable: 'layanan email belum tersedia',
+      other: 'terjadi kesalahan',
+    },
+    goProfile: 'Lanjut ke Profil',
+  },
   google: {
     divider: 'atau',
     failed: 'Login Google gagal, coba lagi.',

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { safeNext, postLoginPath, isAuthPagePath, checkNewPassword, isApiMessage, isStatus, looksLikeEmail, googleLoginOutcome, googleButtonWidth, shouldRedirectOn401, loginRedirectUrl, shouldShowEmailBanner, emailErrorOutcome, canLinkGoogle, linkErrorOutcome } from './logic.ts';
+import { registerEmailFailure, isOptionalEmailValid, safeNext, postLoginPath, isAuthPagePath, checkNewPassword, isApiMessage, isStatus, looksLikeEmail, googleLoginOutcome, googleButtonWidth, shouldRedirectOn401, loginRedirectUrl, shouldShowEmailBanner, emailErrorOutcome, canLinkGoogle, linkErrorOutcome } from './logic.ts';
 import { SERVER_MSG } from './serverMessages.ts';
 
 test('safeNext: path internal biasa diterima', () => {
@@ -160,4 +160,29 @@ test('looksLikeEmail', () => {
   assert.equal(looksLikeEmail('budi@'), false);
   assert.equal(looksLikeEmail('081234567890'), false);
   assert.equal(looksLikeEmail(''), false);
+});
+
+test('registerEmailFailure: peta status ke alasan', () => {
+  assert.equal(registerEmailFailure({ status: 409 }), 'conflict');
+  assert.equal(registerEmailFailure({ status: 429 }), 'tooMany');
+  assert.equal(registerEmailFailure({ status: 502 }), 'sendFailed');
+  assert.equal(registerEmailFailure({ status: 503 }), 'unavailable');
+  assert.equal(registerEmailFailure({ status: 401 }), 'other');
+  assert.equal(registerEmailFailure(new TypeError('network')), 'other');
+});
+
+test('shouldRedirectOn401: pengecualian skipGlobal401 hanya untuk /auth/email', () => {
+  const base = { status: 401, message: 'Belum masuk', currentPath: '/daftar', redirecting: false, wrongPassword: SERVER_MSG.wrongPassword, googleTokenInvalid: SERVER_MSG.googleTokenInvalid };
+  const prof = { ...base, currentPath: '/profil' };
+  assert.equal(shouldRedirectOn401({ ...prof, requestPath: '/auth/email', skipGlobal401: true }), false);
+  assert.equal(shouldRedirectOn401({ ...prof, requestPath: '/auth/email' }), true);
+  assert.equal(shouldRedirectOn401({ ...prof, requestPath: '/auth/email', skipGlobal401: false }), true);
+  assert.equal(shouldRedirectOn401({ ...prof, requestPath: '/lahan', skipGlobal401: true }), true);
+});
+
+test('isOptionalEmailValid: kosong valid, terisi harus berformat email', () => {
+  assert.equal(isOptionalEmailValid(''), true);
+  assert.equal(isOptionalEmailValid('   '), true);
+  assert.equal(isOptionalEmailValid('budi@contoh.id'), true);
+  assert.equal(isOptionalEmailValid('budi@'), false);
 });
