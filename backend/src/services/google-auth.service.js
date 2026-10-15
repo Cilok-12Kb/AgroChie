@@ -1,5 +1,8 @@
+import argon2 from "argon2";
 import { prisma } from "../config/prisma.js";
 import { HttpError } from "../utils/http-error.js";
+import { failureLimiter } from "../middleware/rate-limit.js";
+import { maskEmail } from "./email-templates.js";
 import { emailSchema } from "../validators/auth-email.validator.js";
 import { ME_SELECT, toPublicUser } from "./auth.service.js";
 
@@ -110,6 +113,110 @@ async function applyRules(db, { sub, email, name }) {
     if (err?.code === "P2002") throw RACE;
     throw err;
   }
+}
+
+// ---------------------------------------------------------------------------------------------
+// [REVISI] langkah 10: POST /auth/google/link (wajib login, re-autentikasi password).
+// ---------------------------------------------------------------------------------------------
+export const LINK_WRONG_PASSWORD = "Kata sandi salah";
+export const LINK_OWN_OTHER = "Akun ini sudah tertaut ke akun Google lain.";
+export const LINK_TAKEN = "Akun Google ini sudah dipakai akun lain.";
+// Maksimal 5 percobaan password gagal per user per 15 menit (selain pembatas per IP di rute).
+const passwordFailures = failureLimiter({ windowMs: 15 * 60_000, max: 5 });
+
+/** Terapkan aturan penautan dalam satu transaksi. Melempar RACE bila P2002. */
+async function applyLink(db, userId, { sub, email }) {
+  try {
+    return await db.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({ where: { id: userId }, select: ME_SELECT });
+      if (!user) throw new HttpError(401, "Belum masuk");
+      if (user.googleId === sub) return { changed: false, user };
+      if (user.googleId) throw new HttpError(409, LINK_OWN_OTHER);
+      const holder = await tx.user.findUnique({ where: { googleId: sub }, select: { id: true } });
+      if (holder) throw new HttpError(409, LINK_TAKEN);
+
+      const now = new Date();
+      const data = { googleId: sub };
+      let revokeTokens = false;
+      const emailTaken = await tx.user.findFirst({ where: { email, id: { not: userId } }, select: { id: true } });
+      if (!user.email && !emailTaken) {
+        data.email = email; // akun tanpa email mendapat email Google (terverifikasi oleh Google)
+        data.emailVerifiedAt = now;
+        revokeTokens = true;
+      } else if (user.email === email && !user.emailVerifiedAt) {
+        data.emailVerifiedAt = now;
+        revokeTokens = true;
+      } // kasus lain: email akun tidak diubah
+      // Hanya googleId yang dijaga dengan "googleId: null" agar dua permintaan bersamaan tidak saling menimpa.
+      const upd = await tx.user.updateMany({ where: { id: userId, googleId: null }, data });
+      if (upd.count !== 1) throw RACE;
+      if (revokeTokens) {
+        await tx.emailVerification.updateMany({ where: { userId, usedAt: null }, data: { usedAt: now } });
+      }
+      const fresh = await tx.user.findUnique({ where: { id: userId }, select: ME_SELECT });
+      // Penerima pemberitahuan: email akun yang sudah terverifikasi SEBELUM penautan.
+      const before = user.email && user.emailVerifiedAt ? { email: user.email, name: user.name } : null;
+      return { changed: true, user: fresh, when: now, before };
+    });
+  } catch (err) {
+    if (err?.code === "P2002") throw RACE;
+    throw err;
+  }
+}
+
+/**
+ * Tautkan Google ke akun yang sedang login. Urutan: tamu 403 -> 503 -> pembatas password 429 ->
+ * password (argon2) 401/400 -> BARU token Google 401 -> transaksi -> email pemberitahuan (di luar transaksi).
+ */
+export async function linkGoogle(userId, { idToken, password, lang }) {
+  const { cfg, verifier, db } = await getDeps();
+  const me = await db.user.findUnique({ where: { id: userId }, select: { isGuest: true, passwordHash: true } });
+  if (!me) throw new HttpError(401, "Belum masuk");
+  if (me.isGuest) throw new HttpError(403, "Akun tamu tidak dapat menautkan akun Google");
+  if (!cfg.googleConfigured) throw new HttpError(503, "Login Google belum dikonfigurasi");
+
+  if (passwordFailures.isBlocked(userId)) {
+    throw new HttpError(429, "Terlalu banyak percobaan kata sandi salah. Coba lagi nanti.");
+  }
+  if (!me.passwordHash) throw new HttpError(400, "Akun ini tidak memiliki kata sandi");
+  if (!(await argon2.verify(me.passwordHash, password))) {
+    passwordFailures.recordFailure(userId);
+    throw new HttpError(401, LINK_WRONG_PASSWORD);
+  }
+  passwordFailures.clear(userId);
+
+  // Token Google baru diperiksa setelah password benar.
+  let payload;
+  try {
+    payload = await verifier(idToken, cfg.googleClientId);
+  } catch {
+    throw new HttpError(401, GOOGLE_INVALID);
+  }
+  const claims = validateGooglePayload(payload, cfg.googleClientId);
+
+  let result;
+  for (let attempt = 0; attempt < 2 && !result; attempt++) {
+    try {
+      result = await applyLink(db, userId, claims);
+    } catch (err) {
+      if (err !== RACE) throw err;
+    }
+  }
+  if (!result) throw new HttpError(409, "Akun sedang diproses. Coba lagi.");
+
+  // Email pemberitahuan ke email akun yang SUDAH terverifikasi sebelum penautan; kegagalan hanya dicatat.
+  const before = result.before;
+  if (result.changed && before) {
+    try {
+      const mailer = testDeps?.mailer ?? (await (await import("./mailer.service.js")).getMailer());
+      await mailer.sendGoogleLinkedEmail({
+        to: before.email, name: before.name, masked: maskEmail(claims.email), when: result.when, lang,
+      });
+    } catch (err) {
+      console.error("[mail] gagal mengirim pemberitahuan tautan Google:", err?.code ?? err?.name ?? "error");
+    }
+  }
+  return toPublicUser(result.user);
 }
 
 /**

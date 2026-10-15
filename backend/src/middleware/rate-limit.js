@@ -96,6 +96,36 @@ export function googleRateLimit() {
   });
 }
 
+/** [REVISI] Tautkan Google: 10 per 15 menit per IP. */
+export function googleLinkRateLimit() {
+  return rateLimit({
+    windowMs: 15 * 60_000,
+    max: 10,
+    keyFn: byIp,
+    message: "Terlalu banyak percobaan menautkan Google. Coba lagi nanti.",
+  });
+}
+
+/**
+ * [REVISI] Pembatas khusus KEGAGALAN (mis. password salah), per kunci (user). Berbeda dari rateLimit(),
+ * hitungan hanya bertambah lewat recordFailure(). Memori proses, mengikuti pola rateLimit().
+ */
+export function failureLimiter({ windowMs = 15 * 60_000, max = 5 } = {}) {
+  const hits = new Map();
+  allHits.add(hits);
+  const recent = (key) => {
+    const now = Date.now();
+    const r = (hits.get(key) ?? []).filter((t) => now - t < windowMs);
+    hits.set(key, r);
+    return r;
+  };
+  return {
+    isBlocked: (key) => recent(key).length >= max,
+    recordFailure: (key) => recent(key).push(Date.now()),
+    clear: (key) => hits.delete(key),
+  };
+}
+
 /** Login: 10 percobaan per 10 menit per IP. */
 export function loginRateLimit() {
   return rateLimit({

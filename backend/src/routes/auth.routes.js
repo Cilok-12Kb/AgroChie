@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { asyncHandler } from "../utils/async-handler.js";
 import { requireUser, optionalUser } from "../middleware/auth.js";
-import { loginRateLimit, guestRateLimit, emailRateLimit, verifyEmailRateLimit, forgotPasswordRateLimit, resetPasswordRateLimit, googleRateLimit } from "../middleware/rate-limit.js";
+import { loginRateLimit, guestRateLimit, emailRateLimit, verifyEmailRateLimit, forgotPasswordRateLimit, resetPasswordRateLimit, googleRateLimit, googleLinkRateLimit } from "../middleware/rate-limit.js";
 import * as auth from "../controllers/auth.controller.js";
 export const authRoutes = Router();
 authRoutes.post("/register", asyncHandler(auth.register));
@@ -19,3 +19,5 @@ authRoutes.post("/forgot-password", forgotPasswordRateLimit(), asyncHandler(auth
 authRoutes.post("/reset-password", resetPasswordRateLimit(), asyncHandler(auth.resetPasswordHandler));
 // [REVISI] langkah 9: login dengan Google (publik, pembatas per IP)
 authRoutes.post("/google", googleRateLimit(), asyncHandler(auth.googleLoginHandler));
+// [REVISI] langkah 10: tautkan Google ke akun yang sedang login (pembatas IP, lalu wajib login)
+authRoutes.post("/google/link", googleLinkRateLimit(), requireUser, asyncHandler(auth.googleLinkHandler));

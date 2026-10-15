@@ -36,6 +36,12 @@ export const googleSchema = z.object({
   idToken: z.string({ error: "idToken wajib diisi" }).trim().min(1, "idToken wajib diisi").max(4096, "idToken tidak valid"),
 });
 
+// [REVISI] langkah 10: tautkan Google = idToken + password akun (re-autentikasi). Password tidak di-trim.
+export const googleLinkSchema = googleSchema.extend({
+  password: z.string({ error: "Kata sandi wajib diisi" }).min(1, "Kata sandi wajib diisi").max(1024, "Kata sandi terlalu panjang"),
+  lang,
+});
+
 function parse(schema, body) {
   const r = schema.safeParse(body ?? {});
   if (!r.success) throw new HttpError(400, r.error.issues.map((i) => i.message).join("; "));
@@ -47,3 +53,4 @@ export const parseForgotPassword = (body) => parse(forgotPasswordSchema, body);
 export const parseVerifyEmail = (body) => parse(verifyEmailSchema, body);
 export const parseResetPassword = (body) => parse(resetPasswordSchema, body);
 export const parseGoogle = (body) => parse(googleSchema, body);
+export const parseGoogleLink = (body) => parse(googleLinkSchema, body);

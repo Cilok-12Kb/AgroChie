@@ -4,8 +4,8 @@ import { getSessionTools } from "../utils/session.js";
 import { parseSetEmail, parseVerifyEmail } from "../validators/auth-email.validator.js";
 import { setEmail, resendVerification, verifyEmail } from "../services/email-verification.service.js";
 import { pickLang } from "../services/email-templates.js";
-import { parseForgotPassword, parseResetPassword, parseGoogle } from "../validators/auth-email.validator.js";
-import { assertGoogleReady, loginWithGoogle } from "../services/google-auth.service.js";
+import { parseForgotPassword, parseResetPassword, parseGoogle, parseGoogleLink } from "../validators/auth-email.validator.js";
+import { assertGoogleReady, loginWithGoogle, linkGoogle } from "../services/google-auth.service.js";
 import { assertMailReady, startForgotJob, resetPassword, FORGOT_MESSAGE } from "../services/password-reset.service.js";
 
 // [REVISI] bagian 17.4: register memvalidasi dengan zod dan langsung membuat sesi; tambah login, me, logout.
@@ -64,6 +64,12 @@ export async function googleLoginHandler(req, res) {
   const { user, sessionVersion, created } = await loginWithGoogle({ idToken });
   await (await getSessionTools()).setSessionCookie(res, { ...user, sessionVersion });
   res.status(created ? 201 : 200).json(user);
+}
+
+// [REVISI] langkah 10: tautkan Google (wajib login). Respons 200 = public user terbaru; sessionVersion tidak berubah.
+export async function googleLinkHandler(req, res) {
+  const { idToken, password, lang } = parseGoogleLink(req.body);
+  res.json(await linkGoogle(req.user.id, { idToken, password, lang: pickLang(lang, req.headers["accept-language"]) }));
 }
 
 // [REVISI] langkah 8: lupa dan reset password.

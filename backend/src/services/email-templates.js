@@ -119,6 +119,42 @@ export function passwordChangedTemplate({ lang = "id", name } = {}) {
   return { subject: t.subject, text, html };
 }
 
+// [REVISI] langkah 10: pemberitahuan akun Google ditautkan (tanpa tautan apa pun).
+const GOOGLE_LINKED = {
+  id: {
+    subject: "Akun Google telah ditautkan ke akun AgroChie kamu",
+    greeting: (n) => (n ? `Halo ${n},` : "Halo,"),
+    body: (v) => `Akun Google ${v.masked} baru saja ditautkan ke akun AgroChie kamu pada ${v.when}.`,
+    warn: "Jika bukan kamu yang melakukannya, segera atur ulang kata sandi lewat fitur lupa kata sandi atau hubungi kami.",
+  },
+  en: {
+    subject: "A Google account was linked to your AgroChie account",
+    greeting: (n) => (n ? `Hello ${n},` : "Hello,"),
+    body: (v) => `The Google account ${v.masked} was just linked to your AgroChie account on ${v.when}.`,
+    warn: "If this was not you, reset your password right away using forgot password, or contact us.",
+  },
+};
+
+/** Samarkan email: huruf pertama + *** + domain, mis. a***@gmail.com. */
+export function maskEmail(email) {
+  const [local = "", domain = ""] = String(email ?? "").split("@");
+  return `${local.slice(0, 1)}***@${domain}`;
+}
+
+/** Email pemberitahuan Google ditautkan. masked = alamat tersamar; when = Date. */
+export function googleLinkedTemplate({ lang = "id", name, masked, when = new Date() } = {}) {
+  const t = GOOGLE_LINKED[SUPPORTED_LANGS.includes(lang) ? lang : "id"];
+  const whenText = `${when.toISOString().slice(0, 16).replace("T", " ")} UTC`;
+  const greeting = t.greeting(name);
+  const body = t.body({ masked, when: whenText });
+  const text = [greeting, "", body, t.warn, "", "AgroChie"].join("\n");
+  const html =
+    `<!doctype html><html><body style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;line-height:1.5">` +
+    `<p>${escapeHtml(greeting)}</p><p>${escapeHtml(body)}</p>` +
+    `<p style="font-size:13px;color:#475569">${escapeHtml(t.warn)}</p><p>AgroChie</p></body></html>`;
+  return { subject: t.subject, text, html };
+}
+
 /** Email reset password. url = tautan lengkap; minutes = masa berlaku (menit). */
 export function resetPasswordTemplate({ lang = "id", name, url, minutes }) {
   return render("reset", { lang, name, url, minutes });
