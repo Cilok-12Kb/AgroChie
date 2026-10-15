@@ -1,7 +1,8 @@
 'use client';
 import { FormEvent, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Eye, EyeOff, Leaf, User } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, Leaf } from 'lucide-react';
+import { AuthPrimary, GuestAction } from '../auth/AuthActions'; // [REVISI] tampilan
 import { api } from './api';
 import { Button, ErrorLine, Field, inputClass } from './ui';
 import { copy } from '../auth/copy'; // [REVISI] teks baru lewat copy.ts
@@ -31,11 +32,11 @@ export function AuthForm({ type }: { type: 'login' | 'register' }) {
       {type==='register'&&<Field label={copy.register.emailLabel} hint={copy.register.emailHint}><input name="email" type="email" className={inputClass} maxLength={254} value={email} onChange={e=>setEmail(e.target.value)} placeholder={copy.register.emailPlaceholder} autoComplete="email" inputMode="email" autoCapitalize="none" spellCheck={false}/></Field>}
       <Field label="Kata sandi"><div className="relative"><input className={`${inputClass} pr-12`} type={show?'text':'password'} required minLength={type==='register'?8:1} maxLength={128} value={password} onChange={e=>setPassword(e.target.value)} autoComplete={type==='register'?'new-password':'current-password'} placeholder="Masukkan kata sandi"/><button type="button" title="Tampilkan/sembunyikan kata sandi" className="absolute top-3.5 right-3 text-slate-500" onClick={()=>setShow(s=>!s)}>{show?<EyeOff size={18}/>:<Eye size={18}/>}</button></div></Field>
       {type==='login'&&<div className="text-right -mt-1"><Link href="/lupa-password" className="inline-block py-2 text-sm text-emerald-700 font-black">{copy.login.forgotLink}</Link></div>}
-      <ErrorLine error={error}/>{cooldown.left>0&&<p role="status" className="text-sm text-amber-700 font-bold">{copy.common.cooldownNote} {copy.common.cooldownWait(cooldown.left)}</p>}<div className="pt-2"><Button type="submit" icon={ArrowRight} busy={loading} disabled={cooldown.left>0}>{type==='login'?'Masuk':'Daftar & lanjutkan'}</Button></div>
+      <ErrorLine error={error}/>{cooldown.left>0&&<p role="status" className="text-sm text-amber-700 font-bold">{copy.common.cooldownNote} {copy.common.cooldownWait(cooldown.left)}</p>}<AuthPrimary><Button type="submit" icon={ArrowRight} busy={loading} disabled={cooldown.left>0}>{type==='login'?'Masuk':'Daftar & lanjutkan'}</Button></AuthPrimary>{/* [REVISI] tampilan: tombol primer seragam */}
     </form>
     {/* [REVISI] tombol Google di /masuk dan /daftar */}
     <GoogleLogin mode={type} busy={loading} locked={cooldown.left>0} onCooldown={cooldown.start}/></>}
-    {type==='login'&&<div className="mt-6 border-t border-slate-100 pt-5"><button disabled={loading} className="w-full rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 py-3 text-sm font-extrabold flex justify-center items-center gap-2 hover:bg-emerald-100" onClick={guest}><User size={16}/> Masuk sebagai tamu sementara</button><p className="text-xs text-slate-500 text-center mt-2">Data tamu tersimpan di server dan dihapus saat logout.</p></div>}
-    <p className="text-sm text-center text-slate-500 mt-7">{type==='login'?<>Belum punya akun? <Link href="/daftar" className="text-emerald-700 font-black">Daftar sekarang</Link></>:<>Sudah memiliki akun? <Link href="/masuk" className="text-emerald-700 font-black">Masuk</Link></>}</p>
+    {type==='login'&&<GuestAction disabled={loading} onClick={guest}/>}{/* [REVISI] tampilan: tombol tamu seragam */}
+    <p className="text-sm text-center text-slate-500 mt-6">{type==='login'?<>Belum punya akun? <Link href="/daftar" className="text-emerald-700 font-black">Daftar sekarang</Link></>:<>Sudah memiliki akun? <Link href="/masuk" className="text-emerald-700 font-black">Masuk</Link></>}</p>
   </div>;
 }

@@ -42,7 +42,7 @@ export function GoogleLogin({ mode, busy, locked, onCooldown }: {
       <div className="flex items-center gap-3 text-xs font-bold uppercase text-slate-400" role="separator">
         <span className="h-px flex-1 bg-slate-200" />{copy.google.divider}<span className="h-px flex-1 bg-slate-200" />
       </div>
-      <div className="mt-4 space-y-3">
+      <div className="mt-3 space-y-3">
         <GoogleButton onCredential={onCredential} disabled={busy || working || locked} text={mode === 'login' ? 'signin_with' : 'signup_with'} />
         {working && <p role="status" className="text-sm text-slate-600 text-center font-bold">{copy.google.signingIn}</p>}
         {failed && <Message color="red">{copy.google.failed}</Message>}

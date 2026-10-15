@@ -44,10 +44,23 @@ export function GoogleButton({ onCredential, disabled = false, text = 'signin_wi
     }
     box.replaceChildren();
     gsi.renderButton(box, {
-      type: 'standard', size: 'large', theme: 'outline', locale: 'id', text,
+      type: 'standard', size: 'large', theme: 'outline', shape: 'pill', logo_alignment: 'center', locale: 'id', text,
       width: googleButtonWidth(wrapRef.current?.clientWidth ?? 0),
     });
   }, [clientId, text]);
+
+  // Render ulang (tanpa initialize) bila lebar kontainer berubah, agar lebar selalu sama dengan tombol lain.
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    if (!wrap || typeof ResizeObserver === 'undefined') return;
+    let last = googleButtonWidth(wrap.clientWidth);
+    const ro = new ResizeObserver(() => {
+      const next = googleButtonWidth(wrap.clientWidth);
+      if (next !== last) { last = next; render(); }
+    });
+    ro.observe(wrap);
+    return () => ro.disconnect();
+  }, [render]);
 
   useEffect(() => {
     const mine = (credential: string) => callbackRef.current(credential);
@@ -67,7 +80,7 @@ export function GoogleButton({ onCredential, disabled = false, text = 'signin_wi
       <div
         ref={boxRef}
         aria-disabled={disabled}
-        className={`flex justify-center min-h-[44px] ${disabled ? 'pointer-events-none opacity-50' : ''}`}
+        className={`flex justify-center items-center h-11 min-h-11 ${disabled ? 'pointer-events-none opacity-50' : ''}`}
       />
     </div>
   );
