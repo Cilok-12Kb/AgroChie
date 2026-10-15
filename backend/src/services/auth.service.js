@@ -15,7 +15,8 @@ export async function registerUser({ name, phone, password }) {
       data: { name, phone, passwordHash: await argon2.hash(password), role: "PETANI", isGuest: false },
       select: ME_SELECT,
     });
-    return toPublicUser(row);
+    // [REVISI] D1: sessionVersion dikembalikan terpisah untuk klaim sv; tidak ikut ke respons.
+    return { user: toPublicUser(row), sessionVersion: row.sessionVersion };
   } catch (err) {
     if (err.code === "P2002") throw new HttpError(409, "Nomor HP sudah terdaftar");
     throw err;
@@ -39,7 +40,7 @@ export async function loginUser({ phone, email, password }) {
   // verify selalu dijalankan, ke hash asli atau hash tiruan (akun tak ada / tanpa passwordHash).
   const ok = await argon2.verify(row?.passwordHash ?? (await getDummyHash()), password);
   if (!row || !row.passwordHash || !ok) throw new HttpError(401, LOGIN_FAILED);
-  return toPublicUser(row);
+  return { user: toPublicUser(row), sessionVersion: row.sessionVersion }; // [REVISI] D1
 }
 
 // bagian 17.6: mode tamu. Kata sandi acak kuat hanya di-hash, tidak disimpan/dikembalikan/dicatat,
@@ -48,8 +49,27 @@ export async function createGuest() {
   const secret = randomBytes(32).toString("hex");
   return prisma.user.create({
     data: { name: "Tamu", phone: null, email: null, passwordHash: await argon2.hash(secret), role: "PETANI", isGuest: true },
-    select: { id: true, name: true, role: true, isGuest: true },
+    select: { id: true, name: true, role: true, isGuest: true, sessionVersion: true },
   });
+}
+
+/** [REVISI] D1: versi sesi saat ini, atau null bila user tidak ada. Hanya dipakai server. */
+export async function getSessionVersion(userId) {
+  const row = await prisma.user.findUnique({ where: { id: userId }, select: { sessionVersion: true } });
+  return row ? row.sessionVersion : null;
+}
+
+/**
+ * [REVISI] D1: naikkan sessionVersion secara atomik (increment di DB) sehingga semua token lama ditolak.
+ * Panggil di dalam transaksi (tx = klien transaksi). Mengembalikan versi baru.
+ */
+export async function bumpSessionVersion(tx, userId) {
+  const row = await tx.user.update({
+    where: { id: userId },
+    data: { sessionVersion: { increment: 1 } },
+    select: { sessionVersion: true },
+  });
+  return row.sessionVersion;
 }
 
 /** Hapus HANYA baris dengan id ini DAN isGuest = true (relasi Cascade ikut menghapus datanya). */
@@ -66,6 +86,7 @@ const ME_SELECT = {
   emailVerifiedAt: true,
   passwordHash: true,
   googleId: true,
+  sessionVersion: true,
   _count: { select: { farms: true } },
 };
 

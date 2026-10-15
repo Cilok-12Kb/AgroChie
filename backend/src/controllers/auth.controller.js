@@ -7,14 +7,15 @@ import { pickLang } from "../services/email-templates.js";
 
 // [REVISI] bagian 17.4: register memvalidasi dengan zod dan langsung membuat sesi; tambah login, me, logout.
 export async function register(req, res) {
-  const user = await registerUser(parseRegister(req.body));
-  await (await getSessionTools()).setSessionCookie(res, user);
+  // [REVISI] D1: sessionVersion hanya untuk klaim sv di token, tidak dikirim ke klien.
+  const { user, sessionVersion } = await registerUser(parseRegister(req.body));
+  await (await getSessionTools()).setSessionCookie(res, { ...user, sessionVersion });
   res.status(201).json(user);
 }
 
 export async function login(req, res) {
-  const user = await loginUser(parseLogin(req.body));
-  await (await getSessionTools()).setSessionCookie(res, user);
+  const { user, sessionVersion } = await loginUser(parseLogin(req.body));
+  await (await getSessionTools()).setSessionCookie(res, { ...user, sessionVersion });
   res.json(user);
 }
 
@@ -31,8 +32,8 @@ export async function logout(req, res) {
 
 // bagian 17.6: sesi tamu 24 jam, tanpa pembaruan token (diatur di session.js)
 export async function guest(_req, res) {
-  const user = await createGuest();
-  await (await getSessionTools()).setSessionCookie(res, user);
+  const { sessionVersion, ...user } = await createGuest(); // [REVISI] D1
+  await (await getSessionTools()).setSessionCookie(res, { ...user, sessionVersion });
   res.status(201).json({ user });
 }
 

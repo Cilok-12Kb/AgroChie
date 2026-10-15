@@ -12,7 +12,8 @@ export function createSessionTools(cfg) {
   /** Buat token. `nowSec` hanya untuk pengujian. */
   async function createToken(user, nowSec = Math.floor(Date.now() / 1000)) {
     const isGuest = Boolean(user.isGuest);
-    return new SignJWT({ role: user.role, isGuest })
+    // [REVISI] D1: klaim sv = User.sessionVersion saat token terbit (tanpa nilai -> 0).
+    return new SignJWT({ role: user.role, isGuest, sv: Number(user.sessionVersion ?? 0) })
       .setProtectedHeader({ alg: "HS256" })
       .setSubject(String(user.id))
       .setIssuedAt(nowSec)
@@ -30,6 +31,8 @@ export function createSessionTools(cfg) {
         id: payload.sub,
         role: payload.role,
         isGuest: Boolean(payload.isGuest),
+        // [REVISI] D1: token lama tanpa klaim sv dianggap 0.
+        sv: Number.isInteger(payload.sv) ? payload.sv : 0,
         iat: payload.iat,
         exp: payload.exp,
       };
