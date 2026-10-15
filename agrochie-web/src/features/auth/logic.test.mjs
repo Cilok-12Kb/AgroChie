@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { registerEmailFailure, isOptionalEmailValid, safeNext, postLoginPath, isAuthPagePath, checkNewPassword, isApiMessage, isStatus, looksLikeEmail, googleLoginOutcome, googleButtonWidth, shouldRedirectOn401, loginRedirectUrl, shouldShowEmailBanner, emailErrorOutcome, canLinkGoogle, linkErrorOutcome, bannerDismissKey, readBannerDismissed, writeBannerDismissed } from './logic.ts';
+import { registerEmailFailure, isOptionalEmailValid, safeNext, postLoginPath, isAuthPagePath, checkNewPassword, isApiMessage, isStatus, looksLikeEmail, googleLoginOutcome, googleButtonWidth, shouldRedirectOn401, loginRedirectUrl, shouldShowEmailBanner, emailErrorOutcome, canLinkGoogle, linkErrorOutcome, trapFocusIndex, bannerDismissKey, readBannerDismissed, writeBannerDismissed } from './logic.ts';
 import { SERVER_MSG } from './serverMessages.ts';
 
 test('safeNext: path internal biasa diterima', () => {
@@ -189,6 +189,29 @@ test('banner email: storage null/diblokir tidak melempar galat dan banner tetap 
   assert.doesNotThrow(() => writeBannerDismissed(null, 'u1'));
   assert.equal(readBannerDismissed(fakeStorage(), null), false);
   assert.equal(shouldShowEmailBanner({ isGuest: false, email: null }, readBannerDismissed(boom, 'u1')), true);
+});
+
+// [REVISI] A4: focus trap modal tautkan Google.
+test('trapFocusIndex: Tab di elemen terakhir membungkus ke pertama, Shift+Tab di pertama ke terakhir', () => {
+  assert.equal(trapFocusIndex(3, 2, false), 0);
+  assert.equal(trapFocusIndex(3, 0, true), 2);
+  assert.equal(trapFocusIndex(1, 0, false), 0);
+  assert.equal(trapFocusIndex(1, 0, true), 0);
+});
+
+test('trapFocusIndex: di tengah daftar dibiarkan ke perilaku bawaan browser (null)', () => {
+  assert.equal(trapFocusIndex(3, 0, false), null);
+  assert.equal(trapFocusIndex(3, 1, false), null);
+  assert.equal(trapFocusIndex(3, 1, true), null);
+  assert.equal(trapFocusIndex(3, 2, true), null);
+});
+
+test('trapFocusIndex: fokus di luar daftar ditarik masuk; daftar kosong menahan fokus di dialog (-1)', () => {
+  assert.equal(trapFocusIndex(3, -1, false), 0);
+  assert.equal(trapFocusIndex(3, -1, true), 2);
+  assert.equal(trapFocusIndex(0, -1, false), -1);
+  assert.equal(trapFocusIndex(0, -1, true), -1);
+  assert.equal(trapFocusIndex(Number.NaN, 0, false), -1);
 });
 
 test('registerEmailFailure: peta status ke alasan', () => {
