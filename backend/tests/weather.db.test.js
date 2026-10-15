@@ -131,7 +131,7 @@ describe("Cuaca musim (butuh database uji)", { skip }, () => {
     const b = await res.json();
     // 70 hari x 1 mm = 7 mm per minggu; suhu 30 untuk semua hari.
     assert.deepEqual({ ...b, weeks: undefined }, {
-      rainAvgMm: 7, heavyRainWks: 0, tempMaxAvg: 30, weeksCounted: 10, full: true, source: "Open-Meteo", weeks: undefined,
+      rainAvgMm: 7, heavyRainWks: 0, tempMaxAvg: 30, weeksCounted: 10, full: true, status: "complete", source: "Open-Meteo", weeks: undefined, // [REVISI] status musim selesai (fab968d)
     });
     assert.equal(b.weeks.length, 10);
     assert.deepEqual(b.weeks[0], { minggu: 1, rainMm: 7, tempMaxAvg: 30 });

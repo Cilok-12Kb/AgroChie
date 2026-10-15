@@ -10,6 +10,83 @@ import { Busy, ErrorLine } from '@/features/console/ui';
 import { EmailBanner } from '@/features/auth/EmailBanner'; // [REVISI]
 import { LanguageSwitcher } from '@/i18n/LanguageSwitcher';
 import { useTranslation } from '@/i18n/LanguageContext';
+import type { Translations } from '@/i18n/LanguageContext';
+import type { Workspace } from '@/features/console/hooks';
+
+// [REVISI] Sidebar dipindah dari dalam AppShell ke tingkat modul (isi JSX tidak berubah).
+// Semua nilai yang tadinya ditangkap closure kini lewat props.
+type NavGroup = { title: string; items: Array<(typeof NAV_ITEMS)[number]> };
+function SidebarContent({ w, t, groups, path, onNavigate, onLogout }: {
+  w: Workspace; t: Translations; groups: NavGroup[]; path: string; onNavigate: () => void; onLogout: () => void;
+}) {
+  return (
+    <>
+      {/* Logo */}
+      <Link href="/beranda" className="flex items-center gap-3 mb-9 px-3" onClick={onNavigate}>
+        <span className="console-brand-icon"><Leaf size={22} strokeWidth={2.4} /></span>
+        <span>
+          <span className="font-black tracking-tight text-[21px] block leading-none text-slate-900">
+            Agro<span className="text-emerald-700">Chie</span>
+          </span>
+          <span className="text-[10px] tracking-wide font-bold text-slate-500 block mt-1">{t.shell.tagline}</span>
+        </span>
+      </Link>
+
+      {/* Season status */}
+      <div className="rounded-2xl bg-emerald-50/75 border border-emerald-100 p-4 mx-1 mb-8">
+        <span className="flex gap-2 items-center text-emerald-800 font-bold text-xs">
+          <span className="w-2 h-2 rounded-full bg-emerald-500" />
+          {w.season ? t.shell.seasonRunning : t.shell.seasonReady}
+        </span>
+        <p className="text-[11px] text-emerald-800/70 mt-2">{t.shell.seasonDescription}</p>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto px-1 space-y-6" aria-label="Navigasi utama">
+        {groups.map(group => (
+          <section key={group.title}>
+            <h2 className="text-[10px] font-black tracking-[.15em] text-slate-400 px-3 mb-2">{group.title}</h2>
+            <div className="space-y-0.5">
+              {group.items.map(item => {
+                const Icon = item.icon;
+                const active = path === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`console-nav-link ${active ? 'console-nav-active' : ''}`}
+                    aria-current={active ? 'page' : undefined}
+                    onClick={onNavigate}
+                  >
+                    <Icon size={18} strokeWidth={active ? 2.2 : 1.9} />
+                    <span>{item.label}</span>
+                    {active && <span className="ml-auto w-1.5 h-1.5 bg-emerald-500 rounded-full" />}
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        ))}
+      </nav>
+
+      {/* User footer */}
+      <div className="border-t border-slate-100 pt-4 px-2 mt-5">
+        <div className="flex gap-2 items-center rounded-xl p-2">
+          <div className="h-10 w-10 bg-emerald-100 rounded-xl flex items-center justify-center font-black text-emerald-700">
+            {w.account.data?.name?.[0]?.toUpperCase() ?? 'P'}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-extrabold text-slate-900 truncate">{w.account.data?.name ?? 'Petani'}</p>
+            <p className="text-[11px] text-slate-500">{w.account.data?.isGuest ? t.shell.guestSession : t.shell.farmerAccount}</p>
+          </div>
+          <button title={t.shell.logoutLabel} aria-label={t.shell.logoutLabel} onClick={onLogout} className="text-slate-500 hover:text-red-600 p-1">
+            <LogOut size={18} />
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -23,7 +100,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [w.unauthorized, router, path]);
 
   // Tutup sidebar setiap pindah halaman
-  useEffect(() => { setSidebarOpen(false); }, [path]);
+  // [REVISI] tanpa setState di dalam effect: sesuaikan state saat render ketika path berubah (hasil sama).
+  const [prevPath, setPrevPath] = useState(path);
+  if (prevPath !== path) { setPrevPath(path); setSidebarOpen(false); }
+  const closeSidebar = () => setSidebarOpen(false);
 
   // Tutup sidebar jika resize ke desktop
   useEffect(() => {
@@ -67,72 +147,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     { title: t.navGroup.pendukung,   items: translatedNavItems.filter(i => ['/pengingat', '/asisten', '/profil'].includes(i.href)) },
   ];
 
-  const SidebarContent = () => (
-    <>
-      {/* Logo */}
-      <Link href="/beranda" className="flex items-center gap-3 mb-9 px-3" onClick={() => setSidebarOpen(false)}>
-        <span className="console-brand-icon"><Leaf size={22} strokeWidth={2.4} /></span>
-        <span>
-          <span className="font-black tracking-tight text-[21px] block leading-none text-slate-900">
-            Agro<span className="text-emerald-700">Chie</span>
-          </span>
-          <span className="text-[10px] tracking-wide font-bold text-slate-500 block mt-1">{t.shell.tagline}</span>
-        </span>
-      </Link>
-
-      {/* Season status */}
-      <div className="rounded-2xl bg-emerald-50/75 border border-emerald-100 p-4 mx-1 mb-8">
-        <span className="flex gap-2 items-center text-emerald-800 font-bold text-xs">
-          <span className="w-2 h-2 rounded-full bg-emerald-500" />
-          {w.season ? t.shell.seasonRunning : t.shell.seasonReady}
-        </span>
-        <p className="text-[11px] text-emerald-800/70 mt-2">{t.shell.seasonDescription}</p>
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-1 space-y-6" aria-label="Navigasi utama">
-        {groups.map(group => (
-          <section key={group.title}>
-            <h2 className="text-[10px] font-black tracking-[.15em] text-slate-400 px-3 mb-2">{group.title}</h2>
-            <div className="space-y-0.5">
-              {group.items.map(item => {
-                const Icon = item.icon;
-                const active = path === item.href;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`console-nav-link ${active ? 'console-nav-active' : ''}`}
-                    aria-current={active ? 'page' : undefined}
-                    onClick={() => setSidebarOpen(false)}
-                  >
-                    <Icon size={18} strokeWidth={active ? 2.2 : 1.9} />
-                    <span>{item.label}</span>
-                    {active && <span className="ml-auto w-1.5 h-1.5 bg-emerald-500 rounded-full" />}
-                  </Link>
-                );
-              })}
-            </div>
-          </section>
-        ))}
-      </nav>
-
-      {/* User footer */}
-      <div className="border-t border-slate-100 pt-4 px-2 mt-5">
-        <div className="flex gap-2 items-center rounded-xl p-2">
-          <div className="h-10 w-10 bg-emerald-100 rounded-xl flex items-center justify-center font-black text-emerald-700">
-            {w.account.data?.name?.[0]?.toUpperCase() ?? 'P'}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-extrabold text-slate-900 truncate">{w.account.data?.name ?? 'Petani'}</p>
-            <p className="text-[11px] text-slate-500">{w.account.data?.isGuest ? t.shell.guestSession : t.shell.farmerAccount}</p>
-          </div>
-          <button title={t.shell.logoutLabel} aria-label={t.shell.logoutLabel} onClick={logout} className="text-slate-500 hover:text-red-600 p-1">
-            <LogOut size={18} />
-          </button>
-        </div>
-      </div>
-    </>
+  // [REVISI] SidebarContent dipindah ke tingkat modul (di atas AppShell); di sini hanya dipasang dengan props.
+  const sidebar = (
+    <SidebarContent w={w} t={t} groups={groups} path={path} onNavigate={closeSidebar} onLogout={logout} />
   );
 
   return (
@@ -141,7 +158,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         {/* ── Desktop sidebar (fixed, always visible ≥1024px) ─────────── */}
         <aside className="console-sidebar hidden lg:flex">
-          <SidebarContent />
+          {sidebar}
         </aside>
 
         {/* ── Mobile drawer overlay ────────────────────────────────────── */}
@@ -166,7 +183,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           >
             <X size={20} />
           </button>
-          <SidebarContent />
+          {sidebar}
         </aside>
 
         {/* ── Main content area ────────────────────────────────────────── */}

@@ -4,7 +4,7 @@ import { api, ApiError, type Account } from '../console/api';
 import { Button, ErrorLine, Field, inputClass, Message } from '../console/ui';
 import { GoogleButton } from './GoogleButton';
 import { copy } from './copy';
-import { linkErrorOutcome } from './logic';
+import { linkErrorOutcome, trapFocusIndex } from './logic';
 import { SERVER_MSG } from './serverMessages';
 
 /**
@@ -27,11 +27,32 @@ export function GoogleLinkModal({ onClose, onLinked, onHide, onUnavailable, onCo
   const inputRef = useRef<HTMLInputElement>(null);
   const closeRef = useRef(onClose);
 
+  const dialogRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => { closeRef.current = onClose; });
+  // [REVISI] A4: Escape menutup; Tab/Shift+Tab ditahan di dalam dialog; fokus kembali ke pemicu saat modal ditutup.
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') closeRef.current(); };
+    const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const focusables = (): HTMLElement[] => {
+      const root = dialogRef.current;
+      if (!root) return [];
+      return Array.from(root.querySelectorAll<HTMLElement>('a[href], button, input, select, textarea, iframe, [tabindex]'))
+        .filter(el => !el.hasAttribute('disabled') && el.tabIndex >= 0 && el.getClientRects().length > 0);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { closeRef.current(); return; }
+      if (e.key !== 'Tab') return;
+      const list = focusables();
+      const target = trapFocusIndex(list.length, list.indexOf(document.activeElement as HTMLElement), e.shiftKey);
+      if (target === null) return;
+      e.preventDefault();
+      (target === -1 ? dialogRef.current : list[target])?.focus();
+    };
     document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      if (trigger && trigger.isConnected) trigger.focus();
+    };
   }, []);
   useEffect(() => { if (step === 1) inputRef.current?.focus(); }, [step]);
 
@@ -64,7 +85,7 @@ export function GoogleLinkModal({ onClose, onLinked, onHide, onUnavailable, onCo
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div role="dialog" aria-modal="true" aria-labelledby="link-title" className="console-card max-h-[90vh] w-full max-w-[440px] overflow-y-auto rounded-b-none p-5 sm:rounded-b-2xl sm:p-7">
+      <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="link-title" className="console-card max-h-[90vh] w-full max-w-[440px] overflow-y-auto rounded-b-none p-5 sm:rounded-b-2xl sm:p-7">
         <h2 id="link-title" className="text-xl font-black text-slate-900">{copy.link.modalTitle}</h2>
         <p className="mt-2 text-sm text-slate-600">{step === 1 ? copy.link.step1 : copy.link.step2}</p>
         <div className="mt-4 space-y-4">

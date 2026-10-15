@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { registerEmailFailure, isOptionalEmailValid, safeNext, postLoginPath, isAuthPagePath, checkNewPassword, isApiMessage, isStatus, looksLikeEmail, googleLoginOutcome, googleButtonWidth, shouldRedirectOn401, loginRedirectUrl, shouldShowEmailBanner, emailErrorOutcome, canLinkGoogle, linkErrorOutcome } from './logic.ts';
+import { registerEmailFailure, isOptionalEmailValid, safeNext, postLoginPath, isAuthPagePath, checkNewPassword, isApiMessage, isStatus, looksLikeEmail, googleLoginOutcome, googleButtonWidth, shouldRedirectOn401, loginRedirectUrl, shouldShowEmailBanner, emailErrorOutcome, canLinkGoogle, linkErrorOutcome, trapFocusIndex, bannerDismissKey, readBannerDismissed, writeBannerDismissed } from './logic.ts';
 import { SERVER_MSG } from './serverMessages.ts';
 
 test('safeNext: path internal biasa diterima', () => {
@@ -160,6 +160,58 @@ test('looksLikeEmail', () => {
   assert.equal(looksLikeEmail('budi@'), false);
   assert.equal(looksLikeEmail('081234567890'), false);
   assert.equal(looksLikeEmail(''), false);
+});
+
+
+// [REVISI] A5: banner email ditutup per sesi tab, kunci per id akun.
+const fakeStorage = () => { const m = new Map(); return { getItem: k => (m.has(k) ? m.get(k) : null), setItem: (k, v) => { m.set(k, v); }, _m: m }; };
+
+test('bannerDismissKey: per id akun; id kosong -> null', () => {
+  assert.equal(bannerDismissKey('u1'), 'agrochie:email-banner-dismissed:u1');
+  assert.notEqual(bannerDismissKey('u1'), bannerDismissKey('u2'));
+  for (const bad of ['', null, undefined]) assert.equal(bannerDismissKey(bad), null);
+});
+
+test('readBannerDismissed/writeBannerDismissed: bertahan per akun, tidak bocor ke akun lain', () => {
+  const s = fakeStorage();
+  assert.equal(readBannerDismissed(s, 'u1'), false);
+  writeBannerDismissed(s, 'u1');
+  assert.equal(readBannerDismissed(s, 'u1'), true);
+  assert.equal(readBannerDismissed(s, 'u2'), false);
+  assert.deepEqual([...s._m.values()], ['1']); // hanya penanda, tanpa data akun
+});
+
+test('banner email: storage null/diblokir tidak melempar galat dan banner tetap tampil', () => {
+  const boom = { getItem() { throw new Error('blocked'); }, setItem() { throw new Error('blocked'); } };
+  assert.equal(readBannerDismissed(boom, 'u1'), false);
+  assert.doesNotThrow(() => writeBannerDismissed(boom, 'u1'));
+  assert.equal(readBannerDismissed(null, 'u1'), false);
+  assert.doesNotThrow(() => writeBannerDismissed(null, 'u1'));
+  assert.equal(readBannerDismissed(fakeStorage(), null), false);
+  assert.equal(shouldShowEmailBanner({ isGuest: false, email: null }, readBannerDismissed(boom, 'u1')), true);
+});
+
+// [REVISI] A4: focus trap modal tautkan Google.
+test('trapFocusIndex: Tab di elemen terakhir membungkus ke pertama, Shift+Tab di pertama ke terakhir', () => {
+  assert.equal(trapFocusIndex(3, 2, false), 0);
+  assert.equal(trapFocusIndex(3, 0, true), 2);
+  assert.equal(trapFocusIndex(1, 0, false), 0);
+  assert.equal(trapFocusIndex(1, 0, true), 0);
+});
+
+test('trapFocusIndex: di tengah daftar dibiarkan ke perilaku bawaan browser (null)', () => {
+  assert.equal(trapFocusIndex(3, 0, false), null);
+  assert.equal(trapFocusIndex(3, 1, false), null);
+  assert.equal(trapFocusIndex(3, 1, true), null);
+  assert.equal(trapFocusIndex(3, 2, true), null);
+});
+
+test('trapFocusIndex: fokus di luar daftar ditarik masuk; daftar kosong menahan fokus di dialog (-1)', () => {
+  assert.equal(trapFocusIndex(3, -1, false), 0);
+  assert.equal(trapFocusIndex(3, -1, true), 2);
+  assert.equal(trapFocusIndex(0, -1, false), -1);
+  assert.equal(trapFocusIndex(0, -1, true), -1);
+  assert.equal(trapFocusIndex(Number.NaN, 0, false), -1);
 });
 
 test('registerEmailFailure: peta status ke alasan', () => {

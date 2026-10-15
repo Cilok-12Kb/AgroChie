@@ -111,6 +111,41 @@ export function shouldShowEmailBanner(
   return !account.email || account.emailVerified !== true;
 }
 
+// [REVISI] A5: status banner email "ditutup" disimpan per sesi tab (sessionStorage), kunci per id akun, nilainya hanya "1".
+type StorageLike = { getItem(k: string): string | null; setItem(k: string, v: string): void };
+
+export function bannerDismissKey(accountId: string | null | undefined): string | null {
+  return typeof accountId === 'string' && accountId.length > 0 ? `agrochie:email-banner-dismissed:${accountId}` : null;
+}
+
+/** Baca status ditutup. Storage tidak ada/diblokir/melempar galat -> false (banner tetap tampil). */
+export function readBannerDismissed(storage: StorageLike | null | undefined, accountId: string | null | undefined): boolean {
+  const key = bannerDismissKey(accountId);
+  if (!key || !storage) return false;
+  try { return storage.getItem(key) === '1'; } catch { return false; }
+}
+
+/** Simpan status ditutup. Gagal menulis diabaikan (penutupan tetap berlaku di memori). */
+export function writeBannerDismissed(storage: StorageLike | null | undefined, accountId: string | null | undefined): void {
+  const key = bannerDismissKey(accountId);
+  if (!key || !storage) return;
+  try { storage.setItem(key, '1'); } catch { /* storage diblokir atau penuh */ }
+}
+
+/**
+ * [REVISI] A4: focus trap modal. Menentukan indeks elemen yang harus difokuskan saat Tab/Shift+Tab ditekan.
+ * Mengembalikan null bila perilaku bawaan browser sudah benar (fokus pindah di dalam daftar),
+ * -1 bila tidak ada elemen fokusable (fokus ditahan di dialog), selain itu indeks tujuan (membungkus di ujung).
+ * activeIndex = -1 berarti fokus saat ini bukan salah satu elemen daftar (mis. di dalam iframe atau di dialog).
+ */
+export function trapFocusIndex(count: number, activeIndex: number, shift: boolean): number | null {
+  if (!(count > 0)) return -1;
+  if (activeIndex < 0) return shift ? count - 1 : 0;
+  if (!shift && activeIndex === count - 1) return 0;
+  if (shift && activeIndex === 0) return count - 1;
+  return null;
+}
+
 export type EmailOutcome = 'refresh' | 'hide' | 'conflict' | 'cooldown' | 'sendFailed' | 'unavailable' | 'server';
 
 /** Peta galat POST /auth/email dan /auth/email/resend-verification ke tindakan UI (API_AUTH.md 3.6, 3.7, 4.6). */
