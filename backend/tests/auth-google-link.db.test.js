@@ -1,4 +1,4 @@
-import "dotenv/config";
+﻿import "dotenv/config";
 import { describe, test, before, after, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import nodemailer from "nodemailer";
@@ -164,7 +164,7 @@ describe("auth tautkan Google (butuh database uji)", { skip }, () => {
     assert.match(sent[0].subject, /Google account was linked/);
     assert.ok(sent[0].text.includes("a***@gmail.test"));
     assert.ok(!sent[0].text.includes(c.email)); // alamat lengkap tidak muncul
-    assert.match(sent[0].text, /UTC/);
+    assert.match(sent[0].text, /UTC/); // en = UTC
     assert.match(sent[0].text, /reset your password/);
   });
 
@@ -173,6 +173,8 @@ describe("auth tautkan Google (butuh database uji)", { skip }, () => {
     await link(claims(), password, u.cookie);
     assert.equal(sent[0].subject, "Akun Google telah ditautkan ke akun AgroChie kamu");
     assert.match(sent[0].text, /atur ulang kata sandi/);
+    assert.match(sent[0].text, / WIB\./); // [REVISI] id = WIB
+    assert.ok(!sent[0].text.includes("UTC"));
   });
 
   test("email Google milik akun LAIN: Google tetap tertaut, email akun tidak berubah", async () => {

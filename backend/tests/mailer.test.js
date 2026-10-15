@@ -1,8 +1,8 @@
-import { test } from "node:test";
+﻿import { test } from "node:test";
 import assert from "node:assert/strict";
 import nodemailer from "nodemailer";
 import { createMailer, createSmtpTransport } from "../src/services/mailer.service.js";
-import { pickLang, buildLink, escapeHtml, verifyEmailTemplate, resetPasswordTemplate } from "../src/services/email-templates.js";
+import { pickLang, buildLink, escapeHtml, verifyEmailTemplate, resetPasswordTemplate, googleLinkedTemplate, formatWhen } from "../src/services/email-templates.js";
 import { buildEnv } from "../src/config/env-parse.js";
 
 const cfg = {
@@ -95,4 +95,21 @@ test("transport SMTP dibuat dari env tanpa membuka koneksi dan tanpa membocorkan
   const t = createSmtpTransport(e);
   assert.equal(typeof t.sendMail, "function");
   t.close?.();
+});
+
+
+
+// [REVISI] langkah 11: waktu email Google ditautkan. id = WIB (UTC+7), en = UTC.
+test("waktu pemberitahuan Google: id memakai WIB, en memakai UTC", async () => {
+  const when = new Date("2026-10-15T03:15:00.000Z");
+  assert.equal(formatWhen(when, "id"), "15 Oktober 2026, 10.15 WIB");
+  assert.equal(formatWhen(when, "en"), "2026-10-15 03:15 UTC");
+  // lewat tengah malam UTC: tanggal WIB maju satu hari
+  assert.equal(formatWhen(new Date("2026-12-31T17:05:00.000Z"), "id"), "1 Januari 2027, 00.05 WIB");
+  const id = googleLinkedTemplate({ lang: "id", name: "Budi", masked: "a***@gmail.com", when });
+  assert.ok(id.text.includes("15 Oktober 2026, 10.15 WIB"));
+  assert.ok(!id.text.includes("UTC"));
+  const en = googleLinkedTemplate({ lang: "en", name: "Budi", masked: "a***@gmail.com", when });
+  assert.ok(en.text.includes("2026-10-15 03:15 UTC"));
+  assert.ok(!en.text.includes("WIB"));
 });

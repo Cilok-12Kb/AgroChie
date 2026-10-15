@@ -140,11 +140,23 @@ export function maskEmail(email) {
   const [local = "", domain = ""] = String(email ?? "").split("@");
   return `${local.slice(0, 1)}***@${domain}`;
 }
+// [REVISI] Format waktu: Indonesia = WIB (UTC+7) "15 Oktober 2026, 10.15 WIB"; Inggris = UTC "2026-10-15 03:15 UTC".
+// Dihitung manual (tanpa Intl/ICU) agar hasil sama di semua mesin.
+const BULAN = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+const p2 = (n) => String(n).padStart(2, "0");
+
+export function formatWhen(date, lang = "id") {
+  if (lang === "en") return `${date.toISOString().slice(0, 16).replace("T", " ")} UTC`;
+  const w = new Date(date.getTime() + 7 * 3_600_000); // geser ke WIB, baca dengan getter UTC
+  return `${w.getUTCDate()} ${BULAN[w.getUTCMonth()]} ${w.getUTCFullYear()}, ${p2(w.getUTCHours())}.${p2(w.getUTCMinutes())} WIB`;
+}
+
+
 
 /** Email pemberitahuan Google ditautkan. masked = alamat tersamar; when = Date. */
 export function googleLinkedTemplate({ lang = "id", name, masked, when = new Date() } = {}) {
   const t = GOOGLE_LINKED[SUPPORTED_LANGS.includes(lang) ? lang : "id"];
-  const whenText = `${when.toISOString().slice(0, 16).replace("T", " ")} UTC`;
+  const whenText = formatWhen(when, SUPPORTED_LANGS.includes(lang) ? lang : "id"); // [REVISI] id=WIB, en=UTC
   const greeting = t.greeting(name);
   const body = t.body({ masked, when: whenText });
   const text = [greeting, "", body, t.warn, "", "AgroChie"].join("\n");
