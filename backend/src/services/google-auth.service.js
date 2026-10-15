@@ -122,7 +122,23 @@ export const LINK_WRONG_PASSWORD = "Kata sandi salah";
 export const LINK_OWN_OTHER = "Akun ini sudah tertaut ke akun Google lain.";
 export const LINK_TAKEN = "Akun Google ini sudah dipakai akun lain.";
 // Maksimal 5 percobaan password gagal per user per 15 menit (selain pembatas per IP di rute).
-const passwordFailures = failureLimiter({ windowMs: 15 * 60_000, max: 5 });
+// [REVISI] B7: diekspor agar re-autentikasi ganti HP / hapus email / lepas Google berbagi satu jatah tebakan.
+export const passwordFailures = failureLimiter({ windowMs: 15 * 60_000, max: 5 });
+
+/**
+ * [REVISI] B7: verifikasi ID token Google dan kembalikan { sub, email, name }.
+ * Semua kegagalan dijawab 401 seragam. Pemanggil wajib memanggil assertGoogleReady() lebih dulu.
+ */
+export async function verifyGoogleToken(idToken) {
+  const { cfg, verifier } = await getDeps();
+  let payload;
+  try {
+    payload = await verifier(idToken, cfg.googleClientId);
+  } catch {
+    throw new HttpError(401, GOOGLE_INVALID);
+  }
+  return validateGooglePayload(payload, cfg.googleClientId);
+}
 
 /** Terapkan aturan penautan dalam satu transaksi. Melempar RACE bila P2002. */
 async function applyLink(db, userId, { sub, email }) {
