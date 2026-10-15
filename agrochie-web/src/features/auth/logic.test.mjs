@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { safeNext, postLoginPath, isAuthPagePath, checkNewPassword, isApiMessage, isStatus, looksLikeEmail, googleLoginOutcome, googleButtonWidth, shouldRedirectOn401, loginRedirectUrl, shouldShowEmailBanner, emailErrorOutcome } from './logic.ts';
+import { safeNext, postLoginPath, isAuthPagePath, checkNewPassword, isApiMessage, isStatus, looksLikeEmail, googleLoginOutcome, googleButtonWidth, shouldRedirectOn401, loginRedirectUrl, shouldShowEmailBanner, emailErrorOutcome, canLinkGoogle, linkErrorOutcome } from './logic.ts';
 import { SERVER_MSG } from './serverMessages.ts';
 
 test('safeNext: path internal biasa diterima', () => {
@@ -129,6 +129,29 @@ test('emailErrorOutcome: peta status', () => {
   assert.equal(emailErrorOutcome({ status: 502 }, v), 'sendFailed');
   assert.equal(emailErrorOutcome({ status: 503 }, v), 'unavailable');
   assert.equal(emailErrorOutcome(new Error('x'), v), 'server');
+});
+
+test('canLinkGoogle: syarat tombol tautkan', () => {
+  assert.equal(canLinkGoogle({ isGuest: false, hasGoogle: false, hasPassword: true }), true);
+  assert.equal(canLinkGoogle({ isGuest: true, hasGoogle: false, hasPassword: true }), false);
+  assert.equal(canLinkGoogle({ isGuest: false, hasGoogle: true, hasPassword: true }), false);
+  assert.equal(canLinkGoogle({ isGuest: false, hasGoogle: false, hasPassword: false }), false);
+  assert.equal(canLinkGoogle({ isGuest: false }), false);
+  assert.equal(canLinkGoogle(null), false);
+});
+
+test('linkErrorOutcome: peta status dan pesan', () => {
+  const w = SERVER_MSG.wrongPassword;
+  const t = SERVER_MSG.googleTokenInvalid;
+  assert.equal(linkErrorOutcome({ status: 401, message: w }, w, t), 'wrongPassword');
+  assert.equal(linkErrorOutcome({ status: 401, message: t }, w, t), 'tokenInvalid');
+  assert.equal(linkErrorOutcome({ status: 401, message: 'Belum masuk' }, w, t), 'other');
+  assert.equal(linkErrorOutcome({ status: 409, message: 'x' }, w, t), 'server');
+  assert.equal(linkErrorOutcome({ status: 429 }, w, t), 'closeCooldown');
+  assert.equal(linkErrorOutcome({ status: 403 }, w, t), 'hide');
+  assert.equal(linkErrorOutcome({ status: 503 }, w, t), 'unavailable');
+  assert.equal(linkErrorOutcome({ status: 400 }, w, t), 'other');
+  assert.equal(linkErrorOutcome(null, w, t), 'other');
 });
 
 test('looksLikeEmail', () => {

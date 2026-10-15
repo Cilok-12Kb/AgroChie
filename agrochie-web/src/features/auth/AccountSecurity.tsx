@@ -5,7 +5,8 @@ import { api, ApiError, type Account } from '../console/api';
 import type { Workspace } from '../console/hooks';
 import { Button, Card, ErrorLine, Field, inputClass, Message, Tag } from '../console/ui';
 import { copy } from './copy';
-import { emailErrorOutcome, looksLikeEmail } from './logic';
+import { GoogleLinkModal } from './GoogleLinkModal';
+import { canLinkGoogle, emailErrorOutcome, looksLikeEmail } from './logic';
 import { SERVER_MSG } from './serverMessages';
 import { useCooldown } from './useCooldown';
 
@@ -19,6 +20,9 @@ export function AccountSecurity({ w }: { w: Workspace }) {
   const [error, setError] = useState<unknown>(null);
   const [hidden, setHidden] = useState(false);
   const cooldown = useCooldown(60);
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [linkUnavailable, setLinkUnavailable] = useState(false);
+  const [linkNote, setLinkNote] = useState<{ ok: boolean; text: string } | null>(null);
 
   if (!account || account.isGuest !== false || hidden) return null;
 
@@ -90,8 +94,33 @@ export function AccountSecurity({ w }: { w: Workspace }) {
             {note && <Message color="green">{note}</Message>}
             <ErrorLine error={error} />
           </section>
+
+          {(account.hasGoogle === true || (canLinkGoogle(account) && !!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID)) && (
+            <section aria-labelledby="akun-google" className="space-y-3 border-t border-slate-100 pt-5">
+              <h3 id="akun-google" className="text-sm font-extrabold text-slate-900">{copy.link.title}</h3>
+              {account.hasGoogle === true ? (
+                <Tag color="green">{copy.link.connected}</Tag>
+              ) : (
+                <>
+                  <p className="text-sm text-slate-600">{copy.link.notConnected}</p>
+                  {linkUnavailable && <Message color="amber">{copy.link.unavailable}</Message>}
+                  <Button variant="secondary" onClick={() => { setLinkNote(null); setLinkOpen(true); }} disabled={linkUnavailable}>{copy.link.open}</Button>
+                </>
+              )}
+              {linkNote && <Message color={linkNote.ok ? 'green' : 'amber'}>{linkNote.text}</Message>}
+            </section>
+          )}
         </div>
       </Card>
+      {linkOpen && (
+        <GoogleLinkModal
+          onClose={() => setLinkOpen(false)}
+          onLinked={user => { store(user); setLinkOpen(false); setLinkNote({ ok: true, text: copy.link.success }); }}
+          onHide={() => { setLinkOpen(false); setHidden(true); }}
+          onUnavailable={() => { setLinkOpen(false); setLinkUnavailable(true); }}
+          onCooldown={() => { setLinkOpen(false); setLinkNote({ ok: false, text: copy.link.tooMany }); }}
+        />
+      )}
     </div>
   );
 }

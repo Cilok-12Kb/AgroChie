@@ -122,6 +122,26 @@ export function emailErrorOutcome(error: unknown, alreadyVerifiedText: string): 
   return 'server';
 }
 
+/** Tombol "Tautkan Google" hanya untuk akun bukan tamu, belum tertaut Google, dan punya kata sandi. */
+export function canLinkGoogle(
+  account: { isGuest?: boolean; hasGoogle?: boolean; hasPassword?: boolean } | null | undefined,
+): boolean {
+  return !!account && account.isGuest === false && account.hasGoogle === false && account.hasPassword === true;
+}
+
+export type LinkOutcome = 'wrongPassword' | 'tokenInvalid' | 'server' | 'closeCooldown' | 'hide' | 'unavailable' | 'other';
+
+/** Peta galat POST /auth/google/link ke tindakan UI (API_AUTH.md 3.12, 4.8). */
+export function linkErrorOutcome(error: unknown, wrongPassword: string, googleTokenInvalid: string): LinkOutcome {
+  if (isApiMessage(error, 401, wrongPassword)) return 'wrongPassword';
+  if (isApiMessage(error, 401, googleTokenInvalid)) return 'tokenInvalid';
+  if (isStatus(error, 409)) return 'server';
+  if (isStatus(error, 429)) return 'closeCooldown';
+  if (isStatus(error, 403)) return 'hide';
+  if (isStatus(error, 503)) return 'unavailable';
+  return 'other';
+}
+
 /** Lebar tombol Google (px): mengikuti kontainer, minimal 200 (batas Google), maksimal 400. */
 export function googleButtonWidth(containerWidth: number): number {
   if (!Number.isFinite(containerWidth) || containerWidth <= 0) return 280;
