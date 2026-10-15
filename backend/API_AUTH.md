@@ -248,6 +248,9 @@ Token Google baru diperiksa setelah kata sandi benar. Bila akun belum punya emai
 ## 4. Alur per halaman frontend
 
 Semua panggilan: `fetch(url, { method, credentials: "include", headers: {"content-type":"application/json"}, body })`. Frontend (`agrochie-web`) memanggil `/api/*` pada origin sendiri; `next.config.ts` meneruskannya ke backend (proxy same-origin), sehingga cookie sesi tetap satu situs.
+> Rute frontend sebenarnya (`/masuk`, `/daftar`, `/lupa-password`, dll.) berbeda dari yang tertulis di bagian ini; lihat "Catatan implementasi frontend (agrochie-web)" di akhir dokumen.
+
+
 
 ### 4.1 Login (`/login`): HP/email + tombol Google
 1. Satu input "Nomor HP atau email" dikirim sebagai `identifier`, plus `password`. `AuthForm.tsx` perlu disesuaikan bila masih mengirim `phone`.
@@ -412,3 +415,46 @@ Daftar lengkap ada di `backend/.env.example`.
 2. Buka `http://localhost:3000/dev/google-login`, klik tombol Google dengan akun test user. Halaman memanggil `POST /api/auth/google`.
 3. Tautkan: login dulu di browser yang sama, isi kolom kata sandi pada bagian "Tautkan Google ke akun yang sedang login", lalu klik tombol Google di bagian itu → `POST /api/auth/google/link`.
 4. Kata sandi salah → 401 `Kata sandi salah`; setelah 5 kali salah → 429.
+
+---
+
+## Catatan implementasi frontend (agrochie-web)
+
+Bagian ini hanya mencatat bagaimana `agrochie-web` menerapkan kontrak di atas. Isi kontrak endpoint tidak berubah.
+
+### Rute dokumen vs rute sebenarnya
+
+| Rute di dokumen | Rute sebenarnya |
+|---|---|
+| `/login` | `/masuk` |
+| `/register` | `/daftar` |
+| `/forgot-password` | `/lupa-password` |
+| `/reset-password` | `/reset-password` (sama) |
+| `/verify-email` | `/verify-email` (sama) |
+
+### Keputusan perilaku
+
+- **Tidak ada halaman "lengkapi profil"** (bagian 4.7). Bila `needsProfileCompletion === true`, frontend mengarahkan ke `/profil#akun`.
+- **Banner email** (bagian 4.6) mengarah ke `/profil#akun`.
+- **Email opsional saat daftar** memakai dua panggilan: `POST /auth/register` (body tetap `{ name, phone, password }`), lalu bila email diisi, `POST /auth/email`. Bila panggilan kedua gagal, akun tetap ada, frontend menampilkan alasan dan tombol "Lanjut ke Profil" (tanpa redirect otomatis).
+
+### Endpoint yang dikecualikan dari redirect 401 global
+
+Secara umum 401 pada request terautentikasi mengarahkan ke `/masuk` (bagian 5). Pengecualiannya:
+
+| Endpoint | Alasan |
+|---|---|
+| `GET /auth/me` | Ditangani sendiri oleh kerangka aplikasi (status belum masuk). |
+| `POST /auth/logout` | Selalu berhasil; 401 tidak berarti apa-apa. |
+| `POST /auth/login`, `POST /auth/register` | 401/kredensial salah bukan tanda sesi habis. |
+| `POST /auth/google` | 401 `Token Google tidak valid` ditampilkan sebagai galat login. |
+| `POST /auth/google/link` | Hanya untuk 401 `Kata sandi salah` dan `Token Google tidak valid`, yang ditampilkan di modal. 401 `Belum masuk` tetap redirect. |
+| `POST /auth/email` dari alur daftar saja | Akun baru sudah dibuat; 401 diperlakukan sebagai "email belum tersimpan" agar pengguna tidak terlempar. Panggilan dari kartu Profil TIDAK dikecualikan. |
+| Semua request saat berada di halaman publik auth | Mencegah putaran redirect. |
+
+### Endpoint backend yang belum ada
+
+- Mengisi nomor HP untuk akun Google-only.
+- Menghapus email.
+- Melepas (unlink) Google.
+
