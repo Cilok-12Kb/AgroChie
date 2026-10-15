@@ -232,15 +232,14 @@ function QuickActions() {
 /** Mini checklist card — 4 item checklist dari panduan */
 function WeekChecklistCard({ w }: { w: W }) {
   const s = w.season;
-  if (!s?.plantedOn) return null;
-  const totalWks = CROP_WEEKS[s.crop];
-  const week = currentWeek(s.plantedOn, totalWks);
-
+  // [REVISI] hook dipanggil tanpa syarat; kondisi dijaga lewat `enabled`, return dini setelahnya.
+  const week = s?.plantedOn ? currentWeek(s.plantedOn, CROP_WEEKS[s.crop]) : 0;
   const checklist = useQuery({
-    queryKey: ['console', 'checklist', s.id, week],
-    queryFn: () => api.checklist.get(s.id, week),
-    enabled: !!s.id && !!s.plantedOn,
+    queryKey: ['console', 'checklist', s?.id, week],
+    queryFn: () => api.checklist.get(s!.id, week),
+    enabled: !!s?.id && !!s?.plantedOn,
   });
+  if (!s?.plantedOn) return null;
 
   const LABEL: Record<string, string> = {
     cek_hama: 'Periksa tanda hama & penyakit',
