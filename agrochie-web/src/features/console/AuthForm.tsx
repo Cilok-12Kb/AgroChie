@@ -2,9 +2,9 @@
 import { FormEvent, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Eye, EyeOff, Leaf } from 'lucide-react';
-import { AuthPrimary, GuestAction } from '../auth/AuthActions'; // [REVISI] tampilan
+import { AuthSubmitRow, GuestAction } from '../auth/AuthActions'; // [REVISI] tampilan
 import { api } from './api';
-import { Button, ErrorLine, Field, inputClass } from './ui';
+import { ErrorLine, Field, inputClass } from './ui'; // [REVISI] Button tidak dipakai lagi di sini
 import { copy } from '../auth/copy'; // [REVISI] teks baru lewat copy.ts
 import { useCooldown } from '../auth/useCooldown'; // [REVISI]
 import { isOptionalEmailValid, isStatus, postLoginPath, registerEmailFailure } from '../auth/logic'; // [REVISI]
@@ -31,8 +31,7 @@ export function AuthForm({ type }: { type: 'login' | 'register' }) {
         : <Field label="Nomor HP" hint="Gunakan 8–15 angka sesuai akun yang terdaftar."><input name="phone" className={inputClass} required inputMode="tel" pattern="[0-9+\- ]{8,18}" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="Contoh: 081234567890" autoComplete="tel"/></Field>}
       {type==='register'&&<Field label={copy.register.emailLabel} hint={copy.register.emailHint}><input name="email" type="email" className={inputClass} maxLength={254} value={email} onChange={e=>setEmail(e.target.value)} placeholder={copy.register.emailPlaceholder} autoComplete="email" inputMode="email" autoCapitalize="none" spellCheck={false}/></Field>}
       <Field label="Kata sandi"><div className="relative"><input className={`${inputClass} pr-12`} type={show?'text':'password'} required minLength={type==='register'?8:1} maxLength={128} value={password} onChange={e=>setPassword(e.target.value)} autoComplete={type==='register'?'new-password':'current-password'} placeholder="Masukkan kata sandi"/><button type="button" title="Tampilkan/sembunyikan kata sandi" className="absolute top-3.5 right-3 text-slate-500" onClick={()=>setShow(s=>!s)}>{show?<EyeOff size={18}/>:<Eye size={18}/>}</button></div></Field>
-      {type==='login'&&<div className="text-right -mt-1"><Link href="/lupa-password" className="inline-block py-2 text-sm text-emerald-700 font-black">{copy.login.forgotLink}</Link></div>}
-      <ErrorLine error={error}/>{cooldown.left>0&&<p role="status" className="text-sm text-amber-700 font-bold">{copy.common.cooldownNote} {copy.common.cooldownWait(cooldown.left)}</p>}<AuthPrimary><Button type="submit" icon={ArrowRight} busy={loading} disabled={cooldown.left>0}>{type==='login'?'Masuk':'Daftar & lanjutkan'}</Button></AuthPrimary>{/* [REVISI] tampilan: tombol primer seragam */}
+      <ErrorLine error={error}/>{cooldown.left>0&&<p role="status" className="text-sm text-amber-700 font-bold">{copy.common.cooldownNote} {copy.common.cooldownWait(cooldown.left)}</p>}<AuthSubmitRow type={type} busy={loading} disabled={cooldown.left>0}>{type==='login'?'Masuk':'Daftar & lanjutkan'}</AuthSubmitRow>{/* [REVISI] tampilan: Masuk + Lupa sandi sebaris; Daftar lebar penuh */}
     </form>
     {/* [REVISI] tombol Google di /masuk dan /daftar */}
     <GoogleLogin mode={type} busy={loading} locked={cooldown.left>0} onCooldown={cooldown.start}/></>}
