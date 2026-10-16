@@ -23,8 +23,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="id" className={jakarta.variable}>
       <body style={{ fontFamily: 'var(--font-jakarta), ui-sans-serif, system-ui, sans-serif' }}>
         <LanguageProvider>
-          <QueryProvider>{children}</QueryProvider>
-          <AutoTranslate /> {/* [REVISI] terjemahan otomatis saat tampil; melengkapi kamus i18n, tidak menggantinya */}
+          <QueryProvider>
+            {children}
+            <AutoTranslate /> {/* [REVISI] terjemahan otomatis saat tampil; di dalam QueryProvider agar bisa membaca nama akun/lahan dari cache */}
+          </QueryProvider>
         </LanguageProvider>
       </body>
     </html>

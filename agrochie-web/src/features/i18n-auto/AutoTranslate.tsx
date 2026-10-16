@@ -5,11 +5,12 @@
  * Teks asli disimpan per node dan dikembalikan saat bahasa kembali ke 'id'.
  * Endpoint /api/translate publik, jadi sengaja TIDAK memakai request() yang punya penanganan 401 global.
  */
-import { useEffect } from 'react';
+import { useEffect, useMemo, useSyncExternalStore } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from '@/i18n';
 import {
   TRANSLATABLE_ATTRS, NO_TRANSLATE_SELECTOR, isSkippedTag, shouldSkipText, normalizeKey, rewrap,
-  chunkBatches, cacheKey, storageKey, type TargetLang,
+  chunkBatches, cacheKey, storageKey, buildProtected, containsProtected, type TargetLang,
 } from './logic';
 
 type TextRec = { orig: string; applied: string };
@@ -21,6 +22,20 @@ const MAX_STORED = 4000; // batas entri localStorage per bahasa
 
 export function AutoTranslate() {
   const { lang } = useTranslation();
+  const qc = useQueryClient();
+
+  // [REVISI] Teks dilindungi: nama akun + nama semua lahan dari cache React Query yang sudah ada (tanpa request baru).
+  // Snapshot berupa string JSON agar stabil; berubah saat data akun/lahan berubah.
+  const protectedJson = useSyncExternalStore(
+    (cb) => qc.getQueryCache().subscribe(cb),
+    () => {
+      const account = qc.getQueryData<{ name?: string | null }>(['console', 'account']);
+      const farms = qc.getQueryData<Array<{ name?: string | null }>>(['console', 'farms']);
+      return JSON.stringify(buildProtected([account?.name, ...(Array.isArray(farms) ? farms.map((f) => f?.name) : [])]));
+    },
+    () => '[]',
+  );
+  const protectedList = useMemo(() => JSON.parse(protectedJson) as string[], [protectedJson]);
 
   useEffect(() => {
     if (lang !== 'en' && lang !== 'zh') return;
@@ -57,7 +72,7 @@ export function AutoTranslate() {
         if (rec && value === rec.applied) return; // sudah diterjemahkan oleh kita
         if (!rec) { rec = { orig: value, applied: value }; texts.set(node, rec); } else { rec.orig = value; rec.applied = value; }
         const key = normalizeKey(value);
-        if (shouldSkipText(key, target)) return;
+        if (shouldSkipText(key, target) || containsProtected(key, protectedList)) return;
         const r = rec;
         items.push({
           raw: value, key,
@@ -74,7 +89,7 @@ export function AutoTranslate() {
         if (rec && value === rec.applied) return;
         if (!rec) { rec = { el, attr, orig: value, applied: value }; byAttr[attr] = rec; attrRecs.set(el, byAttr); tracked.add(rec); } else { rec.orig = value; rec.applied = value; }
         const key = normalizeKey(value);
-        if (shouldSkipText(key, target)) return;
+        if (shouldSkipText(key, target) || containsProtected(key, protectedList)) return;
         const r = rec;
         items.push({
           raw: value, key,
@@ -189,7 +204,7 @@ export function AutoTranslate() {
       observer.disconnect();
       restore();
     };
-  }, [lang]);
+  }, [lang, protectedList]); // daftar berubah: cleanup memulihkan teks asli lalu dijalankan ulang dengan daftar terbaru
 
   return null;
 }

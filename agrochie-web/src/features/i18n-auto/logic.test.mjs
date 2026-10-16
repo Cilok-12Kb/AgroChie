@@ -2,7 +2,29 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   shouldSkipText, chunkBatches, cacheKey, storageKey, normalizeKey, rewrap, isSkippedTag, NO_TRANSLATE_SELECTOR,
+  buildProtected, containsProtected,
 } from './logic.ts';
+
+test('buildProtected: kosong, spasi, dan nama < 3 karakter diabaikan; huruf kecil dan unik', () => {
+  assert.deepEqual(buildProtected([null, undefined, '', '   ', 'Al', ' Bu ', 'Budi Santoso', 'BUDI  santoso', 'Kebun Barat']),
+    ['budi santoso', 'kebun barat']);
+  assert.deepEqual(buildProtected([]), []);
+});
+
+test('containsProtected: teks yang memuat nama dilewati, tidak peka huruf besar/kecil', () => {
+  const list = buildProtected(['Budi Santoso', 'Lahan Kebun Barat']);
+  assert.equal(containsProtected('Halo, Budi Santoso 👋', list), true);
+  assert.equal(containsProtected('HALO, BUDI SANTOSO', list), true);
+  assert.equal(containsProtected('Lahan lahan kebun barat dianalisis', list), true);
+  assert.equal(containsProtected('Ringkasan musim aktif', list), false);
+  assert.equal(containsProtected('Budi', list), false);
+});
+
+test('containsProtected: daftar kosong atau nama pendek tidak melewati teks apa pun', () => {
+  assert.equal(containsProtected('Halo Al di sini', buildProtected(['Al', '', null])), false);
+  assert.equal(containsProtected('apa saja', []), false);
+  assert.equal(containsProtected('ab', ['ab']), false); // daftar manual yang terlalu pendek tetap diabaikan
+});
 
 test('shouldSkipText: melewati angka, simbol, mata uang, persen, tanggal, email, HP, URL', () => {
   for (const s of ['', ' ', 'a', '12345', '—', '12,5%', '100 %', 'Rp 5.200.000', 'Rp5,2 jt', '2025-03-12', '2025-03-12T10:00:00Z',

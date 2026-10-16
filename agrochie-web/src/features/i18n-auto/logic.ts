@@ -80,3 +80,23 @@ export const cacheKey = (lang: string, text: string) => `${lang}\u0000${text}`;
 
 /** Kunci localStorage: satu entri per bahasa. */
 export const storageKey = (lang: string) => `agrochie_autotr_v1_${lang}`;
+
+export const MIN_PROTECTED_CHARS = 3;
+
+/** Daftar teks dilindungi (nama akun/lahan): dipangkas, huruf kecil, unik; kosong atau < 3 karakter diabaikan. */
+export function buildProtected(names: ReadonlyArray<string | null | undefined>) {
+  const out = new Set<string>();
+  for (const n of names) {
+    const v = typeof n === 'string' ? n.replace(/\s+/g, ' ').trim().toLowerCase() : '';
+    if (v.length >= MIN_PROTECTED_CHARS) out.add(v);
+  }
+  return [...out];
+}
+
+/** Apakah teks memuat salah satu teks dilindungi (tidak peka huruf besar/kecil). Teks itu tidak boleh dikirim atau disimpan. */
+export function containsProtected(text: string, protectedList: ReadonlyArray<string>) {
+  if (!protectedList.length) return false;
+  const t = text.toLowerCase();
+  return protectedList.some((p) => p.length >= MIN_PROTECTED_CHARS && t.includes(p));
+}
+
