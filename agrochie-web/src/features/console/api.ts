@@ -57,6 +57,7 @@ export type ReauthCredential = { password?: string; idToken?: string };
 export interface Farm {
   id: string; name: string; areaHa: string; userId: string;
   village?: string | null; subdistrict?: string | null; farmerGroup?: string | null;
+  country?: string; // [REVISI] kode ISO alpha-2, bawaan "ID"
   province?: string | null; soilType?: string | null; waterSource?: string | null;
   ph?: string | null; phMeasuredOn?: string | null;
   nitrogen?: Level | null; phosphorus?: Level | null; potassium?: Level | null;
@@ -154,10 +155,10 @@ export const api = {
   seasons: {
     list: (farmId: string) => request<Season[]>(`/farms/${farmId}/seasons`),
     create: (farmId: string, crop: Crop) => post<Season>(`/farms/${farmId}/seasons`, { crop }),
-    startFinancing: (id: string, body: object) => post<{ plan: CostPlan }>(`/seasons/${id}/start-financing`, body),
+    startFinancing: (id: string, body: object) => post<{ plan: CostPlan; regionFallback?: boolean }>(`/seasons/${id}/start-financing`, body),
     startPlanting: (id: string, date: string) => post<{ season: Season }>(`/seasons/${id}/start-planting`, { plantedOn: date }),
     stopFinancing: (id: string) => post<Season>(`/seasons/${id}/stop-financing`, {}),
-    recalc: (id: string, body: object) => post<{ plan: CostPlan }>(`/seasons/${id}/recalc-cost`, body),
+    recalc: (id: string, body: object) => post<{ plan: CostPlan; regionFallback?: boolean }>(`/seasons/${id}/recalc-cost`, body),
     close: (id: string, body: object) => post<{ record: SeasonRecord; summary: object }>(`/seasons/${id}/close`, body),
   },
   expenses: {
