@@ -10,6 +10,7 @@ import { Busy, ErrorLine } from '@/features/console/ui';
 import { EmailBanner } from '@/features/auth/EmailBanner'; // [REVISI]
 import { LanguageSwitcher } from '@/i18n/LanguageSwitcher';
 import { useTranslation } from '@/i18n/LanguageContext';
+import { showDevBadge } from '@/features/i18n-auto/logic';
 import type { Translations } from '@/i18n/LanguageContext';
 import type { Workspace } from '@/features/console/hooks';
 
@@ -230,9 +231,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
 
             <div className="flex items-center gap-3">
-              <span className="hidden md:inline-flex items-center gap-2 text-[11px] text-emerald-700 font-bold rounded-full bg-emerald-50 px-3 py-1.5">
+              {/* [REVISI] B5: lencana developer disembunyikan di production, tidak diterjemahkan di development */}
+              {showDevBadge(process.env.NODE_ENV) && <span data-no-translate className="hidden md:inline-flex items-center gap-2 text-[11px] text-emerald-700 font-bold rounded-full bg-emerald-50 px-3 py-1.5">
                 <Server size={13} /> {t.shell.apiBadge}
-              </span>
+              </span>}
               {/* Language Switcher */}
               <LanguageSwitcher />
               <Link href="/pengingat" aria-label={t.shell.reminderLabel} title={t.shell.reminderLabel} className="console-circle-icon">

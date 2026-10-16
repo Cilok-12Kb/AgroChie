@@ -2,9 +2,16 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   shouldSkipText, chunkBatches, cacheKey, storageKey, normalizeKey, rewrap, isSkippedTag, NO_TRANSLATE_SELECTOR,
-  buildProtected, containsProtected, isValuelessOption, TRANSLATABLE_ATTRS, ALWAYS_PROTECTED, requestLang,
+  buildProtected, containsProtected, isValuelessOption, TRANSLATABLE_ATTRS, ALWAYS_PROTECTED, requestLang, showDevBadge,
 } from './logic.ts';
 import { readFileSync } from 'node:fs';
+
+test('B5: lencana developer tersembunyi di production saja', () => {
+  assert.equal(showDevBadge('production'), false);
+  assert.equal(showDevBadge('development'), true);
+  assert.equal(showDevBadge('test'), true);
+  assert.equal(showDevBadge(undefined), true);
+});
 
 test('B4: requestLang mengikuti bahasa UI, nilai tak dikenal jadi id', () => {
   assert.equal(requestLang('en'), 'en');

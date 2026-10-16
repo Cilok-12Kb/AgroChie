@@ -8,6 +8,9 @@ export function requestLang(uiLang: unknown): 'id' | 'en' | 'zh' {
   return uiLang === 'en' || uiLang === 'zh' ? uiLang : 'id';
 }
 
+/** [REVISI] B5: lencana developer ("Express API", "Gemini via Express API") hanya tampil di luar production. */
+export const showDevBadge = (nodeEnv: string | undefined) => nodeEnv !== 'production';
+
 export const MAX_BATCH_TEXTS = 50;
 export const MAX_TEXT_CHARS = 500;
 export const MAX_BATCH_CHARS = 10_000;
