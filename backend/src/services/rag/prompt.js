@@ -1,3 +1,4 @@
+import { chatLanguageRule } from "../lang-rule.js"; // [REVISI] instruksi bahasa output
 /** Instruksi bahasa berdasarkan kode lang yang dikirim frontend. */
 const LANG_INSTRUCTION = {
   id: "Aturan bahasa: Jawab SELALU dalam Bahasa Indonesia yang sederhana dan ringkas (maksimal sekitar 150 kata). Jangan gunakan bahasa lain meski pengguna bertanya dalam bahasa lain.",
@@ -82,6 +83,7 @@ export function buildSystemPrompt({ chunks = [], farmerText, farmId, lang = "id"
   const lahan = farmId ? `\nlahan_id (untuk alat): ${farmId}` : ""; // [REVISI]
   const l = LANG_INSTRUCTION[lang] ? lang : "id";
   // [REVISI] B4: aturan bahasa diulang di akhir dan menang atas riwayat/bahasa pertanyaan
-  const tail = `\n\n${WEATHER_FORMAT[l]}\n${LANG_INSTRUCTION[l]}\n${LANG_REMINDER[l]}`;
-  return `${buildSystemRules(lang)}\n\n${docs}\n\n<data_petani>\n${farmerText}${lahan}\n</data_petani>${tail}`;
+  const tail = `\n\n${WEATHER_FORMAT[l]}\n${LANG_INSTRUCTION[l]}\n${LANG_REMINDER[l]}\n${chatLanguageRule(lang)}`;
+  // [REVISI] aturan bahasa tegas di awal dan akhir system
+  return `${chatLanguageRule(lang)}\n\n${buildSystemRules(lang)}\n\n${docs}\n\n<data_petani>\n${farmerText}${lahan}\n</data_petani>${tail}`;
 }

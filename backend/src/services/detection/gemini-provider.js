@@ -2,17 +2,14 @@ import { generateStructured } from "../llm.service.js";
 import { generateValidated } from "../ai-json.js";
 import { geminiDetectionSchema, toResponseSchema, QUALITY, PROBLEM_TYPES, SEVERITY } from "./schema.js";
 
-const LANGUAGE_RULE = {
-  id: "Tulis semua nilai teks bebas dalam Bahasa Indonesia yang sederhana.",
-  en: "Write every free-text value in simple English.",
-  zh: "所有自由文本字段都必须使用简体中文。",
-};
+import { outputLanguageRule, withLanguageRule } from "../lang-rule.js"; // [REVISI] instruksi bahasa output
 
 export function buildDetectionSystem(lang = "id") {
-  return `Kamu adalah ahli pertanian Indonesia yang menilai kondisi tanaman dari foto.
+  return `${outputLanguageRule(lang)}
+Kamu adalah ahli pertanian Indonesia yang menilai kondisi tanaman dari foto.
 Aturan:
 1. Jawab HANYA dengan satu objek JSON valid sesuai skema. Tanpa teks lain, tanpa markdown.
-2. ${LANGUAGE_RULE[lang] ?? LANGUAGE_RULE.id}
+2. ${outputLanguageRule(lang)}
 3. Nilai hanya yang benar-benar terlihat di foto. Jangan mengarang gejala atau masalah. Bila tidak ada masalah terlihat, masalah_terdeteksi berupa array kosong.
 4. Bila gambar BUKAN tanaman (atau tidak bisa dinilai: buram, gelap, terlalu jauh), isi tanaman_terlihat=false dan skor_kepercayaan rendah (di bawah 0.3).
 5. skor_kepercayaan (0 sampai 1) mencerminkan keyakinanmu pada penilaian keseluruhan; jangan membesarkan angka.
@@ -39,7 +36,7 @@ export function createGeminiProvider({ client = null } = {}) {
   return {
     name: "gemini",
     async detect(imageBuffer, mimeType, context = {}) {
-      const userText = buildDetectionPrompt(context);
+      const userText = withLanguageRule(buildDetectionPrompt(context), context.lang); // [REVISI]
       return generateValidated({
         label: "deteksi",
         schema: geminiDetectionSchema,

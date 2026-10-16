@@ -6,6 +6,7 @@ import { getFarmWeather } from "./weather.service.js";
 import { toResponseSchema } from "./detection/schema.js";
 import { recalculateCost, expenseCategoryFor } from "../utils/detection-cost.js";
 import { findTrainedCrop, TRAINED_CROPS } from "./detection/leaf-class-map.js";
+import { outputLanguageRule, withLanguageRule } from "./lang-rule.js"; // [REVISI] instruksi bahasa output
 
 // [REVISI] Solusi penanganan + estimasi biaya dari Gemini. Biaya dalam Rupiah penuh (belum juta); hanya rentang
 // estimasi, BUKAN biaya mingguan. Pengecualian khusus fitur ini: kisaran dosis umum diperbolehkan (tanpa merek).
@@ -56,12 +57,13 @@ const copyFor = (lang) => COPY[lang] ?? COPY.id;
 export const DISCLAIMER = COPY.id.disclaimer;
 
 function buildSolutionSystem(lang = "id") {
-  return `Kamu adalah penasihat pertanian untuk petani kecil di Indonesia. Beri solusi penanganan berdasarkan hasil deteksi tanaman.
+  return `${outputLanguageRule(lang)}
+Kamu adalah penasihat pertanian untuk petani kecil di Indonesia. Beri solusi penanganan berdasarkan hasil deteksi tanaman.
 Aturan:
 1. Jawab HANYA dengan satu objek JSON valid sesuai skema. Tanpa teks lain, tanpa markdown. ${copyFor(lang).language}
 2. Pakai komoditas, luas, lokasi, dan fase musim dari <konteks_lahan>. Jangan mengganti komoditas.
 3. Harga: acuan harga pasar Indonesia, dalam Rupiah penuh (bilangan bulat, tanpa titik/koma). Beri RENTANG (min dan max) per bahan. Nyatakan semua asumsi (luas yang ditangani, jumlah semprot, sumber harga umum) di estimasi_total_biaya.asumsi. Bila cuaca tidak tersedia, tulis itu di asumsi.
-4. estimasi_total_biaya.min dan max harus sama dengan jumlah min dan max seluruh bahan_dan_alat. per_hektar_atau_per_lahan berisi "per hektar" atau "per lahan" sesuai dasar hitungmu.
+4. estimasi_total_biaya.min dan max harus sama dengan jumlah min dan max seluruh bahan_dan_alat. per_hektar_atau_per_lahan berisi satuan dasar hitungmu (hektar atau seluruh lahan ini), singkat, ditulis dalam bahasa output.
 5. JANGAN menyebut merek dagang. Sebut bahan aktif atau golongan umum saja (mis. "fungisida berbahan aktif tembaga", "belerang", "insektisida nabati").
 6. Dosis hanya kisaran umum yang aman, selalu diikuti "ikuti label produk". Jangan memberi dosis spesifik berisiko. Utamakan cara non-kimia dan bahan paling aman lebih dulu.
 7. Jangan mengarang. Bila tidak yakin soal penyebab atau harga, katakan tidak pasti dan sarankan konsultasi ahli. Gunakan <dokumen> sebagai rujukan bila relevan.
@@ -91,7 +93,7 @@ export function engineCropMismatch(sumber, land = {}) {
   return !trained || (sumber.komoditas_model != null && sumber.komoditas_model !== trained);
 }
 
-export function buildSolutionPrompt({ detection, land = {}, weatherText, note, chunks = [], sumber } = {}) {
+export function buildSolutionPrompt({ detection, land = {}, weatherText, note, chunks = [], sumber, lang = "id" } = {}) {
   const dariEngine = sumber?.provider === "engine";
   const sumberText = dariEngine
     ? ["Sumber: model klasifikasi daun internal AgroChie (versi " + (sumber.model_versi ?? "tidak diketahui") + ") dengan kelas terbatas (" + TRAINED_CROPS.join(", ") + "). Jangan mengklaim diagnosis di luar kelas yang terdeteksi, nyatakan ketidakpastian, dan sebut bahwa tingkat keparahan hanya perkiraan."
@@ -109,7 +111,7 @@ export function buildSolutionPrompt({ detection, land = {}, weatherText, note, c
   const docs = chunks.length
     ? chunks.map((c) => `<dokumen sumber="${c.source}" judul="${c.title}">\n${c.content}\n</dokumen>`).join("\n")
     : "(tidak ada dokumen relevan)";
-  return `<konteks_lahan>\n${lahan}\n</konteks_lahan>
+  return withLanguageRule(`<konteks_lahan>\n${lahan}\n</konteks_lahan>
 
 <hasil_deteksi>
 Kondisi: ${detection?.kondisi}
@@ -128,7 +130,7 @@ ${note || "(tidak ada)"}
 
 ${docs}
 
-Susun solusi penanganan dan estimasi biaya untuk ${land.komoditas ?? "tanaman ini"} sesuai skema JSON.`;
+Susun solusi penanganan dan estimasi biaya untuk ${land.komoditas ?? "tanaman ini"} sesuai skema JSON.`, lang);
 }
 
 /** Total dihitung ulang dari jumlah bahan (angka server dipakai); langkah diurutkan dan dinomori ulang. */
@@ -178,7 +180,7 @@ export async function generateSolution({ detection, land = {}, coords, catatan, 
     console.error("[solusi] RAG gagal, lanjut tanpa dokumen:", e?.message);
   }
 
-  const userText = buildSolutionPrompt({ detection, land, weatherText: describeWeather(weather), note: catatan, chunks, sumber });
+  const userText = buildSolutionPrompt({ detection, land, weatherText: describeWeather(weather), note: catatan, chunks, sumber, lang });
   const jsonSchema = toResponseSchema(solutionSchema);
   const retryNote = "\n\nPERHATIAN: jawaban sebelumnya tidak valid. Kirim HANYA JSON valid sesuai skema.";
   const solusi = await generateValidated({
@@ -186,7 +188,7 @@ export async function generateSolution({ detection, land = {}, coords, catatan, 
     schema: solutionSchema,
     check: (d) => finalizeSolution(d, lang),
     call: (i) =>
-      generateStructured({ system: buildSolutionSystem(lang), userText: i ? userText + retryNote : userText, jsonSchema, temperature: 0.3 }, deps.client ?? null),
+      generateStructured({ system: buildSolutionSystem(lang), userText: i ? `${userText}${retryNote}\n\n${outputLanguageRule(lang)}` /* [REVISI] aturan bahasa tetap di akhir */ : userText, jsonSchema, temperature: 0.3 }, deps.client ?? null),
   });
 
   if (!weather) {
