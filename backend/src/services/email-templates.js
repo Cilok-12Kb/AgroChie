@@ -1,7 +1,7 @@
-// Template email verifikasi dan reset password, bahasa EN dan ID (teks + HTML).
+// Template email verifikasi, reset password, dan notifikasi akun dalam tiga bahasa antarmuka.
 // Fungsi murni: tidak membaca env dan tidak mengirim apa pun.
 
-export const SUPPORTED_LANGS = ["id", "en"];
+export const SUPPORTED_LANGS = ["id", "en", "zh"];
 
 /** Pilih bahasa dari nilai eksplisit (body `lang`) atau header Accept-Language; bawaan "id". */
 export function pickLang(explicit, acceptLanguage) {
@@ -66,6 +66,25 @@ const TEXT = {
     },
     fallback: "If the button does not work, copy this link into your browser:",
   },
+  zh: {
+    verify: {
+      subject: "验证您的 AgroChie 邮箱",
+      greeting: (n) => (n ? `您好，${n}：` : "您好："),
+      intro: "点击下方链接，验证您的 AgroChie 账户邮箱。",
+      button: "验证邮箱",
+      expiry: (v) => `此链接在 ${v.hours} 小时内有效，且只能使用一次。`,
+      ignore: "如果您没有提出此请求，请忽略此邮件。",
+    },
+    reset: {
+      subject: "重置您的 AgroChie 密码",
+      greeting: (n) => (n ? `您好，${n}：` : "您好："),
+      intro: "我们收到了重置您 AgroChie 账户密码的请求。点击下方链接设置新密码。",
+      button: "重置密码",
+      expiry: (v) => `此链接在 ${v.minutes} 分钟内有效，且只能使用一次。`,
+      ignore: "如果您没有提出此请求，请忽略此邮件；您的密码不会更改。",
+    },
+    fallback: "如果按钮无法使用，请将此链接复制到浏览器中：",
+  },
 };
 
 function render(kind, { lang, name, url, hours, minutes }) {
@@ -105,6 +124,12 @@ const CHANGED = {
     body: "The password of your AgroChie account was just changed. All previous sessions have been signed out.",
     warn: "If this was not you, reset your password right away using forgot password, or contact us.",
   },
+  zh: {
+    subject: "您的 AgroChie 密码已更改",
+    greeting: (n) => (n ? `您好，${n}：` : "您好："),
+    body: "您的 AgroChie 账户密码刚刚已更改，所有之前的登录会话均已退出。",
+    warn: "如果这不是您本人操作，请立即使用“忘记密码”重置密码或联系我们。",
+  },
 };
 
 /** Email pemberitahuan password diganti. Tidak memuat tautan. */
@@ -133,6 +158,12 @@ const GOOGLE_LINKED = {
     body: (v) => `The Google account ${v.masked} was just linked to your AgroChie account on ${v.when}.`,
     warn: "If this was not you, reset your password right away using forgot password, or contact us.",
   },
+  zh: {
+    subject: "Google 账户已关联到您的 AgroChie 账户",
+    greeting: (n) => (n ? `您好，${n}：` : "您好："),
+    body: (v) => `Google 账户 ${v.masked} 已于 ${v.when} 关联到您的 AgroChie 账户。`,
+    warn: "如果这不是您本人操作，请立即使用“忘记密码”重置密码或联系我们。",
+  },
 };
 
 /** Samarkan email: huruf pertama + *** + domain, mis. a***@gmail.com. */
@@ -147,6 +178,10 @@ const p2 = (n) => String(n).padStart(2, "0");
 
 export function formatWhen(date, lang = "id") {
   if (lang === "en") return `${date.toISOString().slice(0, 16).replace("T", " ")} UTC`;
+  if (lang === "zh") {
+    const iso = date.toISOString();
+    return `${iso.slice(0, 4)}年${Number(iso.slice(5, 7))}月${Number(iso.slice(8, 10))}日 ${iso.slice(11, 16)} UTC`;
+  }
   const w = new Date(date.getTime() + 7 * 3_600_000); // geser ke WIB, baca dengan getter UTC
   return `${w.getUTCDate()} ${BULAN[w.getUTCMonth()]} ${w.getUTCFullYear()}, ${p2(w.getUTCHours())}.${p2(w.getUTCMinutes())} WIB`;
 }
@@ -203,6 +238,24 @@ const ACCOUNT_NOTICE = {
       subject: "The phone number on your AgroChie account was changed",
       body: (v) => `The phone number on your account was changed from ${v.oldMasked} to ${v.newMasked} on ${v.when}. Other devices were signed out.`,
       warn: 'If this was not you, reset your password using "Forgot password" and check your sign-in methods on the Profile page.',
+    },
+  },
+  zh: {
+    greeting: GOOGLE_LINKED.zh.greeting,
+    emailRemoved: {
+      subject: "邮箱已从您的 AgroChie 账户中删除",
+      body: (v) => `邮箱 ${v.masked} 已于 ${v.when} 从您的账户中删除。该邮箱将不能再用于登录或重置密码，其他设备也已退出登录。`,
+      warn: "如果这不是您本人操作，请使用其他方式登录并重新添加邮箱。请通过“忘记密码”重置密码，并在个人资料页面检查登录方式。",
+    },
+    googleUnlinked: {
+      subject: "Google 账户已与您的 AgroChie 账户解除关联",
+      body: (v) => `Google 账户已于 ${v.when} 与您的 AgroChie 账户解除关联，其他设备也已退出登录。`,
+      warn: "如果这不是您本人操作，请通过“忘记密码”重置密码，并在个人资料页面检查登录方式。",
+    },
+    phoneChanged: {
+      subject: "您的 AgroChie 账户手机号码已更改",
+      body: (v) => `您账户的手机号码已于 ${v.when} 从 ${v.oldMasked} 更改为 ${v.newMasked}，其他设备也已退出登录。`,
+      warn: "如果这不是您本人操作，请通过“忘记密码”重置密码，并在个人资料页面检查登录方式。",
     },
   },
 };

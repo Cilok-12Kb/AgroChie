@@ -7,14 +7,15 @@ import { ArrowRight, LoaderCircle } from 'lucide-react';
 import { api, ApiError } from '../console/api';
 import { Button, ErrorLine, Message } from '../console/ui';
 import { AuthCard } from './AuthCard';
-import { copy } from './copy';
 import { isApiMessage, isStatus } from './logic';
 import { SERVER_MSG } from './serverMessages';
 import { useCooldown } from './useCooldown';
+import { useTranslation } from '../../i18n';
 
 type Phase = 'loading' | 'ok' | 'invalid' | 'error';
 
 export function VerifyEmail() {
+  const copy = useTranslation().t.auth;
   const router = useRouter();
   const queryClient = useQueryClient();
   const params = useSearchParams();
@@ -45,7 +46,7 @@ export function VerifyEmail() {
         else { setError(err instanceof ApiError ? err : new Error(copy.common.networkError)); setPhase('error'); }
       },
     );
-  }, [token, queryClient]);
+  }, [token, queryClient, copy.common.networkError]);
 
   // Hanya tanya sesi saat perlu menawarkan "kirim ulang" / "beranda"; 401 = belum masuk (bukan galat).
   const needSession = phase === 'invalid' || phase === 'ok';

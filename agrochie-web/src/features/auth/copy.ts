@@ -1,146 +1,17 @@
 /**
- * Semua teks BARU untuk fitur auth dikumpulkan di sini (satu tempat untuk diterjemahkan).
- * Komponen auth mengimpor `copy`; jangan menulis teks tampilan langsung di komponen.
- * Pesan galat dari server ditampilkan apa adanya (bukan di sini).
- *
- * [REVISI] Lang kini mencakup 'zh' (Mandarin). currentLang() membaca dari localStorage
- * agar sinkron dengan LanguageContext. Gunakan useTranslation() untuk teks yang lebih
- * lengkap; copy.ts tetap tersedia sebagai fallback statis.
+ * Pembacaan bahasa di luar komponen React, terutama untuk payload API.
+ * Teks antarmuka berada di `src/i18n/translations.ts` dan diakses lewat useTranslation().
  */
 
 /** Bahasa yang didukung: Bahasa Indonesia, English, Mandarin (中文). */
 export type Lang = 'id' | 'en' | 'zh';
 
-/** Membaca bahasa aktif dari localStorage (sinkron dengan LanguageContext). */
+/** Membaca bahasa aktif dengan urutan yang sama seperti LanguageProvider. */
 export function currentLang(): Lang {
   if (typeof window === 'undefined') return 'id';
   const stored = localStorage.getItem('agrochie_lang') as Lang | null;
   if (stored === 'id' || stored === 'en' || stored === 'zh') return stored;
+  const browser = navigator.language.slice(0, 2).toLowerCase();
+  if (browser === 'en' || browser === 'zh') return browser;
   return 'id';
 }
-
-export const copy = {
-  forgot: {
-    kicker: 'Lupa kata sandi',
-    title: 'Atur ulang kata sandi',
-    description: 'Masukkan email akun Anda. Jika terdaftar dan sudah terverifikasi, kami kirim tautan untuk mengatur ulang kata sandi.',
-    emailLabel: 'Email',
-    emailPlaceholder: 'nama@email.com',
-    emailInvalid: 'Format email tidak valid.',
-    submit: 'Kirim tautan reset',
-    backToLogin: 'Kembali ke halaman masuk',
-  },
-  reset: {
-    kicker: 'Kata sandi baru',
-    title: 'Buat kata sandi baru',
-    description: 'Pilih kata sandi baru untuk akun Anda. Setelah berhasil, Anda perlu masuk kembali.',
-    passwordLabel: 'Kata sandi baru',
-    passwordHint: '8 sampai 128 karakter.',
-    confirmLabel: 'Ulangi kata sandi baru',
-    submit: 'Simpan kata sandi baru',
-    show: 'Tampilkan kata sandi',
-    hide: 'Sembunyikan kata sandi',
-    success: 'Kata sandi berhasil diganti. Silakan masuk dengan kata sandi baru.',
-    goLogin: 'Masuk sekarang',
-    noToken: 'Tautan reset tidak valid. Minta tautan baru untuk melanjutkan.',
-    linkInvalid: 'Tautan reset tidak valid atau sudah kedaluwarsa.',
-    requestNew: 'Minta tautan baru',
-    problem: {
-      required: 'Kata sandi baru wajib diisi.',
-      tooShort: 'Kata sandi minimal 8 karakter.',
-      tooLong: 'Kata sandi maksimal 128 karakter.',
-      mismatch: 'Konfirmasi kata sandi tidak sama.',
-    },
-  },
-  verify: {
-    kicker: 'Verifikasi email',
-    title: 'Verifikasi email',
-    loading: 'Memverifikasi…',
-    success: 'Email terverifikasi.',
-    noToken: 'Tautan verifikasi tidak valid.',
-    linkInvalid: 'Tautan verifikasi tidak valid atau sudah kedaluwarsa.',
-    resend: 'Kirim ulang email verifikasi',
-    resent: 'Email verifikasi terkirim. Periksa kotak masuk Anda.',
-    goLogin: 'Masuk ke akun',
-    goHome: 'Buka beranda',
-  },
-  login: {
-    identifierLabel: 'Nomor HP atau email',
-    identifierHint: 'Masukkan nomor HP atau email yang Anda daftarkan.',
-    identifierPlaceholder: 'Contoh: 081234567890 atau nama@email.com',
-    forgotLink: 'Lupa kata sandi?',
-  },
-  register: {
-    emailLabel: 'Email (opsional)',
-    emailHint: 'Disarankan, agar kamu bisa memulihkan kata sandi jika lupa.',
-    emailPlaceholder: 'nama@email.com',
-    emailInvalid: 'Format email tidak valid.',
-    emailFailed: (reason: string) => `Akun berhasil dibuat, tetapi email belum tersimpan: ${reason}. Kamu bisa menambahkannya nanti di halaman Profil.`,
-    reason: {
-      conflict: 'email tidak dapat digunakan',
-      tooMany: 'terlalu banyak permintaan',
-      sendFailed: 'gagal mengirim email verifikasi',
-      unavailable: 'layanan email belum tersedia',
-      other: 'terjadi kesalahan',
-    },
-    goProfile: 'Lanjut ke Profil',
-  },
-  google: {
-    divider: 'atau',
-    failed: 'Login Google gagal, coba lagi.',
-    signingIn: 'Memproses login Google…',
-  },
-  banner: {
-    noEmail: 'Tambahkan email agar akun lebih aman dan bisa dipulihkan.',
-    unverified: 'Email Anda belum diverifikasi. Cek kotak masuk atau kirim ulang tautan.',
-    action: 'Buka pengaturan akun',
-    dismiss: 'Tutup pengumuman',
-  },
-  account: {
-    title: 'Keamanan akun',
-    subtitle: 'Email dan metode masuk akun Anda.',
-    completeProfile: 'Lengkapi profil Anda: isi data lahan di bawah agar fitur lain bisa dipakai.',
-    phoneLater: 'Nomor HP belum tersimpan. Anda bisa menambahkannya nanti.',
-    emailTitle: 'Email',
-    emailNone: 'Belum ada email.',
-    verified: 'Terverifikasi',
-    notVerified: 'Belum terverifikasi',
-    emailLabelAdd: 'Tambah email',
-    emailLabelChange: 'Ganti email',
-    emailPlaceholder: 'nama@email.com',
-    emailInvalid: 'Format email tidak valid.',
-    emailSave: 'Kirim tautan verifikasi',
-    emailSent: 'Cek kotak masuk email Anda untuk memverifikasi.',
-    emailConflict: 'Email tidak dapat digunakan.',
-    emailSendFailed: 'Gagal mengirim email, coba lagi.',
-    emailUnavailable: 'Layanan email belum tersedia.',
-    resend: 'Kirim ulang email verifikasi',
-    resent: 'Email terkirim. Cek kotak masuk Anda.',
-    alreadyVerified: 'Email Anda sudah terverifikasi.',
-  },
-  link: {
-    title: 'Google',
-    connected: 'Terhubung dengan Google',
-    notConnected: 'Akun ini belum terhubung dengan Google.',
-    open: 'Tautkan Google',
-    unavailable: 'Login Google belum tersedia saat ini.',
-    modalTitle: 'Tautkan akun Google',
-    step1: 'Langkah 1 dari 2: masukkan kata sandi akun Anda untuk memastikan ini benar-benar Anda.',
-    step2: 'Langkah 2 dari 2: pilih akun Google yang ingin ditautkan.',
-    passwordLabel: 'Kata sandi akun',
-    next: 'Lanjut',
-    back: 'Ubah kata sandi',
-    close: 'Tutup',
-    wrongPassword: 'Kata sandi salah. Coba masukkan lagi.',
-    tokenInvalid: 'Akun Google tidak dapat diverifikasi. Silakan coba lagi.',
-    working: 'Menautkan akun Google…',
-    success: 'Akun Google berhasil ditautkan.',
-    tooMany: 'Terlalu banyak percobaan menautkan Google. Coba lagi nanti.',
-  },
-  common: {
-    cooldownNote: 'Terlalu banyak percobaan. Tunggu sebentar sebelum mencoba lagi.',
-    cooldownWait: (seconds: number) => `Coba lagi dalam ${seconds} detik`,
-    networkError: 'Tidak bisa terhubung ke server. Periksa sambungan internet lalu coba lagi.',
-    emailServiceDown: 'Layanan email sedang tidak tersedia. Coba lagi nanti.',
-  },
-};

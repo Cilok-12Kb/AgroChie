@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react';
-import { Leaf } from 'lucide-react';
+import { BrandLogo } from '@/components/brand/BrandLogo';
 
 /** Kartu auth bersama (merek + judul) untuk halaman lupa/reset/verifikasi. Gaya sama dengan AuthForm. */
 export function AuthCard({ kicker, title, description, children }: { kicker: string; title: string; description?: string; children: ReactNode }) {
   return (
     <div className="console-card max-w-[440px] w-full shadow-xl shadow-emerald-950/5 p-7 md:p-9">
       <div className="flex gap-3 items-center">
-        <span className="console-brand-icon"><Leaf size={22}/></span>
+        <BrandLogo size={40} priority alt="" />
         <div><p className="text-2xl font-black tracking-tight text-slate-900">Agro<span className="text-emerald-700">Chie</span></p><p className="text-xs text-slate-500 font-bold">Smart farming workspace</p></div>
       </div>
       <div className="mt-9 mb-7">

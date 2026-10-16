@@ -337,11 +337,11 @@ test('accountActionOutcome: peta status dan pesan ke tindakan UI', () => {
   assert.equal(accountActionOutcome(new TypeError('network'), m), 'other');
 });
 
-test('apiLang: zh dikirim sebagai en; id tetap id', () => {
+test('apiLang: mendukung tiga bahasa dan nilai tak dikenal kembali ke id', () => {
   assert.equal(apiLang('id'), 'id');
   assert.equal(apiLang('en'), 'en');
-  assert.equal(apiLang('zh'), 'en');
-  assert.equal(apiLang(undefined), 'en');
+  assert.equal(apiLang('zh'), 'zh');
+  assert.equal(apiLang(undefined), 'id');
 });
 
 test('SERVER_MSG B7 persis sama dengan API_AUTH.md', () => {

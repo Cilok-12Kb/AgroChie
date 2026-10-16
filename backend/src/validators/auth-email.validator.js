@@ -31,7 +31,7 @@ const lang = z.string().trim().toLowerCase().max(10).optional().catch(undefined)
 export const setEmailSchema = z.object({ email: emailSchema, lang });
 export const forgotPasswordSchema = z.object({ email: emailSchema, lang });
 export const verifyEmailSchema = z.object({ token });
-export const resetPasswordSchema = z.object({ token, passwordBaru: newPassword });
+export const resetPasswordSchema = z.object({ token, passwordBaru: newPassword, lang });
 export const googleSchema = z.object({
   idToken: z.string({ error: "idToken wajib diisi" }).trim().min(1, "idToken wajib diisi").max(4096, "idToken tidak valid"),
 });

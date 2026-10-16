@@ -2,7 +2,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { LogOut, Leaf, ChevronDown, MapPin, Server, Bell, Menu, X } from 'lucide-react';
+import { LogOut, ChevronDown, MapPin, Server, Bell, Menu, X } from 'lucide-react';
+import { BrandLogo } from '@/components/brand/BrandLogo';
 import { NAV_ITEMS } from '@/config/navigation';
 import { useWorkspace } from '@/features/console/hooks';
 import { WorkspaceContext } from '@/features/console/context';
@@ -23,7 +24,7 @@ function SidebarContent({ w, t, groups, path, onNavigate, onLogout }: {
     <>
       {/* Logo */}
       <Link href="/beranda" className="flex items-center gap-3 mb-9 px-3" onClick={onNavigate}>
-        <span className="console-brand-icon"><Leaf size={22} strokeWidth={2.4} /></span>
+        <BrandLogo size={40} priority alt="" />
         <span>
           <span className="font-black tracking-tight text-[21px] block leading-none text-slate-900">
             Agro<span className="text-emerald-700">Chie</span>
@@ -201,8 +202,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </button>
 
               {/* Brand icon (mobile, visible when sidebar closed) */}
-              <Link href="/beranda" className="lg:hidden console-brand-icon" aria-label={t.shell.homeLabel}>
-                <Leaf size={20} />
+              <Link href="/beranda" className="lg:hidden" aria-label={t.shell.homeLabel}>
+                <BrandLogo size={36} alt="" />
               </Link>
 
               <span className="hidden sm:inline-flex text-xs text-slate-400 font-semibold">

@@ -137,7 +137,7 @@ export const api = {
     setEmail: (email: string) => post<Account>('/auth/email', { email, lang: currentLang() }),
     // [REVISI] khusus alur daftar: 401 diperlakukan sebagai email gagal, bukan redirect global.
     setEmailAfterRegister: (email: string) => request<Account>('/auth/email', { method: 'POST', body: JSON.stringify({ email, lang: currentLang() }) }, { skipGlobal401: true }),
-    // [REVISI] B7: perubahan akun. Kredensial re-auth hanya dilewatkan; lang zh dikirim sebagai en.
+    // [REVISI] B7: perubahan akun. Kredensial re-auth dan bahasa aktif hanya dilewatkan.
     setPhone: (phone: string, reauth: ReauthCredential = {}) => post<Account>('/auth/phone', { phone, ...reauth, lang: apiLang(currentLang()) }),
     removeEmail: (reauth: ReauthCredential) => post<Account>('/auth/email/remove', { ...reauth, lang: apiLang(currentLang()) }),
     unlinkGoogle: (reauth: ReauthCredential) => post<Account>('/auth/google/unlink', { ...reauth, lang: apiLang(currentLang()) }),

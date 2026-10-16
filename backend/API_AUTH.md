@@ -129,7 +129,7 @@ Panggil `GET /auth/me` bila butuh objek user lengkap.
 | | |
 |---|---|
 | Login | Ya |
-| Body | `{ "email": string, "lang"?: "id" \| "en" }` (email di-trim + huruf kecil, maks 254) |
+| Body | `{ "email": string, "lang"?: "id" \| "en" \| "zh" }` (email di-trim + huruf kecil, maks 254) |
 | Sukses | `200` + objek user publik (`emailVerified` `false` sampai tautan diklik). Bila email sama dan sudah terverifikasi: `200` tanpa kirim email. |
 | Rate limit | 10 per 15 menit per IP: `Terlalu banyak permintaan email dari alamat ini. Coba lagi nanti.` Selain itu, bila email sama dan belum terverifikasi: maks 3 permintaan per jam per user. |
 
@@ -149,7 +149,7 @@ Mengganti email membuat `emailVerified` kembali `false`. Urutan di server: rate 
 | | |
 |---|---|
 | Login | Ya |
-| Body | `{ "lang"?: "id" \| "en" }` (boleh kosong) |
+| Body | `{ "lang"?: "id" \| "en" \| "zh" }` (boleh kosong) |
 | Sukses | `202 { "ok": true }` |
 | Rate limit | Sama dengan 3.6 (10 per 15 menit per IP) dan maks 3 per jam per user |
 
@@ -181,7 +181,7 @@ Token sekali pakai: panggilan kedua dengan token yang sama menghasilkan 400.
 | | |
 |---|---|
 | Login | Tidak |
-| Body | `{ "email": string, "lang"?: "id" \| "en" }` |
+| Body | `{ "email": string, "lang"?: "id" \| "en" \| "zh" }` |
 | Sukses | `202 { "ok": true, "message": "Jika email terdaftar dan sudah terverifikasi, tautan reset kata sandi akan dikirim." }`. Respons SAMA untuk email terdaftar, tidak terdaftar, atau belum terverifikasi. |
 | Rate limit | 5 per 15 menit per IP: `Terlalu banyak permintaan reset kata sandi. Coba lagi nanti.` Selain itu maks 3 token reset per jam per akun (diam-diam, tetap 202). |
 
@@ -197,7 +197,7 @@ Email dikirim di latar setelah respons; kegagalan kirim tidak terlihat oleh klie
 | | |
 |---|---|
 | Login | Tidak |
-| Body | `{ "token": string, "passwordBaru": string (8-128), "lang"?: "id" \| "en" }` |
+| Body | `{ "token": string, "passwordBaru": string (8-128), "lang"?: "id" \| "en" \| "zh" }` |
 | Sukses | `200 { "ok": true }`. Semua sesi lama dicabut, cookie dihapus. TIDAK login otomatis: arahkan ke halaman login. Email pemberitahuan dikirim ke pemilik akun. |
 | Rate limit | 10 per 15 menit per IP: `Terlalu banyak percobaan reset kata sandi. Coba lagi nanti.` |
 
@@ -228,7 +228,7 @@ Aturan akun: (a) `googleId` sudah dikenal → login; (b) email cocok dan terveri
 | | |
 |---|---|
 | Login | Ya |
-| Body | `{ "idToken": string, "password": string (1-1024), "lang"?: "id" \| "en" }`. `password` = kata sandi akun saat ini (re-autentikasi). |
+| Body | `{ "idToken": string, "password": string (1-1024), "lang"?: "id" \| "en" \| "zh" }`. `password` = kata sandi akun saat ini (re-autentikasi). |
 | Sukses | `200` + objek user publik terbaru (`hasGoogle: true`). Email pemberitahuan dikirim ke email akun yang terverifikasi. |
 | Rate limit | 10 per 15 menit per IP: `Terlalu banyak percobaan menautkan Google. Coba lagi nanti.` Selain itu maks 5 kata sandi salah per user per 15 menit. |
 
@@ -251,7 +251,7 @@ Ketiga endpoint di bawah mengubah cara pengguna masuk. Aturannya sama:
 
 - **Wajib login** (cookie sesi). Urutan di server: pembatas IP → cek sesi → validasi body (400) → muat user (tamu 403) → prasyarat dan kebijakan (400/403/409/no-op) → blokir per user (429) → re-autentikasi → transaksi (kebijakan dicek ulang, data diubah, `sessionVersion` naik) → cookie baru → email pemberitahuan di luar transaksi.
 - **Respons sukses**: `200` + objek user publik datar (bagian 2), BUKAN `{ "user": ... }`, dibaca ulang dari DB setelah transaksi.
-- **Body umum**: `password?: string` (1-1024, tidak di-trim), `idToken?: string` (1-4096), `lang?: "id" | "en"`.
+- **Body umum**: `password?: string` (1-1024, tidak di-trim), `idToken?: string` (1-4096), `lang?: "id" | "en" | "zh"`.
 - **Re-autentikasi** (jenis ditentukan SERVER dari akun, bukan dari pilihan klien):
   - Akun BER-password: `password` wajib, diperiksa dengan argon2. `idToken` diabaikan. Tanpa `password` → 400 `Kata sandi wajib diisi`.
   - Akun TANPA password (hanya Google): `idToken` wajib → 400 `idToken wajib diisi` bila kosong. Token diperiksa penuh (tanda tangan, `aud`, `iss`, `email_verified`, `sub`, `email`) dan `sub` HARUS sama dengan Google yang tertaut di akun ini. SEMUA kegagalan (token rusak, `aud`/`iss` salah, email belum terverifikasi, `sub` akun Google lain) dijawab sama: `401 Token Google tidak valid`.
@@ -266,7 +266,7 @@ Ketiga endpoint di bawah mengubah cara pengguna masuk. Aturannya sama:
 | | |
 |---|---|
 | Login | Ya |
-| Body | `{ "phone": string (8-15 digit setelah non-angka dibuang), "password"?: string, "idToken"?: string, "lang"?: "id" \| "en" }` |
+| Body | `{ "phone": string (8-15 digit setelah non-angka dibuang), "password"?: string, "idToken"?: string, "lang"?: "id" \| "en" \| "zh" }` |
 | Sukses | `200` + objek user publik |
 | Rate limit | 10 per 15 menit per IP (aturan bersama). Khusus endpoint ini: 5 konflik nomor (409) per 15 menit per user: `Terlalu banyak percobaan nomor HP. Coba lagi nanti.` |
 
@@ -289,7 +289,7 @@ Perilaku:
 | | |
 |---|---|
 | Login | Ya |
-| Body | `{ "password"?: string, "idToken"?: string, "lang"?: "id" \| "en" }` |
+| Body | `{ "password"?: string, "idToken"?: string, "lang"?: "id" \| "en" \| "zh" }` |
 | Sukses | `200` + objek user publik (`email: null`, `emailVerified: false`) |
 | Rate limit | 10 per 15 menit per IP dan pembatas re-auth per user (aturan bersama) |
 
@@ -312,7 +312,7 @@ Perilaku:
 | | |
 |---|---|
 | Login | Ya |
-| Body | `{ "password"?: string, "idToken"?: string, "lang"?: "id" \| "en" }` |
+| Body | `{ "password"?: string, "idToken"?: string, "lang"?: "id" \| "en" \| "zh" }` |
 | Sukses | `200` + objek user publik (`hasGoogle: false`; email tidak berubah) |
 | Rate limit | 10 per 15 menit per IP dan pembatas re-auth per user (aturan bersama) |
 
@@ -389,7 +389,7 @@ Tampilkan hanya untuk `isGuest === false`:
 
 ## 5. Aturan global frontend
 
-- **Bahasa email**: field `lang` hanya `"id"` atau `"en"`. Bila bahasa antarmuka `zh`, frontend mengirim `"en"` (email pemberitahuan tidak tersedia dalam bahasa Mandarin).
+- **Bahasa email**: field `lang` menerima `"id"`, `"en"`, atau `"zh"`; template verifikasi, reset kata sandi, dan pemberitahuan keamanan mengikuti bahasa tersebut.
 - **401 pada request terautentikasi** (kecuali `login`, `register`, `google`, `google/link`, `phone`, `email/remove`, dan `google/unlink` dengan pesan `Kata sandi salah` / `Token Google tidak valid`, lihat tabel pengecualian) berarti sesi berakhir atau dicabut (mis. setelah reset password): bersihkan state user, arahkan ke `/login`.
 - **Jangan memanggil `verify-email` dua kali.** Di React strict mode (dev) `useEffect` berjalan dua kali dan panggilan kedua mendapat 400 karena token sekali pakai. Pakai `useRef` sebagai penjaga, atau panggil lewat tombol.
 - **Jangan menyimpan kata sandi di state yang menetap** (context, store global, localStorage). Pakai state lokal komponen dan kosongkan setelah submit, berhasil atau gagal.

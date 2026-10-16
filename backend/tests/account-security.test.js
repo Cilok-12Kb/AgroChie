@@ -75,7 +75,7 @@ test("parsePhoneChange: normalisasi, batas digit, password tidak di-trim", () =>
   assert.equal(parsePhoneChange({ phone: PH, password: "  sandi  " }).password, "  sandi  ");
 });
 
-test("parseReauth: batas panjang, lang hanya id/en", () => {
+test("parseReauth: batas panjang, lang id/en/zh", () => {
   assert.deepEqual(parseReauth({}), { lang: undefined });
   assert.equal(parseReauth({ password: "x".repeat(1024) }).password.length, 1024);
   assert.throws(() => parseReauth({ password: "x".repeat(1025) }), { status: 400, message: "Kata sandi terlalu panjang" });
@@ -84,7 +84,7 @@ test("parseReauth: batas panjang, lang hanya id/en", () => {
   assert.throws(() => parseReauth({ idToken: "t".repeat(4097) }), { status: 400, message: "idToken tidak valid" });
   assert.throws(() => parseReauth({ idToken: 5 }), { status: 400, message: "idToken tidak valid" });
   assert.equal(parseReauth({ lang: "en" }).lang, "en");
-  assert.equal(parseReauth({ lang: "zh" }).lang, undefined);
+  assert.equal(parseReauth({ lang: "zh" }).lang, "zh");
   assert.equal(parseReauth(null).lang, undefined);
 });
 
@@ -104,8 +104,10 @@ test("template pemberitahuan: subjek, escape, tanpa tautan, waktu, tanpa 'hubung
   for (const [name, make] of notices) {
     const id = make("id");
     const en = make("en");
+    const zh = make("zh");
     assert.notEqual(id.subject, en.subject, name);
-    for (const t of [id, en]) {
+    assert.notEqual(en.subject, zh.subject, name);
+    for (const t of [id, en, zh]) {
       assert.doesNotMatch(t.text, /https?:\/\//, name);
       assert.doesNotMatch(t.html, /<a /, name);
       assert.doesNotMatch(t.html, /Bu<di>/, name);
@@ -115,6 +117,7 @@ test("template pemberitahuan: subjek, escape, tanpa tautan, waktu, tanpa 'hubung
     }
     assert.match(id.text, /15 Oktober 2026, 10\.15 WIB/, name);
     assert.match(en.text, /2026-10-15 03:15 UTC/, name);
+    assert.match(zh.text, /2026年10月15日 03:15 UTC/, name);
     assert.match(id.text, /Lupa kata sandi/, name);
   }
   assert.equal(emailRemovedTemplate({ lang: "id", when }).subject, "Email dihapus dari akun AgroChie kamu");

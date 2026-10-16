@@ -49,7 +49,11 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   // Inisialisasi dari localStorage hanya di client
   useEffect(() => {
-    setLangState(detectInitialLang());
+    const initial = detectInitialLang();
+    localStorage.setItem(STORAGE_KEY, initial);
+    document.documentElement.lang = initial === 'zh' ? 'zh-CN' : initial;
+    const timer = window.setTimeout(() => setLangState(initial), 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   const setLang = useCallback((next: Lang) => {

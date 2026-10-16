@@ -1,7 +1,8 @@
+'use client';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { ArrowRight, LoaderCircle, User } from 'lucide-react';
-import { copy } from './copy';
+import { useTranslation } from '../../i18n';
 
 /**
  * Gaya seragam tombol aksi /masuk dan /daftar (tampilan saja).
@@ -25,6 +26,7 @@ export function AuthSubmitRow({ type, busy, disabled, children }: {
   disabled: boolean;
   children: ReactNode;
 }) {
+  const copy = useTranslation().t.auth;
   const button = (
     <button type="submit" disabled={busy || disabled}
       className={`${base} bg-[#16663e] text-white hover:bg-[#0e502f] disabled:opacity-60 ${type === 'login' ? 'px-8' : 'w-full px-4'}`}>
@@ -45,13 +47,14 @@ export function AuthSubmitRow({ type, busy, disabled, children }: {
 
 /** Tombol tersier "Masuk sebagai tamu sementara" + keterangan di bawahnya. */
 export function GuestAction({ disabled, onClick }: { disabled: boolean; onClick: () => void }) {
+  const copy = useTranslation().t.auth;
   return (
     <div className={`w-full ${ACTION_MAX_W} mx-auto mt-3`}>
       <button type="button" disabled={disabled} onClick={onClick}
         className={`${base} w-full border border-emerald-300 bg-white text-emerald-800 hover:bg-emerald-50 disabled:opacity-60`}>
-        <User size={18} /> Masuk sebagai tamu sementara
+        <User size={18} /> {copy.login.guestSubmit}
       </button>
-      <p className="text-xs text-slate-500 text-center mt-3">Data tamu tersimpan di server dan dihapus saat logout.</p>
+      <p className="text-xs text-slate-500 text-center mt-3">{copy.login.guestHint}</p>
     </div>
   );
 }

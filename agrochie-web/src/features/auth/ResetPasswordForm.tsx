@@ -7,12 +7,13 @@ import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { api, ApiError } from '../console/api';
 import { Button, ErrorLine, Field, inputClass, Message } from '../console/ui';
 import { AuthCard } from './AuthCard';
-import { copy } from './copy';
 import { checkNewPassword, isApiMessage, isStatus } from './logic';
 import { SERVER_MSG } from './serverMessages';
 import { useCooldown } from './useCooldown';
+import { useTranslation } from '../../i18n';
 
 export function ResetPasswordForm() {
+  const copy = useTranslation().t.auth;
   const router = useRouter();
   const queryClient = useQueryClient();
   const params = useSearchParams();
