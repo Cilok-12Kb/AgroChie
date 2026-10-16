@@ -100,10 +100,12 @@ export function buildProtected(names: ReadonlyArray<string | null | undefined>) 
   return [...out];
 }
 
+/** [REVISI] Teks merek yang selalu dilindungi, terlepas dari daftar akun/lahan. */
+export const ALWAYS_PROTECTED: ReadonlyArray<string> = ['agrochie'];
+
 /** Apakah teks memuat salah satu teks dilindungi (tidak peka huruf besar/kecil). Teks itu tidak boleh dikirim atau disimpan. */
 export function containsProtected(text: string, protectedList: ReadonlyArray<string>) {
-  if (!protectedList.length) return false;
   const t = text.toLowerCase();
-  return protectedList.some((p) => p.length >= MIN_PROTECTED_CHARS && t.includes(p));
+  return [...ALWAYS_PROTECTED, ...protectedList].some((p) => p.length >= MIN_PROTECTED_CHARS && t.includes(p));
 }
 

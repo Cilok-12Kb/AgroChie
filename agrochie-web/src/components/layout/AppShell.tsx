@@ -25,7 +25,8 @@ function SidebarContent({ w, t, groups, path, onNavigate, onLogout }: {
       <Link href="/beranda" className="flex items-center gap-3 mb-9 px-3" onClick={onNavigate}>
         <span className="console-brand-icon"><Leaf size={22} strokeWidth={2.4} /></span>
         <span>
-          <span className="font-black tracking-tight text-[21px] block leading-none text-slate-900">
+          {/* [REVISI] merek tidak diterjemahkan */}
+          <span translate="no" data-no-translate className="font-black tracking-tight text-[21px] block leading-none text-slate-900">
             Agro<span className="text-emerald-700">Chie</span>
           </span>
           <span className="text-[10px] tracking-wide font-bold text-slate-500 block mt-1">{t.shell.tagline}</span>
@@ -206,7 +207,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </Link>
 
               <span className="hidden sm:inline-flex text-xs text-slate-400 font-semibold">
-                AgroChie <span className="mx-2">/</span> {translatedNavItems.find(x => x.href === path)?.label ?? t.shell.workspace}
+                <span translate="no" data-no-translate>AgroChie</span> <span className="mx-2">/</span> {translatedNavItems.find(x => x.href === path)?.label ?? t.shell.workspace}
               </span>
               <span className="hidden lg:inline h-4 w-px bg-slate-200" />
 

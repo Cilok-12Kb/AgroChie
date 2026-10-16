@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   shouldSkipText, chunkBatches, cacheKey, storageKey, normalizeKey, rewrap, isSkippedTag, NO_TRANSLATE_SELECTOR,
-  buildProtected, containsProtected, isValuelessOption, TRANSLATABLE_ATTRS,
+  buildProtected, containsProtected, isValuelessOption, TRANSLATABLE_ATTRS, ALWAYS_PROTECTED,
 } from './logic.ts';
 
 test('buildProtected: kosong, spasi, dan nama < 3 karakter diabaikan; huruf kecil dan unik', () => {
@@ -88,6 +88,14 @@ test('isValuelessOption: option tanpa value dilewati; option ber-value dan eleme
   assert.equal(isValuelessOption('option', false), true);
   assert.equal(isValuelessOption('OPTION', true), false);
   assert.equal(isValuelessOption('DIV', false), false);
+});
+
+test('AgroChie selalu terlindungi, walau daftar akun/lahan kosong', () => {
+  assert.deepEqual(ALWAYS_PROTECTED, ['agrochie']);
+  assert.equal(containsProtected('AgroChie', []), true);
+  assert.equal(containsProtected('Beranda · AGROCHIE', []), true);
+  assert.equal(containsProtected('Agro', []), false);
+  assert.equal(containsProtected('Ringkasan musim', []), false);
 });
 
 test('TRANSLATABLE_ATTRS tidak memuat value', () => {

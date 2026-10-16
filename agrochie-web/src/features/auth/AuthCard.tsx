@@ -7,7 +7,7 @@ export function AuthCard({ kicker, title, description, children }: { kicker: str
     <div className="console-card max-w-[440px] w-full shadow-xl shadow-emerald-950/5 p-7 md:p-9">
       <div className="flex gap-3 items-center">
         <span className="console-brand-icon"><Leaf size={22}/></span>
-        <div><p className="text-2xl font-black tracking-tight text-slate-900">Agro<span className="text-emerald-700">Chie</span></p><p className="text-xs text-slate-500 font-bold">Smart farming workspace</p></div>
+        <div><p translate="no" data-no-translate className="text-2xl font-black tracking-tight text-slate-900">Agro<span className="text-emerald-700">Chie</span></p><p className="text-xs text-slate-500 font-bold">Smart farming workspace</p></div>
       </div>
       <div className="mt-9 mb-7">
         <p className="text-[11px] font-black tracking-[.15em] uppercase text-emerald-700">{kicker}</p>
