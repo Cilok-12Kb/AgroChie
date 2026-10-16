@@ -61,7 +61,7 @@ function SeasonHero({ w }: { w: W }) {
               {CROP_NAME[s.crop]}
             </h2>
             <p className="text-emerald-200 text-sm mt-1">
-              {amount(s.areaHa)} ha · {w.farm?.name ?? 'Lahan terdaftar'}
+              {amount(s.areaHa)} ha · <span data-no-translate>{w.farm?.name ?? 'Lahan terdaftar'}</span>
             </p>
           </div>
           <div className="flex flex-col items-end gap-2">
@@ -301,7 +301,7 @@ function FarmInfoCard({ w }: { w: W }) {
       <div className="flex justify-between items-center border-b border-slate-100 pb-4 mb-4">
         <div>
           <p className="text-xs text-slate-500">Nama lahan</p>
-          <p className="font-black text-slate-900 mt-0.5">{farm?.name ?? 'Belum ada lahan'}</p>
+          <p data-no-translate className="font-black text-slate-900 mt-0.5">{farm?.name ?? 'Belum ada lahan'}</p>
         </div>
         <span className="bg-emerald-50 text-emerald-700 p-3 rounded-xl">
           <MapPinned size={20} />

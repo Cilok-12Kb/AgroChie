@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --test \"src/features/auth/**/*.test.mjs\""
+    "test": "node --test \"src/features/auth/**/*.test.mjs\" \"src/features/i18n-auto/**/*.test.mjs\""
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",

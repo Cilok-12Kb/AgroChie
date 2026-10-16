@@ -98,7 +98,7 @@ export function DetectionView({ w }: { w: Workspace }) {
   const askAssistant = (d: Detection) => { window.sessionStorage.setItem(ASSISTANT_CONTEXT_KEY, assistantContext(d, farm.name)); router.push('/asisten'); };
 
   return <div className="space-y-5">
-    <Heading title="Deteksi kualitas tanaman" description="Unggah foto daun atau tanaman untuk mengetahui kondisi, penyebab, dan langkah penanganannya." action={<Tag>Lahan: {farm.name}</Tag>}/>
+    <Heading title="Deteksi kualitas tanaman" description="Unggah foto daun atau tanaman untuk mengetahui kondisi, penyebab, dan langkah penanganannya." action={<Tag>Lahan: <span data-no-translate>{farm.name}</span></Tag>}/>
     <Message color="amber">{DISCLAIMER}</Message>
     <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,.8fr)] gap-5">  {/* [REVISI] grid-cols-1 = minmax(0,1fr) agar kolom tidak melebar mengikuti konten */}
       <Card className="min-w-0 max-w-full" title="Unggah foto" subtitle={`Lahan yang dianalisis: ${farm.name}. Format JPG, PNG, atau WebP, maksimal ${MAX_MB} MB.`}>

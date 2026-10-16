@@ -72,11 +72,11 @@ function SidebarContent({ w, t, groups, path, onNavigate, onLogout }: {
       {/* User footer */}
       <div className="border-t border-slate-100 pt-4 px-2 mt-5">
         <div className="flex gap-2 items-center rounded-xl p-2">
-          <div className="h-10 w-10 bg-emerald-100 rounded-xl flex items-center justify-center font-black text-emerald-700">
+          <div data-no-translate className="h-10 w-10 bg-emerald-100 rounded-xl flex items-center justify-center font-black text-emerald-700">
             {w.account.data?.name?.[0]?.toUpperCase() ?? 'P'}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-extrabold text-slate-900 truncate">{w.account.data?.name ?? 'Petani'}</p>
+            <p data-no-translate className="text-xs font-extrabold text-slate-900 truncate">{w.account.data?.name ?? 'Petani'}</p>
             <p className="text-[11px] text-slate-500">{w.account.data?.isGuest ? t.shell.guestSession : t.shell.farmerAccount}</p>
           </div>
           <button title={t.shell.logoutLabel} aria-label={t.shell.logoutLabel} onClick={onLogout} className="text-slate-500 hover:text-red-600 p-1">
@@ -221,7 +221,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   disabled={!w.farms.data?.length}
                 >
                   {w.farms.data?.length
-                    ? w.farms.data.map(f => <option value={f.id} key={f.id}>{f.name}</option>)
+                    ? w.farms.data.map(f => <option data-no-translate value={f.id} key={f.id}>{f.name}</option>)
                     : <option value="">{t.shell.noFarm}</option>}
                 </select>
                 <ChevronDown size={14} className="text-slate-400 hidden sm:block" />
@@ -237,7 +237,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Link href="/pengingat" aria-label={t.shell.reminderLabel} title={t.shell.reminderLabel} className="console-circle-icon">
                 <Bell size={18} />
               </Link>
-              <Link href="/profil" title={t.shell.profileLabel} className="h-9 w-9 rounded-full bg-emerald-700 text-white inline-flex items-center justify-center font-extrabold text-sm">
+              <Link data-no-translate href="/profil" title={t.shell.profileLabel} className="h-9 w-9 rounded-full bg-emerald-700 text-white inline-flex items-center justify-center font-extrabold text-sm">
                 {w.account.data?.name?.[0]?.toUpperCase() ?? 'P'}
               </Link>
             </div>
