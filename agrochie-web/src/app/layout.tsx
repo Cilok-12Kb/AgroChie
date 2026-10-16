@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Plus_Jakarta_Sans } from 'next/font/google';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { LanguageProvider } from '@/i18n';
+import { AutoTranslate } from '@/features/i18n-auto/AutoTranslate';
 import './globals.css';
 
 const jakarta = Plus_Jakarta_Sans({
@@ -23,6 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body style={{ fontFamily: 'var(--font-jakarta), ui-sans-serif, system-ui, sans-serif' }}>
         <LanguageProvider>
           <QueryProvider>{children}</QueryProvider>
+          <AutoTranslate /> {/* [REVISI] terjemahan otomatis saat tampil; melengkapi kamus i18n, tidak menggantinya */}
         </LanguageProvider>
       </body>
     </html>
