@@ -44,9 +44,17 @@ test("pH tanpa tanggal ukur ditolak; di luar 3-9 ditolak", () => {
 
 test("enum salah ditolak", () => {
   bad({ ...base, nitrogen: "sedang" }, /nitrogen/);
-  bad({ ...base, province: "Bali" }, /Provinsi/);
   bad({ ...base, soilType: "Batu" }, /Jenis tanah/);
   bad({ ...base, waterSource: "Hujan" }, /Sumber air/);
+});
+
+// [REVISI] provinsi teks bebas dan negara
+test("provinsi bebas diterima; negara di-uppercase, tidak dikirim = tidak ada kunci (default DB 'ID')", () => {
+  assert.equal(parseFarmCreate({ ...base, province: "Bali" }).province, "Bali");
+  bad({ ...base, province: "a".repeat(101) }, /Maksimal 100/);
+  assert.equal(parseFarmCreate({ ...base, country: "my" }).country, "MY");
+  assert.equal("country" in parseFarmCreate(base), false);
+  bad({ ...base, country: "IDN" }, /Negara/);
 });
 
 test("rupiah negatif ditolak; sah dikirim sebagai string; teks kosong jadi null", () => {

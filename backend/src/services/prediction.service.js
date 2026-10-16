@@ -4,7 +4,7 @@ import { prisma } from "../config/prisma.js";
 import { farmObject } from "../validators/farm.validator.js";
 import { HttpError } from "../utils/http-error.js";
 import { engineCost, engineLeaf } from "./engine.service.js";
-import { toEngineInput, checkLeafCrop } from "../utils/engine-input.js";
+import { toEngineInput, toModelProvince, checkLeafCrop } from "../utils/engine-input.js";
 import { planView } from "../utils/money-gate.js"; // [REVISI] 18.11b
 
 // [REVISI] 18.5: aturan capitalJt dipakai ulang dari farmObject (Decimal tidak negatif, maks 2 desimal; null = kosong).
@@ -22,7 +22,9 @@ async function runCost(season, body) {
     farm: season.farm, season, weather: body.weather, indices: body.indices, startMonth: body.startMonth,
   });
   const output = await engineCost(input);
-  return { input, output, modelVersion: `${output.models.season} + ${output.models.weekly}` };
+  // [REVISI] penanda wilayah lahan tidak dikenal model (memakai nilai cadangan)
+  const regionFallback = toModelProvince(season.farm.country, season.farm.province).fallback;
+  return { input, output, modelVersion: `${output.models.season} + ${output.models.weekly}`, regionFallback };
 }
 
 /** Prediksi biasa (misalnya skenario "bagaimana kalau"). Dicatat di prediction_logs, tidak mengubah musim. */
@@ -30,9 +32,9 @@ export async function predictCost(userId, seasonId, body = {}) {
   const season = await ownedSeason(userId, seasonId); // 404 (bukan milik / tidak ada) menang atas 409
   // [REVISI] 18.11c: gerbang uang (Q5). Saat DRAFT tidak ada angka prediksi; cek SEBELUM engine dipanggil dan sebelum log ditulis.
   if (season.status === "DRAFT") throw new HttpError(409, "Prediksi hanya untuk musim yang pembiayaannya sudah dimulai");
-  const { input, output, modelVersion } = await runCost(season, body);
+  const { input, output, modelVersion, regionFallback } = await runCost(season, body);
   await prisma.predictionLog.create({ data: { seasonId, input, output, modelVersion } });
-  return output;
+  return { ...output, regionFallback }; // [REVISI] regionFallback di respons, bukan di log/output engine
 }
 
 /** Tombol Mulai: hitung, simpan potret rencana biaya (CostPlan), dan ubah status musim. */
@@ -49,7 +51,7 @@ export async function startFinancing(userId, seasonId, body = {}) {
   const capital = sent ? parsed.data : season.capitalJt;
   const capitalDec = capital == null ? null : new Prisma.Decimal(capital);
 
-  const { input, output, modelVersion } = await runCost(season, body);
+  const { input, output, modelVersion, regionFallback } = await runCost(season, body);
   const { low, mid, high } = output.total_jt;
   const midDec = new Prisma.Decimal(mid);
   // Modal kosong: kekurangan tidak bisa dihitung; kolom wajib diisi 0 (bukan perkiraan).
@@ -69,7 +71,7 @@ export async function startFinancing(userId, seasonId, body = {}) {
       },
     });
   });
-  return { plan: planView(plan), output }; // [REVISI] 18.11b: kolom `input` (masukan engine) tidak dikirim ke klien
+  return { plan: planView(plan), output, regionFallback }; // [REVISI] 18.11b: kolom `input` (masukan engine) tidak dikirim ke klien; regionFallback ditambahkan
 }
 
 // [REVISI] 18.6: hitung ulang rencana biaya. Kunci body = yang dipakai start-financing.
@@ -149,7 +151,9 @@ export async function recalcCost(userId, seasonId, rawBody = {}) {
         p90Jt: diff(plan.p90Jt, awal.p90Jt), shortfallJt: diff(plan.shortfallJt, awal.shortfallJt),
       }
     : null;
-  return { plan: planView(plan), output, selisih }; // [REVISI] 18.11b: tanpa `input`
+  // [REVISI] regionFallback dihitung dari lahan saat ini
+  const regionFallback = toModelProvince(season.farm.country, season.farm.province).fallback;
+  return { plan: planView(plan), output, selisih, regionFallback }; // [REVISI] 18.11b: tanpa `input`
 }
 
 /** Kualitas tanaman dari foto daun. Foto tidak disimpan di sini (hanya dikirim ke engine). */

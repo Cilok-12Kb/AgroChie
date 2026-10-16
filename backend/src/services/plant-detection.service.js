@@ -37,7 +37,8 @@ function weekOf(plantedOn, now) {
 
 /** Konteks lahan untuk AI: hanya yang diketahui; yang kosong dibiarkan kosong (tidak ditebak). */
 export function buildLandContext(farm, season, now = new Date()) {
-  const lokasi = [farm.village, farm.subdistrict, farm.province].filter(Boolean).join(", ");
+  // [REVISI] kode negara ikut bila bukan "ID"
+  const lokasi = [farm.village, farm.subdistrict, farm.province, farm.country && farm.country !== "ID" ? farm.country : null].filter(Boolean).join(", ");
   return {
     komoditas: season ? String(season.crop).toLowerCase() : null,
     luasHa: season?.areaHa != null ? String(season.areaHa) : farm.areaHa != null ? String(farm.areaHa) : null,

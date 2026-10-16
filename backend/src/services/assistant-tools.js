@@ -37,7 +37,8 @@ async function ownedFarm(userId, farmId) {
 }
 
 export const locationText = (farm) =>
-  [farm.village, farm.subdistrict, farm.province].filter(Boolean).join(", ") || null;
+  // [REVISI] kode negara ikut bila bukan "ID"
+  [farm.village, farm.subdistrict, farm.province, farm.country && farm.country !== "ID" ? farm.country : null].filter(Boolean).join(", ") || null;
 
 export async function landContext(userId, farmId, today = todayWib()) {
   const farm = await ownedFarm(userId, farmId);

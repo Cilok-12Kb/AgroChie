@@ -50,7 +50,8 @@ export function describeFarmer({ farm, season, plan } = {}) {
   if (farm) {
     const parts = [
       farm.areaHa != null && `luas ${rupiahJt(farm.areaHa)} ha`,
-      farm.province, farm.soilType && `tanah ${farm.soilType}`, farm.waterSource && `air: ${farm.waterSource}`,
+      farm.province, farm.country && farm.country !== "ID" && `negara ${farm.country}`, // [REVISI]
+      farm.soilType && `tanah ${farm.soilType}`, farm.waterSource && `air: ${farm.waterSource}`,
       farm.ph != null && `pH ${rupiahJt(farm.ph)}`,
     ].filter(Boolean);
     lines.push(`Lahan: ${parts.join(", ")}`);
