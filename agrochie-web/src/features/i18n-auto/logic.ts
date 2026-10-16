@@ -14,6 +14,13 @@ export const TRANSLATABLE_ATTRS = ['placeholder', 'title', 'aria-label', 'alt'] 
 const SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'CODE', 'PRE', 'NOSCRIPT', 'TEXTAREA', 'INPUT']);
 export const isSkippedTag = (tagName: string) => SKIP_TAGS.has(tagName.toUpperCase());
 
+/**
+ * [REVISI] <option> tanpa atribut value mengirim teksnya sebagai nilai form, jadi teks itu tidak boleh diterjemahkan.
+ * <option value="x">label</option> tetap diterjemahkan (yang dikirim adalah value, bukan label).
+ */
+export const isValuelessOption = (tagName: string, hasValueAttr: boolean) =>
+  tagName.toUpperCase() === 'OPTION' && !hasValueAttr;
+
 /** Selektor elemen yang (beserta turunannya) dilewati. */
 export const NO_TRANSLATE_SELECTOR = '[data-no-translate],[translate="no"]';
 

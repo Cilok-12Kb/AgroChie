@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   shouldSkipText, chunkBatches, cacheKey, storageKey, normalizeKey, rewrap, isSkippedTag, NO_TRANSLATE_SELECTOR,
-  buildProtected, containsProtected,
+  buildProtected, containsProtected, isValuelessOption, TRANSLATABLE_ATTRS,
 } from './logic.ts';
 
 test('buildProtected: kosong, spasi, dan nama < 3 karakter diabaikan; huruf kecil dan unik', () => {
@@ -82,3 +82,15 @@ test('isSkippedTag dan selektor data-no-translate', () => {
   assert.match(NO_TRANSLATE_SELECTOR, /data-no-translate/);
   assert.match(NO_TRANSLATE_SELECTOR, /translate="no"/);
 });
+
+test('isValuelessOption: option tanpa value dilewati; option ber-value dan elemen lain tidak', () => {
+  assert.equal(isValuelessOption('OPTION', false), true);
+  assert.equal(isValuelessOption('option', false), true);
+  assert.equal(isValuelessOption('OPTION', true), false);
+  assert.equal(isValuelessOption('DIV', false), false);
+});
+
+test('TRANSLATABLE_ATTRS tidak memuat value', () => {
+  assert.equal(TRANSLATABLE_ATTRS.includes('value'), false);
+});
+

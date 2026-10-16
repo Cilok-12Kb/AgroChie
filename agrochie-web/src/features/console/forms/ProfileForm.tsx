@@ -37,9 +37,9 @@ export function ProfileForm({ w }: { w: Workspace }) {
           <Field label="Luas lahan (hektare)" hint="0,1–5 ha. Model awal dilatih hingga 3 ha."><input className={inputClass} name="areaHa" type="number" min="0.1" max="5" step="0.01" defaultValue={farm?.areaHa ?? '0.5'} required/></Field>
           <Field label="Desa"><input className={inputClass} name="village" defaultValue={farm?.village ?? ''} placeholder="Nama desa"/></Field>
           <Field label="Kelompok tani"><input className={inputClass} name="farmerGroup" defaultValue={farm?.farmerGroup ?? ''} placeholder="Opsional"/></Field>
-          <Field label="Provinsi"><select className={inputClass} name="province" defaultValue={farm?.province ?? ''}><option value="">Pilih provinsi</option>{PROVINCES.map(v=><option key={v}>{v}</option>)}</select></Field>
-          <Field label="Sumber air"><select className={inputClass} name="waterSource" defaultValue={farm?.waterSource ?? ''}><option value="">Pilih sumber air</option>{WATERS.map(v=><option key={v}>{v}</option>)}</select></Field>
-          <Field label="Jenis tanah"><select className={inputClass} name="soilType" defaultValue={farm?.soilType ?? ''}><option value="">Pilih jenis tanah</option>{SOILS.map(v=><option key={v}>{v}</option>)}</select></Field>
+          <Field label="Provinsi"><select className={inputClass} name="province" defaultValue={farm?.province ?? ''}><option value="">Pilih provinsi</option>{PROVINCES.map(v=><option key={v} value={v}>{v}</option>)}</select></Field>
+          <Field label="Sumber air"><select className={inputClass} name="waterSource" defaultValue={farm?.waterSource ?? ''}><option value="">Pilih sumber air</option>{WATERS.map(v=><option key={v} value={v}>{v}</option>)}</select></Field>
+          <Field label="Jenis tanah"><select className={inputClass} name="soilType" defaultValue={farm?.soilType ?? ''}><option value="">Pilih jenis tanah</option>{SOILS.map(v=><option key={v} value={v}>{v}</option>)}</select></Field>
           <Field label="Modal tersedia (juta rupiah)" hint="Boleh dikosongkan. Nilai aktual dipakai saat membuat musim."><input className={inputClass} type="number" step="0.01" min="0" name="capitalJt" defaultValue={farm?.capitalJt ?? ''} placeholder="Contoh: 12.5"/></Field>
         </div>
       </Card>
@@ -48,7 +48,7 @@ export function ProfileForm({ w }: { w: Workspace }) {
           <Field label="pH tanah"><input className={inputClass} name="ph" type="number" step="0.1" min="3" max="9" defaultValue={farm?.ph ?? ''} placeholder="Contoh: 6.3"/></Field>
           <Field label="Tanggal ukur pH"><input className={inputClass} name="phMeasuredOn" type="date" max={dateOnly()} defaultValue={farm?.phMeasuredOn?.slice(0,10) ?? ''}/></Field>
           <div className="hidden md:block"/>
-          {(['nitrogen','phosphorus','potassium'] as const).map((v,i)=><Field key={v} label={['Nitrogen (N)','Fosfor (P)','Kalium (K)'][i]}><select className={inputClass} name={v} defaultValue={farm?.[v] ?? ''}><option value="">Belum diuji</option>{LEVELS.map(x=><option key={x}>{x}</option>)}</select></Field>)}
+          {(['nitrogen','phosphorus','potassium'] as const).map((v,i)=><Field key={v} label={['Nitrogen (N)','Fosfor (P)','Kalium (K)'][i]}><select className={inputClass} name={v} defaultValue={farm?.[v] ?? ''}><option value="">Belum diuji</option>{LEVELS.map(x=><option key={x} value={x}>{x}</option>)}</select></Field>)}
         </div>
       </Card>
       <Card title="Titik lokasi" subtitle="Koordinat hanya untuk mencari informasi cuaca. Peta utama tetap ilustrasi sampai batas lahan tersedia.">
