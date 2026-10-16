@@ -125,7 +125,7 @@ export function AccountSecurity({ w }: { w: Workspace }) {
 
           <section aria-labelledby="akun-phone" className="space-y-3">
             <h3 ref={phoneHeading} id="akun-phone" tabIndex={-1} className="text-sm font-extrabold text-slate-900">{a.phoneTitle}</h3>
-            <p className="break-all text-sm font-bold text-slate-800">{account.phone ?? a.phoneNone}</p>
+            <p data-no-translate={account.phone ? true : undefined} className="break-all text-sm font-bold text-slate-800">{account.phone ?? a.phoneNone}</p>
             <p className="text-sm text-slate-600">{a.phoneHelp}</p>
             <form onSubmit={savePhone} className="space-y-3">
               <Field label={account.phone ? a.phoneLabelChange : a.phoneLabelAdd}>
@@ -142,7 +142,7 @@ export function AccountSecurity({ w }: { w: Workspace }) {
           <section aria-labelledby="akun-email" className="space-y-3 border-t border-slate-100 pt-5">
             <h3 ref={emailHeading} id="akun-email" tabIndex={-1} className="text-sm font-extrabold text-slate-900">{copy.account.emailTitle}</h3>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="min-w-0 break-all text-sm font-bold text-slate-800">{hasEmail ? account.email : copy.account.emailNone}</span>
+              <span data-no-translate={hasEmail ? true : undefined} className="min-w-0 break-all text-sm font-bold text-slate-800">{hasEmail ? account.email : copy.account.emailNone}</span>
               {hasEmail && <Tag color={verified ? 'green' : 'amber'}>{verified ? copy.account.verified : copy.account.notVerified}</Tag>}
             </div>
             {hasEmail && !verified && <Button variant="secondary" onClick={resend} busy={busy === 'resend'} disabled={cooldown.left > 0}>{copy.account.resend}</Button>}

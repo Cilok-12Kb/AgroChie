@@ -62,7 +62,7 @@ export function FieldMap({ farm, className = '' }: { farm: Farm | null; classNam
     {useTiles && <div className="absolute top-20 right-5 flex flex-col gap-2"><button type="button" onClick={()=>setZoom(z=>Math.min(17,z+1))} className="farm-map-icon" aria-label="Perbesar peta"><Plus size={17}/></button><button type="button" onClick={()=>setZoom(z=>Math.max(11,z-1))} className="farm-map-icon" aria-label="Perkecil peta"><Minus size={17}/></button></div>}
     <div className="absolute left-[55%] top-[52%] -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white/95 backdrop-blur-md p-3 shadow-xl border border-white/80 min-w-[154px]">
       <span className="flex items-center gap-2 text-emerald-700 text-xs font-black"><Sprout size={14}/> {useTiles?'Titik lahan':'Area contoh'}</span>
-      <p className="font-extrabold text-slate-800 text-sm mt-1 truncate">{farm?.name ?? 'Lahan belum diatur'}</p>
+      <p data-no-translate className="font-extrabold text-slate-800 text-sm mt-1 truncate">{farm?.name ?? 'Lahan belum diatur'}</p>
       <p className="text-xs text-slate-500">{farm ? `${farm.areaHa} hektare` : 'Isi profil untuk memulai'}</p>
     </div>
     <div className="absolute bottom-5 left-5 right-5 flex flex-col sm:flex-row sm:items-end gap-3 sm:justify-between">
