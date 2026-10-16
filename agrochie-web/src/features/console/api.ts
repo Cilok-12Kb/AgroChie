@@ -197,13 +197,13 @@ export const api = {
     sample: (seasonId: string, body: object) => put<object>(`/seasons/${seasonId}/sample`, body),
   },
   history: { list: () => request<SeasonRecord[]>('/history') },
-  assistant: { chat: (message: string, seasonId?: string, sessionId?: string, farmId?: string) => post<{ answer: string; sessionId: string; sources: unknown[] }>('/assistant/chat', { message, seasonId, sessionId, farmId, lang: currentLang() }) }, // [REVISI] farmId dan bahasa aktif
+  assistant: { chat: (message: string, seasonId?: string, sessionId?: string, farmId?: string, lang: string = currentLang()) => post<{ answer: string; sessionId: string; sources: unknown[] }>('/assistant/chat', { message, seasonId, sessionId, farmId, lang }) }, // [REVISI] farmId dan bahasa aktif; [REVISI] B4 lang dari bahasa UI
   detection: {
-    analyze: (farmId: string, file: File, note?: string) => {
+    analyze: (farmId: string, file: File, note?: string, lang: string = currentLang()) => { // [REVISI] B4 lang dari bahasa UI
       const form = new FormData();
       form.append('lahan_id', farmId);
       if (note?.trim()) form.append('catatan', note.trim());
-      form.append('lang', currentLang());
+      form.append('lang', lang);
       form.append('foto', file); // file terakhir agar field teks terbaca lebih dulu oleh multer
       return request<Detection>('/deteksi-tanaman', { method: 'POST', body: form });
     },

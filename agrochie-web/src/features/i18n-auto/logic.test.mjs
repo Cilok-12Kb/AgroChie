@@ -2,8 +2,24 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   shouldSkipText, chunkBatches, cacheKey, storageKey, normalizeKey, rewrap, isSkippedTag, NO_TRANSLATE_SELECTOR,
-  buildProtected, containsProtected, isValuelessOption, TRANSLATABLE_ATTRS, ALWAYS_PROTECTED,
+  buildProtected, containsProtected, isValuelessOption, TRANSLATABLE_ATTRS, ALWAYS_PROTECTED, requestLang,
 } from './logic.ts';
+import { readFileSync } from 'node:fs';
+
+test('B4: requestLang mengikuti bahasa UI, nilai tak dikenal jadi id', () => {
+  assert.equal(requestLang('en'), 'en');
+  assert.equal(requestLang('zh'), 'zh');
+  assert.equal(requestLang('id'), 'id');
+  assert.equal(requestLang('fr'), 'id');
+  assert.equal(requestLang(undefined), 'id');
+});
+
+test('B4: tombol contoh pertanyaan tetap mengirim string kamus apa adanya', () => {
+  const src = readFileSync(new URL('../console/views/AssistantView.tsx', import.meta.url), 'utf8');
+  assert.match(src, /copy\.examples\.map\(q=>/);
+  assert.match(src, /onClick=\{\(\)=>void send\(q\)\}/);
+  assert.match(src, /requestLang\(lang\)/);
+});
 
 test('buildProtected: kosong, spasi, dan nama < 3 karakter diabaikan; huruf kecil dan unik', () => {
   assert.deepEqual(buildProtected([null, undefined, '', '   ', 'Al', ' Bu ', 'Budi Santoso', 'BUDI  santoso', 'Kebun Barat']),

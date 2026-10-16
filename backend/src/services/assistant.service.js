@@ -1,7 +1,7 @@
 import { prisma } from "../config/prisma.js";
 import { HttpError } from "../utils/http-error.js";
 import { retrieve } from "./rag/retriever.js";
-import { buildSystemPrompt, describeFarmer } from "./rag/prompt.js";
+import { buildSystemPrompt, describeFarmer, langMarker } from "./rag/prompt.js";
 import { generateAnswer } from "./llm.service.js";
 import { buildTools } from "./assistant-tools.js"; // [REVISI]
 import { redactPlan } from "../utils/money-gate.js"; // [REVISI] 18.11
@@ -52,7 +52,7 @@ export async function chat(userId, { sessionId, seasonId, farmId, message, lang 
   const chunks = await retrieve([lastUser?.content, text].filter(Boolean).join("\n"));
 
   const system = buildSystemPrompt({ chunks, farmerText: describeFarmer(ctx), farmId: ctx.farm?.id, lang: safeLang }); // [REVISI] lahan_id untuk alat cuaca + lang
-  const answer = await generateAnswer({ system, history, userText: text, tools: ctx.farm ? buildTools(userId) : undefined });
+  const answer = await generateAnswer({ system, history, userText: `${text}\n\n${langMarker(safeLang)}` /* [REVISI] B4 penanda bahasa; teks asli tetap disimpan */, tools: ctx.farm ? buildTools(userId, safeLang) : undefined });
 
 
   // simpan SETELAH jawaban berhasil, agar riwayat selalu berpasangan (Gemini mewajibkan giliran bergantian)

@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { chunkMarkdown } from "../src/services/rag/chunker.js";
 import { normalize, topK } from "../src/services/rag/similarity.js";
 import { buildSystemPrompt, describeFarmer } from "../src/services/rag/prompt.js";
+import { langMarker } from "../src/services/rag/prompt.js";
+import { formatWeatherTime } from "../src/services/assistant-tools.js";
 import { rateLimit } from "../src/middleware/rate-limit.js";
 
 test("chunker memecah per judul dan menyertakan judul di isi", () => {
@@ -54,6 +56,25 @@ test("prompt asisten mengikuti bahasa yang dipilih", () => {
   assert.match(buildSystemPrompt({ farmerText: "x", lang: "en" }), /ALWAYS reply in simple, concise English/);
   assert.match(buildSystemPrompt({ farmerText: "x", lang: "zh" }), /始终用简体中文回答/);
   assert.match(buildSystemPrompt({ farmerText: "x", lang: "tidak-valid" }), /Bahasa Indonesia/);
+});
+
+test("B4: aturan bahasa diulang di akhir prompt dan menang atas bahasa pertanyaan", () => {
+  for (const [lang, re] of [["en", /REMINDER: Reply ONLY in English/], ["zh", /只能用简体中文回答/], ["id", /PENEGASAN: Jawab dalam Bahasa Indonesia/]]) {
+    const p = buildSystemPrompt({ farmerText: "x", lang });
+    assert.match(p.slice(p.indexOf("</data_petani>")), re);
+  }
+  assert.doesNotMatch(buildSystemPrompt({ farmerText: "x", lang: "en" }), /waktu WIB/);
+  assert.match(langMarker("zh"), /^\[提醒/);
+  assert.match(langMarker("xx"), /Bahasa Indonesia/);
+});
+
+test("B4: format waktu cuaca per bahasa tanpa mengubah angka", () => {
+  assert.equal(formatWeatherTime("2026-10-13T10:00", "id"), "13 Oktober 2026, pukul 10.00");
+  assert.equal(formatWeatherTime("2026-10-13T10:00", "en"), "October 13, 2026, 10:00");
+  assert.equal(formatWeatherTime("2026-10-13T10:00", "zh"), "2026年10月13日 10:00");
+  assert.equal(formatWeatherTime("2026-10-14", "en"), "October 14, 2026");
+  assert.equal(formatWeatherTime(null, "en"), null);
+  assert.equal(formatWeatherTime("bukan-tanggal", "zh"), null);
 });
 
 test("rate limit menolak setelah batas dan tidak mencampur pengguna", () => {

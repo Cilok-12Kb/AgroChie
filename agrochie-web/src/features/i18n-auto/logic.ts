@@ -3,6 +3,11 @@
 
 export type TargetLang = 'en' | 'zh';
 
+/** [REVISI] B4: bahasa permintaan ke backend (asisten/deteksi) diambil dari bahasa UI aktif; nilai tak dikenal jatuh ke 'id'. */
+export function requestLang(uiLang: unknown): 'id' | 'en' | 'zh' {
+  return uiLang === 'en' || uiLang === 'zh' ? uiLang : 'id';
+}
+
 export const MAX_BATCH_TEXTS = 50;
 export const MAX_TEXT_CHARS = 500;
 export const MAX_BATCH_CHARS = 10_000;
