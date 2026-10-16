@@ -136,6 +136,16 @@ export function failureLimiter({ windowMs = 15 * 60_000, max = 5 } = {}) {
   };
 }
 
+/** [REVISI] Terjemahan otomatis (endpoint publik): 60 per menit per IP. */
+export function translateRateLimit() {
+  return rateLimit({
+    windowMs: 60_000,
+    max: 60,
+    keyFn: byIp,
+    message: "Terlalu banyak permintaan terjemahan. Coba lagi sebentar lagi.",
+  });
+}
+
 /** Login: 10 percobaan per 10 menit per IP. */
 export function loginRateLimit() {
   return rateLimit({

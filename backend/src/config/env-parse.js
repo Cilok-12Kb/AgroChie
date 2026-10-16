@@ -8,6 +8,14 @@ export function modelNameWarnings(label, name) {
   return w.length ? [`[config] PERINGATAN: ${label}="${name}" ${w.join(", ")}. Panggilan Gemini kemungkinan gagal (HTTP 400). Periksa backend/.env.`] : [];
 }
 
+// [REVISI] nilai provider terjemahan: ollama | gemini | none (kosong hanya untuk cadangan)
+function translateProvider(name, raw, fallback, allowEmpty) {
+  const v = (raw || fallback).trim().toLowerCase();
+  const ok = ["ollama", "gemini", "none"];
+  if (!(allowEmpty && v === "") && !ok.includes(v)) throw new Error(`${name} harus ollama, gemini, atau none.`);
+  return v;
+}
+
 /**
  * Membentuk objek konfigurasi dari sebuah sumber (mis. process.env).
  * Dipisah dari env.js agar bisa diuji tanpa membaca berkas .env.
@@ -97,6 +105,12 @@ export function buildEnv(src) {
       if (!Number.isFinite(n) || n < 0 || n > 1) throw new Error("DETECTION_MIN_CONFIDENCE harus angka 0 sampai 1.");
       return n;
     })(),
+
+    // [REVISI] terjemahan otomatis: provider utama/cadangan (ollama | gemini | none; cadangan boleh kosong)
+    translateProvider: translateProvider("TRANSLATE_PROVIDER", src.TRANSLATE_PROVIDER, "ollama", false),
+    translateFallbackProvider: translateProvider("TRANSLATE_FALLBACK_PROVIDER", src.TRANSLATE_FALLBACK_PROVIDER, "", true),
+    ollamaHost: (src.OLLAMA_HOST || "http://localhost:11434").trim().replace(/\/+$/, ""),
+    ollamaModel: (src.OLLAMA_MODEL || "qwen2.5:7b").trim(),
 
     // [REVISI] bagian 17: sesi JWT di cookie httpOnly
     jwtSecret,
