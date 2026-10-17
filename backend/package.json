@@ -10,7 +10,8 @@
     "test:db": "node --env-file=.env.test --test",
     "migrate:test": "node --env-file=.env.test node_modules/prisma/build/index.js migrate deploy",
     "seed": "node prisma/seed.js",
-    "ingest": "node scripts/ingest-knowledge.js"
+    "ingest": "node scripts/ingest-knowledge.js",
+    "i18n:warm": "node --env-file=.env scripts/warm-translation-cache.mjs"
   },
   "keywords": [],
   "author": "",

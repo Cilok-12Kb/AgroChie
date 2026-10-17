@@ -165,7 +165,8 @@ const DEFAULT_PROVIDERS = { ollama: ollamaChat, gemini: geminiChat };
  * deps (untuk uji): cache, glossary, providers { nama: async ({system,user}, cfg) => teks JSON }, cfg, logError.
  * translate(target, texts) -> { teksAsli: hasil }; teks gagal/tidak valid dikembalikan apa adanya.
  */
-export function createTranslateService({ cache, glossary = {}, providers = DEFAULT_PROVIDERS, cfg = env, logError = console.error } = {}) {
+// [REVISI] chunkSize (bawaan PROVIDER_CHUNK = 20) bisa diatur, dipakai script pemanas cache agar --batch berlaku.
+export function createTranslateService({ cache, glossary = {}, providers = DEFAULT_PROVIDERS, cfg = env, logError = console.error, chunkSize = PROVIDER_CHUNK } = {}) {
   const chain = [cfg.translateProvider, cfg.translateFallbackProvider]
     .filter((p, i, a) => p && p !== "none" && providers[p] && a.indexOf(p) === i);
 
@@ -188,8 +189,8 @@ export function createTranslateService({ cache, glossary = {}, providers = DEFAU
     for (const name of chain) {
       if (!missing.length) break;
       const still = [];
-      for (let i = 0; i < missing.length; i += PROVIDER_CHUNK) {
-        const batch = missing.slice(i, i + PROVIDER_CHUNK);
+      for (let i = 0; i < missing.length; i += chunkSize) {
+        const batch = missing.slice(i, i + chunkSize);
         let parsed;
         try {
           parsed = await askProvider(name, target, batch);
