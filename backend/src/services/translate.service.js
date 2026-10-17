@@ -221,7 +221,8 @@ let defaultService;
 export function getTranslateService() {
   if (!defaultService) {
     const cache = new TranslationCache(DEFAULT_CACHE_PATH);
-    process.once("beforeExit", () => { cache.flush().catch(() => {}); });
+    // [REVISI] Hook flush hanya untuk runtime; tidak dipasang saat NODE_ENV=test agar tes tidak menulis cache asli.
+    if (process.env.NODE_ENV !== "test") process.once("beforeExit", () => { cache.flush().catch(() => {}); });
     defaultService = createTranslateService({ cache, glossary: loadGlossary() });
   }
   return defaultService;
