@@ -37,7 +37,8 @@ async function ownedFarm(userId, farmId) {
 }
 
 export const locationText = (farm) =>
-  [farm.village, farm.subdistrict, farm.province].filter(Boolean).join(", ") || null;
+  // [REVISI] kode negara ikut bila bukan "ID"
+  [farm.village, farm.subdistrict, farm.province, farm.country && farm.country !== "ID" ? farm.country : null].filter(Boolean).join(", ") || null;
 
 export async function landContext(userId, farmId, today = todayWib()) {
   const farm = await ownedFarm(userId, farmId);
@@ -58,7 +59,26 @@ export async function landContext(userId, farmId, today = todayWib()) {
   };
 }
 
-export async function weatherForFarm(userId, farmId) {
+const MONTHS = {
+  id: ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"],
+  en: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+};
+
+/** [REVISI] B4: ISO lokal "YYYY-MM-DDTHH:mm" (atau tanggal saja) menjadi teks per bahasa; angka tidak diubah. Tak valid -> null. */
+export function formatWeatherTime(iso, lang = "id") {
+  const m = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/.exec(String(iso ?? ""));
+  if (!m) return null;
+  const [, y, mo, d, hh, mm] = m;
+  const mi = Number(mo) - 1;
+  if (mi < 0 || mi > 11) return null;
+  const day = Number(d);
+  const time = hh !== undefined ? `${hh}:${mm}` : null;
+  if (lang === "en") return `${MONTHS.en[mi]} ${day}, ${y}${time ? `, ${time}` : ""}`;
+  if (lang === "zh") return `${y}年${mi + 1}月${day}日${time ? ` ${time}` : ""}`;
+  return `${day} ${MONTHS.id[mi]} ${y}${time ? `, pukul ${hh}.${mm}` : ""}`;
+}
+
+export async function weatherForFarm(userId, farmId, lang = "id") {
   const farm = await ownedFarm(userId, farmId);
   if (farm.latitude === null || farm.longitude === null) {
     return { error: "Lahan belum punya koordinat lokasi, jadi cuaca tidak dapat diambil." };
@@ -70,6 +90,8 @@ export async function weatherForFarm(userId, farmId) {
     sumber: w.source,
     zonaWaktu: w.timezone,
     waktuDataSaatIni: w.current.time,
+    waktuTerformat: formatWeatherTime(w.current.time, lang), // [REVISI] B4
+    tanggalPrakiraanTerformat: (w.forecast ?? []).map((f) => formatWeatherTime(f.date, lang)), // [REVISI] B4
     diambilPada: w.fetchedAt,
     saatIni: w.current,
     hariIni: w.today,
@@ -77,11 +99,11 @@ export async function weatherForFarm(userId, farmId) {
   };
 }
 
-export function buildTools(userId) {
+export function buildTools(userId, lang = "id") {
   return {
     declarations: TOOL_DECLARATIONS,
     handlers: {
-      get_weather: ({ lahan_id }) => weatherForFarm(userId, lahan_id),
+      get_weather: ({ lahan_id }) => weatherForFarm(userId, lahan_id, lang),
       get_land_context: ({ lahan_id }) => landContext(userId, lahan_id),
     },
   };

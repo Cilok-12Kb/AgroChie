@@ -57,6 +57,7 @@ export type ReauthCredential = { password?: string; idToken?: string };
 export interface Farm {
   id: string; name: string; areaHa: string; userId: string;
   village?: string | null; subdistrict?: string | null; farmerGroup?: string | null;
+  country?: string; // [REVISI] kode ISO alpha-2, bawaan "ID"
   province?: string | null; soilType?: string | null; waterSource?: string | null;
   ph?: string | null; phMeasuredOn?: string | null;
   nitrogen?: Level | null; phosphorus?: Level | null; potassium?: Level | null;
@@ -154,10 +155,10 @@ export const api = {
   seasons: {
     list: (farmId: string) => request<Season[]>(`/farms/${farmId}/seasons`),
     create: (farmId: string, crop: Crop) => post<Season>(`/farms/${farmId}/seasons`, { crop }),
-    startFinancing: (id: string, body: object) => post<{ plan: CostPlan }>(`/seasons/${id}/start-financing`, body),
+    startFinancing: (id: string, body: object) => post<{ plan: CostPlan; regionFallback?: boolean }>(`/seasons/${id}/start-financing`, body),
     startPlanting: (id: string, date: string) => post<{ season: Season }>(`/seasons/${id}/start-planting`, { plantedOn: date }),
     stopFinancing: (id: string) => post<Season>(`/seasons/${id}/stop-financing`, {}),
-    recalc: (id: string, body: object) => post<{ plan: CostPlan }>(`/seasons/${id}/recalc-cost`, body),
+    recalc: (id: string, body: object) => post<{ plan: CostPlan; regionFallback?: boolean }>(`/seasons/${id}/recalc-cost`, body),
     close: (id: string, body: object) => post<{ record: SeasonRecord; summary: object }>(`/seasons/${id}/close`, body),
   },
   expenses: {
@@ -197,13 +198,13 @@ export const api = {
     sample: (seasonId: string, body: object) => put<object>(`/seasons/${seasonId}/sample`, body),
   },
   history: { list: () => request<SeasonRecord[]>('/history') },
-  assistant: { chat: (message: string, seasonId?: string, sessionId?: string, farmId?: string) => post<{ answer: string; sessionId: string; sources: unknown[] }>('/assistant/chat', { message, seasonId, sessionId, farmId, lang: currentLang() }) }, // [REVISI] farmId dan bahasa aktif
+  assistant: { chat: (message: string, seasonId?: string, sessionId?: string, farmId?: string, lang: string = currentLang()) => post<{ answer: string; sessionId: string; sources: unknown[] }>('/assistant/chat', { message, seasonId, sessionId, farmId, lang }) }, // [REVISI] farmId dan bahasa aktif; [REVISI] B4 lang dari bahasa UI
   detection: {
-    analyze: (farmId: string, file: File, note?: string) => {
+    analyze: (farmId: string, file: File, note?: string, lang: string = currentLang()) => { // [REVISI] B4 lang dari bahasa UI
       const form = new FormData();
       form.append('lahan_id', farmId);
       if (note?.trim()) form.append('catatan', note.trim());
-      form.append('lang', currentLang());
+      form.append('lang', lang);
       form.append('foto', file); // file terakhir agar field teks terbaca lebih dulu oleh multer
       return request<Detection>('/deteksi-tanaman', { method: 'POST', body: form });
     },

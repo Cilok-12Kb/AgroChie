@@ -6,7 +6,9 @@ import Link from 'next/link';
 import {api,type Crop,CROP_NAME,CROP_WEEKS,dateOnly,rupiah,shortDate} from '../api';
 import type {Workspace} from '../hooks';
 import {Button,Card,Empty,ErrorLine,Field,Heading,inputClass,Message,Tag} from '../ui';
+import {useTranslation} from '@/i18n'; // [REVISI] catatan regionFallback
 export function SeasonFlow({ w }: { w: Workspace }) {
+  const {t}=useTranslation();
   const [crop, setCrop] = useState<Crop>('CABAI');
   const [capital, setCapital] = useState('');
   const [month, setMonth] = useState(String(new Date().getMonth() + 1));
@@ -49,6 +51,7 @@ export function SeasonFlow({ w }: { w: Workspace }) {
           <Field label="Indeks pestisida"><input className={inputClass} type="number" step="0.1" min="0" value={pest} onChange={e=>setPest(e.target.value)}/></Field>
         </div><Button icon={Wallet} busy={finance.isPending} disabled={!rain || !heavy || !temp} onClick={()=>finance.mutate()}>Hitung & mulai pembiayaan</Button><ErrorLine error={finance.error}/></div>
         : <div className="flex flex-wrap justify-between items-center gap-3"><div><p className="text-sm text-slate-500">Estimasi biaya musim · {CROP_NAME[s.crop]}</p><p className="font-black text-2xl mt-1">{rupiah(s.costPlan?.p50Jt)}</p></div><Link className="console-button console-button-secondary" href="/prediksi">Lihat prediksi <ArrowRight size={16}/></Link></div>}
+      {finance.data?.regionFallback && <div className="mt-4"><Message>{t.prediction.regionFallback}</Message></div>}{/* [REVISI] catatan wilayah di luar data latih */}
     </Card>
     <Card title="2. Mulai penanaman" subtitle="Tanggal mulai menjadi minggu pertama, termasuk persiapan lahan." action={<Tag color={s?.plantedOn ? 'green':'gray'}>{s?.plantedOn ? 'Aktif':'Menunggu'}</Tag>}>
       {s?.status === 'PEMBIAYAAN' ? <div className="flex flex-col sm:flex-row sm:items-end gap-3"><Field label="Tanggal mulai tanam"><input type="date" className={inputClass} value={startDate} onChange={e=>setStartDate(e.target.value)} max={dateOnly()}/></Field><Button onClick={()=>plant.mutate()} busy={plant.isPending} icon={Sprout}>Mulai penanaman</Button></div> : s?.plantedOn ? <p className="text-sm text-slate-600">Penanaman mulai <strong>{shortDate(s.plantedOn)}</strong>. Lama musim {CROP_WEEKS[s.crop]} minggu.</p> : <p className="text-sm text-slate-500">Selesaikan pembiayaan agar tahap ini terbuka.</p>}<ErrorLine error={plant.error}/>

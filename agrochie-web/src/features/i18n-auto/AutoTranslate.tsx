@@ -10,7 +10,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from '@/i18n';
 import {
   TRANSLATABLE_ATTRS, NO_TRANSLATE_SELECTOR, isSkippedTag, shouldSkipText, normalizeKey, rewrap,
-  chunkBatches, cacheKey, storageKey, buildProtected, containsProtected, type TargetLang,
+  chunkBatches, cacheKey, storageKey, buildProtected, containsProtected, isValuelessOption, type TargetLang,
 } from './logic';
 
 type TextRec = { orig: string; applied: string };
@@ -102,6 +102,7 @@ export function AutoTranslate() {
         if (el.matches(NO_TRANSLATE_SELECTOR)) return; // elemen + turunannya dilewati
         const isField = el.tagName === 'INPUT' || el.tagName === 'TEXTAREA';
         if (isSkippedTag(el.tagName) && !isField) return; // script, style, code, pre, noscript
+        if (isValuelessOption(el.tagName, el.hasAttribute('value'))) return; // [REVISI] teks option = nilai form
         for (const a of TRANSLATABLE_ATTRS) addAttr(el, a); // placeholder/title/aria-label/alt (bukan value)
         if (isField) return; // nilai input/textarea tidak disentuh
         for (const child of Array.from(el.childNodes)) {

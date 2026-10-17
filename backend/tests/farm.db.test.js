@@ -120,6 +120,19 @@ describe("GET/PATCH /farms/:id (butuh database uji)", { skip }, () => {
     }
   });
 
+  // [REVISI] kolom country: default "ID", PATCH negara dan provinsi teks bebas
+  test("country default ID; PATCH country + provinsi bebas tersimpan; country salah ditolak", async () => {
+    const before = await prisma.farm.findUnique({ where: { id: farmA.id } });
+    assert.equal(before.country, "ID");
+    const res = await call("PATCH", `/farms/${farmA.id}`, { country: "my", province: "Selangor" }, users[0].cookie);
+    assert.equal(res.status, 200);
+    const after = await prisma.farm.findUnique({ where: { id: farmA.id } });
+    assert.equal(after.country, "MY");
+    assert.equal(after.province, "Selangor");
+    assert.equal((await call("PATCH", `/farms/${farmA.id}`, { country: "IDN" }, users[0].cookie)).status, 400);
+    await prisma.farm.update({ where: { id: farmA.id }, data: { country: "ID", province: "Jawa Barat" } });
+  });
+
   test("isian dikosongkan dengan null", async () => {
     const res = await call("PATCH", `/farms/${farmA.id}`, { village: null, nitrogen: null }, users[0].cookie);
     assert.equal(res.status, 200);

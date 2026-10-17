@@ -121,14 +121,27 @@ export function parseModelJson(text) {
 const numbersIn = (s) => s.match(/\d+/g) ?? [];
 
 /** Hasil sah: tidak kosong, semua angka sumber ada, dan untuk zh memuat aksara Han bila sumber berisi kata. */
-export function isValidTranslation(source, result, target) {
-  if (typeof result !== "string" || !result.trim()) return false;
-  for (const n of numbersIn(source)) if (!result.includes(n)) return false;
+// [REVISI] Alasan gagal dipisah per sebab; aturan aksara Han hanya untuk zh.
+export const REJECT_REASONS = {
+  key: "kunci tidak cocok (model mengubah/menghilangkan kunci JSON)",
+  empty: "kosong",
+  numbers: "angka hilang",
+  notChinese: "bukan Mandarin",
+};
+
+/** Mengembalikan kode alasan gagal ("empty" | "numbers" | "notChinese") atau null bila hasil sah. */
+export function validationFailure(source, result, target) {
+  if (typeof result !== "string" || !result.trim()) return "empty";
+  for (const n of numbersIn(source)) if (!result.includes(n)) return "numbers";
   if (target === "zh") {
     const hasWords = /\p{L}/u.test(source.replace(PROTECTED, ""));
-    if (hasWords && !/\p{Script=Han}/u.test(result)) return false;
+    if (hasWords && !/\p{Script=Han}/u.test(result)) return "notChinese";
   }
-  return true;
+  return null;
+}
+
+export function isValidTranslation(source, result, target) {
+  return validationFailure(source, result, target) === null;
 }
 
 /* ───────── penerjemah (provider) ───────── */
@@ -165,7 +178,8 @@ const DEFAULT_PROVIDERS = { ollama: ollamaChat, gemini: geminiChat };
  * deps (untuk uji): cache, glossary, providers { nama: async ({system,user}, cfg) => teks JSON }, cfg, logError.
  * translate(target, texts) -> { teksAsli: hasil }; teks gagal/tidak valid dikembalikan apa adanya.
  */
-export function createTranslateService({ cache, glossary = {}, providers = DEFAULT_PROVIDERS, cfg = env, logError = console.error } = {}) {
+// [REVISI] chunkSize (bawaan PROVIDER_CHUNK = 20) bisa diatur, dipakai script pemanas cache agar --batch berlaku.
+export function createTranslateService({ cache, glossary = {}, providers = DEFAULT_PROVIDERS, cfg = env, logError = console.error, chunkSize = PROVIDER_CHUNK, onReject = null } = {}) {
   const chain = [cfg.translateProvider, cfg.translateFallbackProvider]
     .filter((p, i, a) => p && p !== "none" && providers[p] && a.indexOf(p) === i);
 
@@ -188,8 +202,8 @@ export function createTranslateService({ cache, glossary = {}, providers = DEFAU
     for (const name of chain) {
       if (!missing.length) break;
       const still = [];
-      for (let i = 0; i < missing.length; i += PROVIDER_CHUNK) {
-        const batch = missing.slice(i, i + PROVIDER_CHUNK);
+      for (let i = 0; i < missing.length; i += chunkSize) {
+        const batch = missing.slice(i, i + chunkSize);
         let parsed;
         try {
           parsed = await askProvider(name, target, batch);
@@ -199,12 +213,16 @@ export function createTranslateService({ cache, glossary = {}, providers = DEFAU
           continue;
         }
         for (const t of batch) {
-          const r = Object.hasOwn(parsed, t) ? parsed[t] : undefined;
-          if (isValidTranslation(t, r, target)) {
-            const value = r.trim();
+          const hasKey = Object.hasOwn(parsed, t);
+          const why = hasKey ? validationFailure(t, parsed[t], target) : "key";
+          if (!why) {
+            const value = parsed[t].trim();
             cache.set(target, t, value);
             out[t] = value;
-          } else still.push(t);
+          } else {
+            onReject?.(target, t, why); // kode alasan saja, tanpa isi teks
+            still.push(t);
+          }
         }
       }
       missing = still;
@@ -221,7 +239,8 @@ let defaultService;
 export function getTranslateService() {
   if (!defaultService) {
     const cache = new TranslationCache(DEFAULT_CACHE_PATH);
-    process.once("beforeExit", () => { cache.flush().catch(() => {}); });
+    // [REVISI] Hook flush hanya untuk runtime; tidak dipasang saat NODE_ENV=test agar tes tidak menulis cache asli.
+    if (process.env.NODE_ENV !== "test") process.once("beforeExit", () => { cache.flush().catch(() => {}); });
     defaultService = createTranslateService({ cache, glossary: loadGlossary() });
   }
   return defaultService;

@@ -255,6 +255,15 @@ export interface Translations {
     busy: string;
     stale: string;
   };
+  // [REVISI] Negara dan provinsi bebas pada profil lahan, catatan wilayah pada prediksi
+  profile: {
+    country: string;
+    province: string;
+    provincePlaceholder: string;
+  };
+  prediction: {
+    regionFallback: string;
+  };
 
 }
 
@@ -499,6 +508,15 @@ const id: Translations = {
     lastMethod: 'Tidak bisa menghapus metode masuk terakhir.',
     busy: 'Akun sedang diproses. Coba lagi.',
     stale: 'Data akun sudah berubah. Muat ulang halaman.',
+  },
+  // [REVISI] Negara dan provinsi bebas pada profil lahan, catatan wilayah pada prediksi
+  profile: {
+    country: 'Negara',
+    province: 'Provinsi / negara bagian / wilayah',
+    provincePlaceholder: 'Ketik nama wilayah',
+  },
+  prediction: {
+    regionFallback: 'Estimasi ini memakai data rata-rata wilayah Indonesia, karena wilayah lahanmu belum ada di data latih.',
   },
 
 };
@@ -745,6 +763,15 @@ const en: Translations = {
     busy: 'Your account is being updated. Try again.',
     stale: 'Your account data changed. Reload the page.',
   },
+  // [REVISI] Country and free-text region on the farm profile, region note on predictions
+  profile: {
+    country: 'Country',
+    province: 'Province / state / region',
+    provincePlaceholder: 'Type your region',
+  },
+  prediction: {
+    regionFallback: 'This estimate uses average Indonesian regional data because your region is not in the training data.',
+  },
 
 };
 
@@ -989,6 +1016,15 @@ const zh: Translations = {
     lastMethod: '无法删除最后一种登录方式。',
     busy: '账号正在处理，请重试。',
     stale: '账号数据已变化，请刷新页面。',
+  },
+  // [REVISI] 地块资料中的国家与自由输入地区，以及预测中的地区说明
+  profile: {
+    country: '国家/地区',
+    province: '省/州/地区',
+    provincePlaceholder: '输入所在地区',
+  },
+  prediction: {
+    regionFallback: '此估算使用印度尼西亚地区平均数据，因为您所在地区不在训练数据中。',
   },
 
 };

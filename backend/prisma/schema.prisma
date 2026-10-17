@@ -96,6 +96,7 @@ model Farm {
   subdistrict  String?
   farmerGroup  String?
   province     String?
+  country      String    @default("ID") // [REVISI] kode negara ISO 3166-1 alpha-2
   latitude     Decimal?  @db.Decimal(9, 6)
   longitude    Decimal?  @db.Decimal(9, 6)
   boundary     Json?

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 process.env.DATABASE_URL = "postgresql://x:y@localhost:5432/z";
 process.env.ENGINE_INTERNAL_KEY = "kunci-uji";
 
-const { toEngineInput, checkLeafCrop } = await import("../src/utils/engine-input.js");
+const { toEngineInput, toModelProvince, checkLeafCrop } = await import("../src/utils/engine-input.js");
 const { engineCost, summarize422 } = await import("../src/services/engine.service.js");
 
 const farm = { soilType: "Lempung", waterSource: "Irigasi teknis", province: "Jawa Tengah", ph: "6.0",
@@ -30,6 +30,32 @@ test("isian kosong ditolak dengan daftar, tidak ditebak", () => {
   assert.throws(() => toEngineInput({ farm, season, weather, indices }), (e) => /bulan tanam/.test(e.message));
   const planted = { ...season, plantedOn: new Date("2026-09-14") };
   assert.equal(toEngineInput({ farm, season: planted, weather, indices }).bulan_tanam, 9);
+});
+
+// [REVISI] provinsi teks bebas dipetakan ke provinsi model
+test("toModelProvince: cocok tanpa beda huruf/spasi/awalan; di luar daftar atau negara lain -> cadangan", () => {
+  assert.deepEqual(toModelProvince("ID", "provinsi jawa tengah"), { value: "Jawa Tengah", fallback: false });
+  assert.deepEqual(toModelProvince("ID", "  Jawa   Timur "), { value: "Jawa Timur", fallback: false });
+  assert.deepEqual(toModelProvince("ID", "Jawa Barat"), { value: "Jawa Barat", fallback: false });
+  assert.deepEqual(toModelProvince("MY", "Jawa Barat"), { value: "Jawa Barat", fallback: true });
+  assert.deepEqual(toModelProvince("MY", "Selangor"), { value: "Jawa Barat", fallback: true });
+  assert.deepEqual(toModelProvince("ID", "Bali"), { value: "Jawa Barat", fallback: true });
+  assert.deepEqual(toModelProvince("ID", null), { value: "Jawa Barat", fallback: true });
+});
+
+test("masukan engine: provinsi di luar daftar tidak pernah sampai ke engine; cuaca tetap dari body (tanpa iklim per provinsi)", () => {
+  const bali = toEngineInput({ farm: { ...farm, province: "Bali", country: "ID" }, season, weather, indices, startMonth: 9 });
+  const my = toEngineInput({ farm: { ...farm, province: "Selangor", country: "MY" }, season, weather, indices, startMonth: 9 });
+  const jateng = toEngineInput({ farm: { ...farm, country: "ID" }, season, weather, indices, startMonth: 9 });
+  assert.equal(bali.provinsi, "Jawa Barat");
+  assert.equal(my.provinsi, "Jawa Barat");
+  assert.equal(jateng.provinsi, "Jawa Tengah");
+  // fitur iklim tidak bergantung pada provinsi: sama persis untuk semua wilayah, tidak kosong/NaN
+  for (const x of [bali, my, jateng]) {
+    assert.equal(x.hujan_mm_rata_per_minggu, 60);
+    assert.equal(x.minggu_hujan_lebat, 1);
+    assert.equal(x.suhu_maks_rata, 30);
+  }
 });
 
 test("hasil daun yang bukan tanaman musim ditandai", () => {

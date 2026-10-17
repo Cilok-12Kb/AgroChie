@@ -3,6 +3,14 @@
 
 export type TargetLang = 'en' | 'zh';
 
+/** [REVISI] B4: bahasa permintaan ke backend (asisten/deteksi) diambil dari bahasa UI aktif; nilai tak dikenal jatuh ke 'id'. */
+export function requestLang(uiLang: unknown): 'id' | 'en' | 'zh' {
+  return uiLang === 'en' || uiLang === 'zh' ? uiLang : 'id';
+}
+
+/** [REVISI] B5: lencana developer ("Express API", "Gemini via Express API") hanya tampil di luar production. */
+export const showDevBadge = (nodeEnv: string | undefined) => nodeEnv !== 'production';
+
 export const MAX_BATCH_TEXTS = 50;
 export const MAX_TEXT_CHARS = 500;
 export const MAX_BATCH_CHARS = 10_000;
@@ -13,6 +21,13 @@ export const TRANSLATABLE_ATTRS = ['placeholder', 'title', 'aria-label', 'alt'] 
 /** Elemen yang isinya tidak pernah diterjemahkan (huruf besar, sesuai Element.tagName). */
 const SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'CODE', 'PRE', 'NOSCRIPT', 'TEXTAREA', 'INPUT']);
 export const isSkippedTag = (tagName: string) => SKIP_TAGS.has(tagName.toUpperCase());
+
+/**
+ * [REVISI] <option> tanpa atribut value mengirim teksnya sebagai nilai form, jadi teks itu tidak boleh diterjemahkan.
+ * <option value="x">label</option> tetap diterjemahkan (yang dikirim adalah value, bukan label).
+ */
+export const isValuelessOption = (tagName: string, hasValueAttr: boolean) =>
+  tagName.toUpperCase() === 'OPTION' && !hasValueAttr;
 
 /** Selektor elemen yang (beserta turunannya) dilewati. */
 export const NO_TRANSLATE_SELECTOR = '[data-no-translate],[translate="no"]';
@@ -93,10 +108,12 @@ export function buildProtected(names: ReadonlyArray<string | null | undefined>) 
   return [...out];
 }
 
+/** [REVISI] Teks merek yang selalu dilindungi, terlepas dari daftar akun/lahan. */
+export const ALWAYS_PROTECTED: ReadonlyArray<string> = ['agrochie'];
+
 /** Apakah teks memuat salah satu teks dilindungi (tidak peka huruf besar/kecil). Teks itu tidak boleh dikirim atau disimpan. */
 export function containsProtected(text: string, protectedList: ReadonlyArray<string>) {
-  if (!protectedList.length) return false;
   const t = text.toLowerCase();
-  return protectedList.some((p) => p.length >= MIN_PROTECTED_CHARS && t.includes(p));
+  return [...ALWAYS_PROTECTED, ...protectedList].some((p) => p.length >= MIN_PROTECTED_CHARS && t.includes(p));
 }
 

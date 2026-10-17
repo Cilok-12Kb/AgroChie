@@ -10,6 +10,7 @@ import { Busy, ErrorLine } from '@/features/console/ui';
 import { EmailBanner } from '@/features/auth/EmailBanner'; // [REVISI]
 import { LanguageSwitcher } from '@/i18n/LanguageSwitcher';
 import { useTranslation } from '@/i18n/LanguageContext';
+import { showDevBadge } from '@/features/i18n-auto/logic';
 import type { Translations } from '@/i18n/LanguageContext';
 import type { Workspace } from '@/features/console/hooks';
 
@@ -25,7 +26,8 @@ function SidebarContent({ w, t, groups, path, onNavigate, onLogout }: {
       <Link href="/beranda" className="flex items-center gap-3 mb-9 px-3" onClick={onNavigate}>
         <span className="console-brand-icon"><Leaf size={22} strokeWidth={2.4} /></span>
         <span>
-          <span className="font-black tracking-tight text-[21px] block leading-none text-slate-900">
+          {/* [REVISI] merek tidak diterjemahkan */}
+          <span translate="no" data-no-translate className="font-black tracking-tight text-[21px] block leading-none text-slate-900">
             Agro<span className="text-emerald-700">Chie</span>
           </span>
           <span className="text-[10px] tracking-wide font-bold text-slate-500 block mt-1">{t.shell.tagline}</span>
@@ -206,7 +208,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </Link>
 
               <span className="hidden sm:inline-flex text-xs text-slate-400 font-semibold">
-                AgroChie <span className="mx-2">/</span> {translatedNavItems.find(x => x.href === path)?.label ?? t.shell.workspace}
+                <span translate="no" data-no-translate>AgroChie</span> <span className="mx-2">/</span> {translatedNavItems.find(x => x.href === path)?.label ?? t.shell.workspace}
               </span>
               <span className="hidden lg:inline h-4 w-px bg-slate-200" />
 
@@ -229,9 +231,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
 
             <div className="flex items-center gap-3">
-              <span className="hidden md:inline-flex items-center gap-2 text-[11px] text-emerald-700 font-bold rounded-full bg-emerald-50 px-3 py-1.5">
+              {/* [REVISI] B5: lencana developer disembunyikan di production, tidak diterjemahkan di development */}
+              {showDevBadge(process.env.NODE_ENV) && <span data-no-translate className="hidden md:inline-flex items-center gap-2 text-[11px] text-emerald-700 font-bold rounded-full bg-emerald-50 px-3 py-1.5">
                 <Server size={13} /> {t.shell.apiBadge}
-              </span>
+              </span>}
               {/* Language Switcher */}
               <LanguageSwitcher />
               <Link href="/pengingat" aria-label={t.shell.reminderLabel} title={t.shell.reminderLabel} className="console-circle-icon">

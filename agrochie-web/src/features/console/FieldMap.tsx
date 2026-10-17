@@ -2,6 +2,8 @@
 import { MapPin, Layers3, Crosshair, Sprout, Plus, Minus } from 'lucide-react';
 import { useState } from 'react';
 import type { Farm } from './api';
+import { useTranslation } from '@/i18n';
+import { countryLabel } from './forms/countries';
 
 /** Map illustration by default. Real Esri tiles are opt-in to avoid silently sending location to third parties. */
 function tilesAt(lat: number, lon: number, zoom: number) {
@@ -18,6 +20,9 @@ function tilesAt(lat: number, lon: number, zoom: number) {
 }
 
 export function FieldMap({ farm, className = '' }: { farm: Farm | null; className?: string }) {
+  const { lang } = useTranslation();
+  // [REVISI] provinsi teks bebas; nama negara (Intl, sesuai bahasa aktif) ikut bila bukan "ID"
+  const lokasi = [farm?.province, farm?.country && farm.country !== 'ID' ? countryLabel(farm.country, lang) : null].filter(Boolean).join(', ');
   const [satellite, setSatellite] = useState(false);
   const [zoom, setZoom] = useState(14);
   const valid = Number.isFinite(Number(farm?.latitude)) && Number.isFinite(Number(farm?.longitude)) && farm?.latitude != null && farm?.longitude != null;
@@ -67,7 +72,7 @@ export function FieldMap({ farm, className = '' }: { farm: Farm | null; classNam
     </div>
     <div className="absolute bottom-5 left-5 right-5 flex flex-col sm:flex-row sm:items-end gap-3 sm:justify-between">
       <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-md px-4 py-3 max-w-sm border border-white/80">
-        <p className="flex items-center gap-2 text-slate-800 text-sm font-black"><MapPin size={15} className="text-emerald-700"/> {farm?.province ?? 'Lokasi belum ditentukan'}</p>
+        <p className="flex items-center gap-2 text-slate-800 text-sm font-black"><MapPin size={15} className="text-emerald-700"/> {lokasi ? <span data-no-translate>{lokasi}</span> : 'Lokasi belum ditentukan'}</p>
         <p className="text-[11px] text-slate-500 mt-1">{useTiles?'Titik GPS, bukan poligon batas lahan · Esri, Maxar, Earthstar Geographics':'Visual konseptual; bukan batas lahan terverifikasi.'}</p>
       </div>
       <div className="bg-white/95 rounded-full p-3 shadow-md self-end text-emerald-700"><Crosshair size={18}/></div>

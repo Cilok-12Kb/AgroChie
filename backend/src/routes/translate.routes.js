@@ -16,5 +16,5 @@ export function createTranslateRoutes(getService = getTranslateService) {
   return router;
 }
 
-getTranslateService(); // muat cache + glosarium saat server menyala
+// [REVISI] Layanan dimuat lazy (saat request pertama), bukan saat modul diimpor, agar tes yang mengimpor rute tidak menyentuh cache asli.
 export const translateRoutes = createTranslateRoutes();

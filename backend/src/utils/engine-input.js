@@ -1,4 +1,5 @@
 import { HttpError } from "./http-error.js";
+import { KNOWN_MODEL_PROVINCES, FALLBACK_MODEL_PROVINCE } from "../config/options.js"; // [REVISI]
 
 const LABEL = {
   soilType: "jenis tanah", waterSource: "sumber air", province: "provinsi", ph: "pH",
@@ -9,6 +10,29 @@ const LABEL = {
 
 const lower = (v) => (v == null ? v : String(v).toLowerCase());
 const num = (v) => (v == null ? v : Number(v)); // Decimal Prisma -> angka
+
+// [REVISI] Normalisasi untuk pencocokan: tanpa beda huruf, spasi ganda, dan awalan "Provinsi".
+const normRegion = (v) => String(v ?? "").trim().toLowerCase().replace(/^provinsi\s+/, "").replace(/\s+/g, " ");
+
+/**
+ * [REVISI] Petakan negara + provinsi teks bebas ke provinsi yang dikenal model.
+ * Hanya country "ID" dengan provinsi yang cocok (tanpa beda huruf/spasi/awalan "Provinsi") yang dipakai apa adanya;
+ * selain itu memakai FALLBACK_MODEL_PROVINCE dan fallback=true (UI/respons memberi catatan).
+ * Tidak ada pencarian iklim berdasarkan provinsi di backend (cuaca dari body/layanan cuaca), jadi hasil ini
+ * satu-satunya nilai provinsi yang boleh sampai ke engine.
+ * Catatan data latih: view dataset_latih memakai JOIN climate_rain per provinsi, sehingga SeasonRecord dari luar
+ * 5 provinsi model tidak ikut data latih model Indonesia. Itu disengaja (season-record.service.js tidak diubah).
+ * @returns {{ value: string, fallback: boolean }}
+ */
+export function toModelProvince(country, province) {
+  const isId = String(country ?? "ID").trim().toUpperCase() === "ID";
+  if (isId) {
+    const key = normRegion(province);
+    const hit = KNOWN_MODEL_PROVINCES.find((p) => p.toLowerCase() === key);
+    if (hit) return { value: hit, fallback: false };
+  }
+  return { value: FALLBACK_MODEL_PROVINCE, fallback: true };
+}
 
 /**
  * Susun masukan engine (16 isian tingkat-musim, nama kolom = CSV latih) dari data lahan,
@@ -30,7 +54,7 @@ export function toEngineInput({ farm, season, weather = {}, indices = {}, startM
     luas_ha: num(season.areaHa),
     jenis_tanah: raw.soilType,
     sumber_air: raw.waterSource,
-    provinsi: raw.province,
+    provinsi: toModelProvince(farm.country, raw.province).value, // [REVISI] bukan teks bebas; cadangan bila tak dikenal model
     bulan_tanam: Number(raw.startMonth),
     hujan_mm_rata_per_minggu: Number(raw.rainAvgMm),
     minggu_hujan_lebat: Number(raw.heavyRainWks),

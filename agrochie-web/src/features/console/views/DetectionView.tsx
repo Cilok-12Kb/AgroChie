@@ -7,6 +7,8 @@ import { api, idr, shortDate, type Detection } from '../api';
 import type { Workspace } from '../hooks';
 import { Button, Card, Empty, ErrorLine, Heading, Message, Tag } from '../ui';
 import { DISCLAIMER, QUALITY, ResultCard } from './DetectionResult';
+import { useTranslation } from '@/i18n';
+import { requestLang } from '@/features/i18n-auto/logic';
 
 // [REVISI] Deteksi kualitas tanaman. Batas ukuran hanya pemeriksaan awal di klien (bukan rahasia);
 // backend tetap memeriksa tipe dari isi berkas dan ukuran. Kunci API hanya ada di backend.
@@ -50,6 +52,7 @@ function History({ w, shownId, onPick }: { w: Workspace; shownId: string | null;
 
 export function DetectionView({ w }: { w: Workspace }) {
   const farm = w.farm;
+  const { lang } = useTranslation(); // [REVISI] B4
   const qc = useQueryClient();
   const router = useRouter();
   const fileInput = useRef<HTMLInputElement>(null);
@@ -77,7 +80,7 @@ export function DetectionView({ w }: { w: Workspace }) {
 
   const detail = useQuery({ queryKey: ['console', 'detection', shownId], queryFn: () => api.detection.get(shownId!), enabled: !!shownId });
   const analyze = useMutation({
-    mutationFn: () => api.detection.analyze(farm!.id, file!, note),
+    mutationFn: () => api.detection.analyze(farm!.id, file!, note, requestLang(lang)),
     onSuccess: (res) => {
       qc.setQueryData(['console', 'detection', res.id], res);
       void qc.invalidateQueries({ queryKey: ['console', 'detections'] });

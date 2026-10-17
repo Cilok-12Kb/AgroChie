@@ -2,8 +2,31 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   shouldSkipText, chunkBatches, cacheKey, storageKey, normalizeKey, rewrap, isSkippedTag, NO_TRANSLATE_SELECTOR,
-  buildProtected, containsProtected,
+  buildProtected, containsProtected, isValuelessOption, TRANSLATABLE_ATTRS, ALWAYS_PROTECTED, requestLang, showDevBadge,
 } from './logic.ts';
+import { readFileSync } from 'node:fs';
+
+test('B5: lencana developer tersembunyi di production saja', () => {
+  assert.equal(showDevBadge('production'), false);
+  assert.equal(showDevBadge('development'), true);
+  assert.equal(showDevBadge('test'), true);
+  assert.equal(showDevBadge(undefined), true);
+});
+
+test('B4: requestLang mengikuti bahasa UI, nilai tak dikenal jadi id', () => {
+  assert.equal(requestLang('en'), 'en');
+  assert.equal(requestLang('zh'), 'zh');
+  assert.equal(requestLang('id'), 'id');
+  assert.equal(requestLang('fr'), 'id');
+  assert.equal(requestLang(undefined), 'id');
+});
+
+test('B4: tombol contoh pertanyaan tetap mengirim string kamus apa adanya', () => {
+  const src = readFileSync(new URL('../console/views/AssistantView.tsx', import.meta.url), 'utf8');
+  assert.match(src, /copy\.examples\.map\(q=>/);
+  assert.match(src, /onClick=\{\(\)=>void send\(q\)\}/);
+  assert.match(src, /requestLang\(lang\)/);
+});
 
 test('buildProtected: kosong, spasi, dan nama < 3 karakter diabaikan; huruf kecil dan unik', () => {
   assert.deepEqual(buildProtected([null, undefined, '', '   ', 'Al', ' Bu ', 'Budi Santoso', 'BUDI  santoso', 'Kebun Barat']),
@@ -82,3 +105,23 @@ test('isSkippedTag dan selektor data-no-translate', () => {
   assert.match(NO_TRANSLATE_SELECTOR, /data-no-translate/);
   assert.match(NO_TRANSLATE_SELECTOR, /translate="no"/);
 });
+
+test('isValuelessOption: option tanpa value dilewati; option ber-value dan elemen lain tidak', () => {
+  assert.equal(isValuelessOption('OPTION', false), true);
+  assert.equal(isValuelessOption('option', false), true);
+  assert.equal(isValuelessOption('OPTION', true), false);
+  assert.equal(isValuelessOption('DIV', false), false);
+});
+
+test('AgroChie selalu terlindungi, walau daftar akun/lahan kosong', () => {
+  assert.deepEqual(ALWAYS_PROTECTED, ['agrochie']);
+  assert.equal(containsProtected('AgroChie', []), true);
+  assert.equal(containsProtected('Beranda · AGROCHIE', []), true);
+  assert.equal(containsProtected('Agro', []), false);
+  assert.equal(containsProtected('Ringkasan musim', []), false);
+});
+
+test('TRANSLATABLE_ATTRS tidak memuat value', () => {
+  assert.equal(TRANSLATABLE_ATTRS.includes('value'), false);
+});
+

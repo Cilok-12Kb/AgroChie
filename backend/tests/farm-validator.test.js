@@ -57,10 +57,27 @@ test("enum salah ditolak; nilai persis seperti skema", () => {
   bad({ nitrogen: "sedang" }, /nitrogen/);
   bad({ phosphorus: "TINGGIII" }, /phosphorus/);
   bad({ potassium: "X" }, /potassium/);
-  bad({ province: "Bali" }, /Provinsi/);
   bad({ soilType: "Batu" }, /Jenis tanah/);
   bad({ waterSource: "Hujan" }, /Sumber air/);
   assert.equal(ok({ province: "Jawa Barat" }).province, "Jawa Barat");
+});
+
+// [REVISI] provinsi kini teks bebas
+test("provinsi teks bebas: Bali diterima, trim, kosong jadi null, > 100 ditolak", () => {
+  assert.equal(ok({ province: "Bali" }).province, "Bali");
+  assert.equal(ok({ province: "  Selangor  " }).province, "Selangor");
+  assert.equal(ok({ province: "   " }).province, null);
+  assert.equal(ok({ province: "a".repeat(100) }).province.length, 100);
+  bad({ province: "a".repeat(101) }, /Maksimal 100/);
+});
+
+test("negara: huruf kecil jadi besar; 1 huruf, 3 huruf, angka ditolak", () => {
+  assert.equal(ok({ country: "my" }).country, "MY");
+  assert.equal(ok({ country: " id " }).country, "ID");
+  bad({ country: "I" }, /Negara/);
+  bad({ country: "IDN" }, /Negara/);
+  bad({ country: "1D" }, /Negara/);
+  bad({ country: null }, /Negara/);
 });
 
 test("rupiah: Decimal sebagai string, tidak negatif, maksimal 2 desimal", () => {

@@ -68,7 +68,7 @@ test("prompt deteksi memakai komoditas dari data lahan, tidak hardcode", () => {
 });
 
 test("prompt sistem deteksi mengikuti bahasa yang dipilih", () => {
-  assert.match(buildDetectionSystem("en"), /simple English/);
+  assert.match(buildDetectionSystem("en"), /ENTIRE response in English/); // [REVISI] kalimat bahasa baru
   assert.match(buildDetectionSystem("zh"), /简体中文/);
 });
 

@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { HttpError } from "../utils/http-error.js";
-import { SOIL_TYPES, WATER_SOURCES, PROVINCES, LEVELS } from "../config/options.js";
+import { SOIL_TYPES, WATER_SOURCES, LEVELS } from "../config/options.js"; // [REVISI] PROVINCES dihapus (provinsi teks bebas)
 
-const FIELDS = ["name", "village", "subdistrict", "farmerGroup", "province", "latitude",
+const FIELDS = ["name", "village", "subdistrict", "farmerGroup", "province", "country", "latitude",
   "longitude", "areaHa", "soilType", "waterSource", "ph", "nitrogen", "phosphorus", "potassium", "note"];
 
 const oneOf = (value, list, label) => {
@@ -47,7 +47,13 @@ export const farmObject = z
       subdistrict: text(100),
       farmerGroup: text(100),
       note: text(500),
-      province: oneOfEnum(PROVINCES, "Provinsi"),
+      province: text(100), // [REVISI] teks bebas (trim, maks 100, kosong -> null)
+      // [REVISI] kode negara 2 huruf; huruf kecil diubah jadi besar. Tidak nullable: kolom DB NOT NULL default "ID".
+      country: z
+        .string({ error: "Negara harus berupa kode 2 huruf" })
+        .trim()
+        .toUpperCase()
+        .regex(/^[A-Z]{2}$/, "Negara harus berupa kode 2 huruf (A-Z)"),
       soilType: oneOfEnum(SOIL_TYPES, "Jenis tanah"),
       waterSource: oneOfEnum(WATER_SOURCES, "Sumber air"),
       nitrogen: oneOfEnum(LEVELS, "nitrogen"),
@@ -116,7 +122,9 @@ export function validateFarm(body = {}) {
   if (data.ph != null && !(data.ph >= 3 && data.ph <= 9)) throw new HttpError(400, "pH di luar batas wajar (3 sampai 9)");
   oneOf(data.soilType, SOIL_TYPES, "Jenis tanah");
   oneOf(data.waterSource, WATER_SOURCES, "Sumber air");
-  oneOf(data.province, PROVINCES, "Provinsi");
+  // [REVISI] provinsi teks bebas (maks 100 karakter); negara kode 2 huruf.
+  if (data.province != null && String(data.province).trim().length > 100) throw new HttpError(400, "Provinsi maksimal 100 karakter");
+  if (data.country != null && !/^[A-Za-z]{2}$/.test(String(data.country).trim())) throw new HttpError(400, "Negara harus berupa kode 2 huruf (A-Z)");
   for (const k of ["nitrogen", "phosphorus", "potassium"]) oneOf(data[k], LEVELS, k);
   return data;
 }
