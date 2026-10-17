@@ -20,7 +20,7 @@
   "dependencies": {
     "@google/genai": "2.28.0",
     "@prisma/adapter-pg": "7.10.0",
-    "@prisma/client": "7.10.0",
+    "@prisma/client": "7.10.1",
     "argon2": "^0.45.1",
     "cookie-parser": "1.4.7",
     "cors": "2.8.6",
@@ -35,6 +35,6 @@
     "zod": "4.6.5"
   },
   "devDependencies": {
-    "prisma": "7.10.0"
+    "prisma": "7.10.1"
   }
 }
