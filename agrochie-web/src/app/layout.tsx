@@ -16,6 +16,11 @@ const jakarta = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   title: 'AgroChie | Smart Farming Workspace',
   description: 'Perencanaan dan pemantauan biaya musim tanam hortikultura.',
+  icons: {
+    icon: '/agrochie-logo.png',
+    shortcut: '/agrochie-logo.png',
+    apple: '/agrochie-logo.png',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

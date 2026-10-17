@@ -3,9 +3,9 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { api, ApiError, type Account } from '../console/api';
 import { Button, ErrorLine, Field, inputClass, Message } from '../console/ui';
 import { GoogleButton } from './GoogleButton';
-import { copy } from './copy';
 import { linkErrorOutcome, trapFocusIndex } from './logic';
 import { SERVER_MSG } from './serverMessages';
+import { useTranslation } from '../../i18n';
 
 /**
  * Modal tautkan Google: langkah 1 kata sandi, langkah 2 tombol Google.
@@ -19,6 +19,7 @@ export function GoogleLinkModal({ onClose, onLinked, onHide, onUnavailable, onCo
   onUnavailable: () => void; // 503
   onCooldown: () => void; // 429 (modal ditutup)
 }) {
+  const copy = useTranslation().t.auth;
   const [step, setStep] = useState<1 | 2>(1);
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);

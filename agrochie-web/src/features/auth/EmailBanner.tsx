@@ -3,14 +3,15 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Mail, X } from 'lucide-react';
 import type { Account } from '../console/api';
-import { copy } from './copy';
 import { shouldShowEmailBanner, readBannerDismissed, writeBannerDismissed } from './logic';
+import { useTranslation } from '../../i18n';
 
 // [REVISI] A5: sessionStorage (bukan localStorage) agar kembali muncul di sesi tab berikutnya; bisa diblokir -> try/catch di logic.ts.
 const session = (): Storage | null => { try { return typeof window === 'undefined' ? null : window.sessionStorage; } catch { return null; } };
 
 /** Banner ajakan menambah/memverifikasi email. Penutupan bertahan selama sesi tab (kunci per id akun). */
 export function EmailBanner({ account }: { account: Account | null | undefined }) {
+  const copy = useTranslation().t.auth;
   const [dismissedNow, setDismissedNow] = useState(false);
   const dismissed = dismissedNow || readBannerDismissed(session(), account?.id);
   if (!shouldShowEmailBanner(account, dismissed)) return null;

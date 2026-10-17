@@ -3,8 +3,8 @@ import { useState } from 'react';
 import { api } from '../console/api';
 import { ErrorLine, Message } from '../console/ui';
 import { GoogleButton } from './GoogleButton';
-import { copy } from './copy';
 import { googleLoginOutcome, postLoginPath } from './logic';
+import { useTranslation } from '../../i18n';
 
 /** Pemisah "atau" + tombol Google untuk /masuk dan /daftar. Tidak tampil bila Client ID kosong atau server membalas 503. */
 export function GoogleLogin({ mode, busy, locked, onCooldown }: {
@@ -13,6 +13,7 @@ export function GoogleLogin({ mode, busy, locked, onCooldown }: {
   locked: boolean; // cooldown 429 sedang berjalan
   onCooldown: () => void;
 }) {
+  const copy = useTranslation().t.auth;
   const [hidden, setHidden] = useState(false);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<unknown>(null);

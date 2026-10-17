@@ -55,6 +55,11 @@ export interface Translations {
   };
   // ── Auth ──────────────────────────────────────────────────────
   auth: {
+    layout: {
+      headline: [string, string, string];
+      description: string;
+      audience: string;
+    };
     forgot: {
       kicker: string;
       title: string;
@@ -100,12 +105,35 @@ export interface Translations {
       goHome: string;
     };
     login: {
+      kicker: string;
+      title: string;
+      description: string;
       identifierLabel: string;
       identifierHint: string;
       identifierPlaceholder: string;
+      passwordLabel: string;
+      passwordPlaceholder: string;
+      passwordToggle: string;
+      submit: string;
       forgotLink: string;
+      guestSubmit: string;
+      guestHint: string;
+      noAccount: string;
+      registerNow: string;
     };
     register: {
+      kicker: string;
+      title: string;
+      description: string;
+      nameLabel: string;
+      namePlaceholder: string;
+      phoneLabel: string;
+      phoneHint: string;
+      phonePlaceholder: string;
+      passwordLabel: string;
+      passwordPlaceholder: string;
+      passwordToggle: string;
+      submit: string;
       emailLabel: string;
       emailHint: string;
       emailPlaceholder: string;
@@ -119,6 +147,8 @@ export interface Translations {
         other: string;
       };
       goProfile: string;
+      hasAccount: string;
+      loginNow: string;
     };
     google: {
       divider: string;
@@ -311,6 +341,11 @@ const id: Translations = {
     languageLabel: 'Ganti bahasa',
   },
   auth: {
+    layout: {
+      headline: ['Lahan terkelola.', 'Modal terencana.', 'Musim lebih tenang.'],
+      description: 'Rencanakan kebutuhan biaya dan pantau perjalanan musim tanam dalam satu workspace yang sederhana.',
+      audience: 'Dibangun untuk petani cabai, tomat, dan bawang merah.',
+    },
     forgot: {
       kicker: 'Lupa kata sandi',
       title: 'Atur ulang kata sandi',
@@ -356,12 +391,35 @@ const id: Translations = {
       goHome: 'Buka beranda',
     },
     login: {
+      kicker: 'Selamat datang kembali',
+      title: 'Masuk ke akun Anda',
+      description: 'Kelola lahan dan biaya musim dengan lebih mudah.',
       identifierLabel: 'Nomor HP atau email',
       identifierHint: 'Masukkan nomor HP atau email yang Anda daftarkan.',
       identifierPlaceholder: 'Contoh: 081234567890 atau nama@email.com',
+      passwordLabel: 'Kata sandi',
+      passwordPlaceholder: 'Masukkan kata sandi',
+      passwordToggle: 'Tampilkan/sembunyikan kata sandi',
+      submit: 'Masuk',
       forgotLink: 'Lupa kata sandi?',
+      guestSubmit: 'Masuk sebagai tamu sementara',
+      guestHint: 'Data tamu tersimpan di server dan dihapus saat logout.',
+      noAccount: 'Belum punya akun?',
+      registerNow: 'Daftar sekarang',
     },
     register: {
+      kicker: 'Mulai perjalanan tanam',
+      title: 'Buat akun petani',
+      description: 'Satu tempat untuk merencanakan dan mencatat biaya tanam.',
+      nameLabel: 'Nama lengkap',
+      namePlaceholder: 'Nama lengkap',
+      phoneLabel: 'Nomor HP',
+      phoneHint: 'Gunakan 8–15 angka sesuai akun yang terdaftar.',
+      phonePlaceholder: 'Contoh: 081234567890',
+      passwordLabel: 'Kata sandi',
+      passwordPlaceholder: 'Masukkan kata sandi',
+      passwordToggle: 'Tampilkan/sembunyikan kata sandi',
+      submit: 'Daftar & lanjutkan',
       emailLabel: 'Email (opsional)',
       emailHint: 'Disarankan, agar kamu bisa memulihkan kata sandi jika lupa.',
       emailPlaceholder: 'nama@email.com',
@@ -375,6 +433,8 @@ const id: Translations = {
         other: 'terjadi kesalahan',
       },
       goProfile: 'Lanjut ke Profil',
+      hasAccount: 'Sudah memiliki akun?',
+      loginNow: 'Masuk',
     },
     google: {
       divider: 'atau',
@@ -565,6 +625,11 @@ const en: Translations = {
     languageLabel: 'Change language',
   },
   auth: {
+    layout: {
+      headline: ['Managed fields.', 'Planned capital.', 'A calmer growing season.'],
+      description: 'Plan your costs and monitor each growing season in one simple workspace.',
+      audience: 'Built for chili, tomato, and shallot farmers.',
+    },
     forgot: {
       kicker: 'Forgot password',
       title: 'Reset your password',
@@ -610,12 +675,35 @@ const en: Translations = {
       goHome: 'Go to home',
     },
     login: {
+      kicker: 'Welcome back',
+      title: 'Sign in to your account',
+      description: 'Manage your fields and seasonal costs more easily.',
       identifierLabel: 'Phone number or email',
       identifierHint: 'Enter your registered phone number or email.',
       identifierPlaceholder: 'e.g. +62812... or name@email.com',
+      passwordLabel: 'Password',
+      passwordPlaceholder: 'Enter your password',
+      passwordToggle: 'Show or hide password',
+      submit: 'Sign in',
       forgotLink: 'Forgot password?',
+      guestSubmit: 'Continue as a temporary guest',
+      guestHint: 'Guest data is stored on the server and deleted when you sign out.',
+      noAccount: 'Don\'t have an account?',
+      registerNow: 'Register now',
     },
     register: {
+      kicker: 'Start your growing journey',
+      title: 'Create a farmer account',
+      description: 'One place to plan and record your farming costs.',
+      nameLabel: 'Full name',
+      namePlaceholder: 'Full name',
+      phoneLabel: 'Phone number',
+      phoneHint: 'Use 8–15 digits matching your registered account.',
+      phonePlaceholder: 'Example: 081234567890',
+      passwordLabel: 'Password',
+      passwordPlaceholder: 'Enter your password',
+      passwordToggle: 'Show or hide password',
+      submit: 'Register & continue',
       emailLabel: 'Email (optional)',
       emailHint: 'Recommended so you can recover your password if forgotten.',
       emailPlaceholder: 'name@email.com',
@@ -629,6 +717,8 @@ const en: Translations = {
         other: 'an error occurred',
       },
       goProfile: 'Go to Profile',
+      hasAccount: 'Already have an account?',
+      loginNow: 'Sign in',
     },
     google: {
       divider: 'or',
@@ -819,6 +909,11 @@ const zh: Translations = {
     languageLabel: '切换语言',
   },
   auth: {
+    layout: {
+      headline: ['农田管理有序。', '资金规划清晰。', '种植季更安心。'],
+      description: '在一个简单的工作台中规划成本并跟踪整个种植季。',
+      audience: '专为辣椒、番茄和红葱种植户打造。',
+    },
     forgot: {
       kicker: '忘记密码',
       title: '重置密码',
@@ -864,12 +959,35 @@ const zh: Translations = {
       goHome: '前往主页',
     },
     login: {
+      kicker: '欢迎回来',
+      title: '登录您的账户',
+      description: '更轻松地管理农田和种植季成本。',
       identifierLabel: '手机号码或邮箱',
       identifierHint: '输入您注册的手机号码或邮箱。',
       identifierPlaceholder: '例如：+62812... 或 name@email.com',
+      passwordLabel: '密码',
+      passwordPlaceholder: '输入密码',
+      passwordToggle: '显示或隐藏密码',
+      submit: '登录',
       forgotLink: '忘记密码？',
+      guestSubmit: '以临时访客身份进入',
+      guestHint: '访客数据保存在服务器上，并在退出登录时删除。',
+      noAccount: '还没有账户？',
+      registerNow: '立即注册',
     },
     register: {
+      kicker: '开启您的种植之旅',
+      title: '创建农民账户',
+      description: '在一个地方规划和记录种植成本。',
+      nameLabel: '姓名',
+      namePlaceholder: '姓名',
+      phoneLabel: '手机号码',
+      phoneHint: '请输入与注册账户一致的8至15位数字。',
+      phonePlaceholder: '例如：081234567890',
+      passwordLabel: '密码',
+      passwordPlaceholder: '输入密码',
+      passwordToggle: '显示或隐藏密码',
+      submit: '注册并继续',
       emailLabel: '邮箱（可选）',
       emailHint: '建议填写，以便忘记密码时找回账户。',
       emailPlaceholder: 'name@email.com',
@@ -883,6 +1001,8 @@ const zh: Translations = {
         other: '发生错误',
       },
       goProfile: '前往个人资料',
+      hasAccount: '已有账户？',
+      loginNow: '登录',
     },
     google: {
       divider: '或',

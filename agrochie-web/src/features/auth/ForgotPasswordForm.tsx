@@ -5,11 +5,12 @@ import { ArrowRight } from 'lucide-react';
 import { api, ApiError } from '../console/api';
 import { Button, ErrorLine, Field, inputClass, Message } from '../console/ui';
 import { AuthCard } from './AuthCard';
-import { copy } from './copy';
 import { isStatus, looksLikeEmail } from './logic';
 import { useCooldown } from './useCooldown';
+import { useTranslation } from '../../i18n';
 
 export function ForgotPasswordForm() {
+  const copy = useTranslation().t.auth;
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<unknown>(null);

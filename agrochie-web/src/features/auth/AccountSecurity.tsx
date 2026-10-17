@@ -4,7 +4,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { api, ApiError, type Account } from '../console/api';
 import type { Workspace } from '../console/hooks';
 import { Button, Card, ErrorLine, Field, inputClass, Message, Tag } from '../console/ui';
-import { copy } from './copy';
 import { GoogleLinkModal } from './GoogleLinkModal';
 import { ReauthModal } from './ReauthModal';
 import { accountActionOutcome, canLinkGoogle, canRemoveEmail, canUnlinkGoogle, emailErrorOutcome, looksLikeEmail, phoneProblem } from './logic';
@@ -23,6 +22,7 @@ const phoneErrorText = (problem: ReturnType<typeof phoneProblem>, a: { phoneInva
 export function AccountSecurity({ w }: { w: Workspace }) {
   const queryClient = useQueryClient();
   const { t } = useTranslation();
+  const copy = t.auth;
   const a = t.accountActions;
   const account = w.account.data;
   const [email, setEmail] = useState('');

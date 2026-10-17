@@ -62,9 +62,9 @@ export function shouldRedirectOn401(input: {
 // [REVISI] B7: path perubahan akun yang memakai re-autentikasi (API_AUTH.md 3.13-3.15).
 const REAUTH_PATHS = ['/auth/phone', '/auth/email/remove', '/auth/google/unlink'];
 
-/** Bahasa untuk field `lang` backend: hanya id/en; zh dikirim sebagai en (API_AUTH.md bagian 5). */
-export function apiLang(lang: string | null | undefined): 'id' | 'en' {
-  return lang === 'id' ? 'id' : 'en';
+/** Bahasa untuk field `lang` backend. Nilai tak dikenal kembali ke bahasa bawaan Indonesia. */
+export function apiLang(lang: string | null | undefined): 'id' | 'en' | 'zh' {
+  return lang === 'en' || lang === 'zh' ? lang : 'id';
 }
 
 type AccountLike = {

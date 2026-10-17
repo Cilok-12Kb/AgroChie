@@ -112,11 +112,11 @@ export async function forgotPasswordHandler(req, res) {
 
 // reset: tanpa login otomatis; cookie sesi dibersihkan.
 export async function resetPasswordHandler(req, res) {
-  const { token, passwordBaru } = parseResetPassword(req.body);
+  const { token, passwordBaru, lang } = parseResetPassword(req.body);
   const result = await resetPassword({
     token,
     passwordBaru,
-    lang: pickLang(req.body?.lang, req.headers["accept-language"]),
+    lang: pickLang(lang, req.headers["accept-language"]),
   });
   (await getSessionTools()).clearSessionCookie(res);
   res.json(result);

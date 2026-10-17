@@ -28,8 +28,8 @@ function parse(schema, body) {
   const r = schema.safeParse(body ?? {});
   if (!r.success) throw new HttpError(400, r.error.issues.map((i) => i.message).join("; "));
   const { lang, ...rest } = r.data;
-  // Hanya "id" dan "en" yang diteruskan; selain itu dibiarkan kosong (pickLang memakai bawaan).
-  return { ...rest, lang: lang === "id" || lang === "en" ? lang : undefined };
+  // Ketiga bahasa antarmuka diteruskan; selain itu dibiarkan kosong (pickLang memakai bawaan).
+  return { ...rest, lang: ["id", "en", "zh"].includes(lang) ? lang : undefined };
 }
 
 /** Body ganti/tambah HP: { phone (ternormalisasi), password?, idToken?, lang? }. */
