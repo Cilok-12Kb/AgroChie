@@ -9,13 +9,13 @@ const MAX_TOOL_ROUNDS = 3; // [REVISI] batas putaran pemanggilan fungsi agar tid
  * [REVISI] tools (opsional): { declarations: [FunctionDeclaration], handlers: { nama: async (args) => objek } }.
  * Galat di handler dikembalikan ke Gemini sebagai { error } agar dijawab jujur, bukan dikarang.
  */
-export async function generateAnswer({ system, history, userText, tools }, client = null /* [REVISI] klien palsu untuk uji */, opts = {} /* [REVISI] uji: { cfg, sleep } */) {
+export async function generateAnswer({ system, history, userText, tools, temperature = 0.3 /* [REVISI] dapat diatur pemanggil; bawaan tetap 0.3 */ }, client = null /* [REVISI] klien palsu untuk uji */, opts = {} /* [REVISI] uji: { cfg, sleep } */) {
   const deadline = Date.now() + (opts.cfg ?? env).geminiTimeoutMs; // [REVISI] anggaran waktu untuk retry
   const contents = [
     ...history.map((m) => ({ role: m.role === "USER" ? "user" : "model", parts: [{ text: m.content }] })),
     { role: "user", parts: [{ text: userText }] },
   ];
-  const config = { systemInstruction: system, temperature: 0.3 };
+  const config = { systemInstruction: system, temperature };
   if (tools?.declarations?.length) config.tools = [{ functionDeclarations: tools.declarations }];
   try {
     let res;

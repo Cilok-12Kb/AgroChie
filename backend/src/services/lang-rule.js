@@ -23,3 +23,12 @@ export const withLanguageRule = (text, lang, rule = outputLanguageRule) => `${ru
 /** userText asisten: aturan bahasa di awal dan akhir, penanda bahasa di sebelum aturan akhir. */
 export const assistantUserText = (text, lang, marker) => `${chatLanguageRule(lang)}\n\n${text}\n\n${marker}\n${chatLanguageRule(lang)}`;
 
+// [REVISI] percobaan ulang pengaman bahasa: peringatan tegas di awal dan akhir.
+const STRICT = {
+  id: "PERINGATAN: jawaban sebelumnya memakai bahasa yang salah; tulis ulang SELURUHNYA dalam Bahasa Indonesia.",
+  en: "WARNING: the previous answer used the wrong language; rewrite it ENTIRELY in English. Do not use any Indonesian words.",
+  zh: "警告：上一次的回答使用了错误的语言；请完全用简体中文重写全部内容，不要使用任何印尼语单词。(The previous answer used the wrong language; rewrite it ENTIRELY in Simplified Chinese.)",
+};
+export const strictLanguageNote = (lang) => STRICT[normalizeLang(lang)];
+export const withStrictLanguage = (text, lang) => `${strictLanguageNote(lang)}\n\n${text}\n\n${strictLanguageNote(lang)}`;
+

@@ -3,7 +3,8 @@ import { HttpError } from "../utils/http-error.js";
 import { retrieve } from "./rag/retriever.js";
 import { buildSystemPrompt, describeFarmer, langMarker } from "./rag/prompt.js";
 import { generateAnswer } from "./llm.service.js";
-import { assistantUserText } from "./lang-rule.js"; // [REVISI]
+import { assistantUserText, withStrictLanguage } from "./lang-rule.js"; // [REVISI]
+import { withLanguageGuard } from "./lang-guard.js"; // [REVISI]
 import { buildTools } from "./assistant-tools.js"; // [REVISI]
 import { redactPlan } from "../utils/money-gate.js"; // [REVISI] 18.11
 
@@ -53,7 +54,13 @@ export async function chat(userId, { sessionId, seasonId, farmId, message, lang 
   const chunks = await retrieve([lastUser?.content, text].filter(Boolean).join("\n"));
 
   const system = buildSystemPrompt({ chunks, farmerText: describeFarmer(ctx), farmId: ctx.farm?.id, lang: safeLang }); // [REVISI] lahan_id untuk alat cuaca + lang
-  const answer = await generateAnswer({ system, history, userText: assistantUserText(text, safeLang, langMarker(safeLang)) /* [REVISI] aturan bahasa di awal dan akhir; teks asli tetap disimpan */, tools: ctx.farm ? buildTools(userId, safeLang) : undefined });
+  const baseUserText = assistantUserText(text, safeLang, langMarker(safeLang)); // [REVISI] aturan bahasa di awal dan akhir; teks asli tetap disimpan
+  const protect = [ctx.farm?.name, ctx.farm?.village, ctx.farm?.subdistrict, ctx.farm?.farmerGroup, ctx.farm?.province]; // nama diri tidak dihitung sebagai bahasa salah
+  // [REVISI] pengaman bahasa: bila jawaban tercampur bahasa lain, ulang SEKALI dengan instruksi lebih tegas
+  const answer = await withLanguageGuard({
+    lang: safeLang, label: "asisten", protect,
+    run: (strict) => generateAnswer({ system, history, userText: strict ? withStrictLanguage(baseUserText, safeLang) : baseUserText, tools: ctx.farm ? buildTools(userId, safeLang) : undefined, temperature: 0.3 }),
+  });
 
 
   // simpan SETELAH jawaban berhasil, agar riwayat selalu berpasangan (Gemini mewajibkan giliran bergantian)
