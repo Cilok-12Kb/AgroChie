@@ -6,7 +6,8 @@ import { getFarmWeather } from "./weather.service.js";
 import { toResponseSchema } from "./detection/schema.js";
 import { recalculateCost, expenseCategoryFor } from "../utils/detection-cost.js";
 import { findTrainedCrop, TRAINED_CROPS } from "./detection/leaf-class-map.js";
-import { outputLanguageRule, withLanguageRule } from "./lang-rule.js"; // [REVISI] instruksi bahasa output
+import { outputLanguageRule, withLanguageRule, withStrictLanguage } from "./lang-rule.js"; // [REVISI] instruksi bahasa output
+import { withLanguageGuard } from "./lang-guard.js"; // [REVISI]
 
 // [REVISI] Solusi penanganan + estimasi biaya dari Gemini. Biaya dalam Rupiah penuh (belum juta); hanya rentang
 // estimasi, BUKAN biaya mingguan. Pengecualian khusus fitur ini: kisaran dosis umum diperbolehkan (tanpa merek).
@@ -183,12 +184,19 @@ export async function generateSolution({ detection, land = {}, coords, catatan, 
   const userText = buildSolutionPrompt({ detection, land, weatherText: describeWeather(weather), note: catatan, chunks, sumber, lang });
   const jsonSchema = toResponseSchema(solutionSchema);
   const retryNote = "\n\nPERHATIAN: jawaban sebelumnya tidak valid. Kirim HANYA JSON valid sesuai skema.";
-  const solusi = await generateValidated({
-    label: "solusi",
-    schema: solutionSchema,
-    check: (d) => finalizeSolution(d, lang),
-    call: (i) =>
-      generateStructured({ system: buildSolutionSystem(lang), userText: i ? `${userText}${retryNote}\n\n${outputLanguageRule(lang)}` /* [REVISI] aturan bahasa tetap di akhir */ : userText, jsonSchema, temperature: 0.3 }, deps.client ?? null),
+  // [REVISI] pengaman bahasa: bila nilai teks tercampur bahasa lain, ulang SEKALI dengan instruksi lebih tegas (temperature tetap 0.3, dalam rentang rendah)
+  const protect = [land.nama, land.namaLahan, land.lokasi, land.desa, land.provinsi, land.negara];
+  const solusi = await withLanguageGuard({
+    lang, label: "solusi", protect,
+    run: (strict) => generateValidated({
+      label: "solusi",
+      schema: solutionSchema,
+      check: (d) => finalizeSolution(d, lang),
+      call: (i) => {
+        const base = i ? `${userText}${retryNote}\n\n${outputLanguageRule(lang)}` /* [REVISI] aturan bahasa tetap di akhir */ : userText;
+        return generateStructured({ system: buildSolutionSystem(lang), userText: strict ? withStrictLanguage(base, lang) : base, jsonSchema, temperature: 0.3 }, deps.client ?? null);
+      },
+    }),
   });
 
   if (!weather) {

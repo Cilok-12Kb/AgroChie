@@ -2,7 +2,8 @@ import { generateStructured } from "../llm.service.js";
 import { generateValidated } from "../ai-json.js";
 import { geminiDetectionSchema, toResponseSchema, QUALITY, PROBLEM_TYPES, SEVERITY } from "./schema.js";
 
-import { outputLanguageRule, withLanguageRule } from "../lang-rule.js"; // [REVISI] instruksi bahasa output
+import { outputLanguageRule, withLanguageRule, withStrictLanguage } from "../lang-rule.js"; // [REVISI] instruksi bahasa output
+import { withLanguageGuard } from "../lang-guard.js"; // [REVISI]
 
 export function buildDetectionSystem(lang = "id") {
   return `${outputLanguageRule(lang)}
@@ -37,11 +38,15 @@ export function createGeminiProvider({ client = null } = {}) {
     name: "gemini",
     async detect(imageBuffer, mimeType, context = {}) {
       const userText = withLanguageRule(buildDetectionPrompt(context), context.lang); // [REVISI]
-      return generateValidated({
-        label: "deteksi",
-        schema: geminiDetectionSchema,
-        call: () =>
-          generateStructured({ system: buildDetectionSystem(context.lang), userText, images: [{ data: imageBuffer, mimeType }], jsonSchema, temperature: 0.1 }, client),
+      // [REVISI] pengaman bahasa: ulang SEKALI dengan instruksi lebih tegas bila teks tercampur bahasa lain (temperature tetap 0.1)
+      return withLanguageGuard({
+        lang: context.lang, label: "deteksi", protect: [context.komoditas, context.farmName],
+        run: (strict) => generateValidated({
+          label: "deteksi",
+          schema: geminiDetectionSchema,
+          call: () =>
+            generateStructured({ system: buildDetectionSystem(context.lang), userText: strict ? withStrictLanguage(userText, context.lang) : userText, images: [{ data: imageBuffer, mimeType }], jsonSchema, temperature: 0.1 }, client),
+        }),
       });
     },
   };
