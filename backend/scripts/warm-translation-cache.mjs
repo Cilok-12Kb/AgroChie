@@ -7,7 +7,7 @@ import { createRequire } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { env } from "../src/config/env.js";
 import {
-  TranslationCache, createTranslateService, loadGlossary, DEFAULT_CACHE_PATH, TARGETS,
+  TranslationCache, createTranslateService, loadGlossary, DEFAULT_CACHE_PATH, TARGETS, REJECT_REASONS,
 } from "../src/services/translate.service.js";
 import {
   normalizeKey, shouldSkipText, containsProtected, TRANSLATABLE_ATTRS,
@@ -270,8 +270,10 @@ export async function runWarm(options, deps = {}) {
 
   const cfg = { ...env, translateProvider: "ollama", translateFallbackProvider: "", ollamaHost: opts.host, ollamaModel: opts.model };
   let errs = [];
+  const rejects = new Map(); // [REVISI] "target\u0000teks" -> kode alasan dari validasi service
   const svc = createTranslateService({
     cache, glossary: deps.glossary ?? loadGlossary(), cfg, chunkSize: opts.batch,
+    onReject: (tg, text, why) => rejects.set(`${tg}\u0000${text}`, why),
     ...(deps.providers ? { providers: deps.providers } : {}),
     logError: (...a) => errs.push(String(a[a.length - 1] ?? "error")),
   });
@@ -293,7 +295,7 @@ export async function runWarm(options, deps = {}) {
         stats[t].failed++;
         failures.push({
           target: t, text: k, locs: texts.get(k),
-          reason: errs.length ? `penerjemah gagal (${errs[0]})` : "hasil model tidak valid (kosong, angka hilang, atau bukan Mandarin)",
+          reason: errs.length ? `penerjemah gagal (${errs[0]})` : `hasil model tidak valid: ${REJECT_REASONS[rejects.get(`${t}\u0000${k}`)] ?? "tidak diketahui"}`,
         });
       }
       await cache.flush(); // simpan tiap batch agar pekerjaan tidak hilang bila dihentikan
